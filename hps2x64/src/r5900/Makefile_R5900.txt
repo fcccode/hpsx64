@@ -1,0 +1,10 @@
+NAMEOFTEST = testR5900
+PATHOFSRC = src
+LIBS = 
+CFLAGS = -w -fpermissive -static-libgcc -static-libstdc++
+INC = -I$(PATHOFSRC) -I../../../common -Isrc/lookup -Isrc/print -Isrc/execute -I../databus/src
+SRC = $(NAMEOFTEST).cpp $(wildcard $(PATHOFSRC)/*.cpp) $(wildcard src/lookup/*.cpp) $(wildcard src/print/*.cpp) $(wildcard src/execute/*.cpp) $(wildcard ../databus/src/*.cpp)
+OBJ = $(NAMEOFTEST)
+
+$(OBJ): $(SRC) 
+	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS)

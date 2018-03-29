@@ -1,0 +1,2 @@
+g++ -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -I./src -I../../debug/src -I../../StringUtilities -O3 -o testJoystick testJoystick.cpp ./src/*.cpp ../../StringUtilities/*.cpp -Wl,-subsystem,console -lwinmm
+pause

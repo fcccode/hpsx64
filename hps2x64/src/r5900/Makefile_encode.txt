@@ -1,0 +1,10 @@
+NAMEOFTEST = testR5900Encode
+PATHOFSRC = src/encode
+LIBS = 
+CFLAGS = -w -fpermissive -static-libgcc -static-libstdc++
+INC = -I$(PATHOFSRC) -Isrc -I../../../common
+SRC = $(NAMEOFTEST).cpp $(wildcard $(PATHOFSRC)/*.cpp)
+OBJ = $(NAMEOFTEST)
+
+$(OBJ): $(SRC) 
+	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS)

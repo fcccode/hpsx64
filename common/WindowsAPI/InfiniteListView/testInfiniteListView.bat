@@ -1,0 +1,2 @@
+g++ -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -I./src -I../../debug/src -I../WinFile/src -I../GUIHandler/src -O3 -o testInfiniteListView testInfiniteListView.cpp ./src/*.cpp ../GUIHandler/src/*.cpp ../WinFile/src/*.cpp -Wl,-subsystem,console -lopengl32 -lComctl32
+pause

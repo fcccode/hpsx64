@@ -1,0 +1,144 @@
+Full Program Name: Highly-Experimental Playstation Simulator x64
+Program Author: TheGangster
+Platforms: Windows 64-bit
+
+
+Contents:
+
+hps1x64 - Playstation 1 simulator
+---------------------------------
+
+Current System Requirements:
+64-bit x64 Processor
+
+Status: In development - Pre-initial Source code and binary release - Development/Testing usage only
+Current Version:
+hps1x64 v022 - GPU updates, CPU updates, improved CUE support, Scanline option, R3000A recompiler
+Older Versions:
+hps1x64 v021 - Optimized event handling, fixed dma bug introduced by recoding ps1 dma
+hps1x64 v020 - Recoded PS1 DMA
+hps1x64 v019 - DMA priority fixes
+hps1x64 v018 - polygon drawing fixes, bug fixes, improved speed
+hps1x64 v017 - DMA modifications, improved System operation
+v016 - SPU optimizations, timer interrupt bug fixed, MFC0 bug fixed
+v015 - proper pixel format conversion, timer fixes, SPU fixes, Faster startup code. Improved accuracy.
+v014 - less RAM usage, Fullscreen support (use "f" key), saved configurations, CD fixes. Improved speed. Improved compatibility.
+v013 - pre-initial release 13 - MDEC fixes, GPU fixes, CD fixes. Improved compatibility.
+v012 - pre-initial release 12 - CD fixes, DMA fixes, COP2 fixes. Improved compatibility.
+v011 - pre-initial release 11 - improved XA, Timer overhaul, SIO/PAD fixes, CPU fixes. Improved compatibility.
+v010 - pre-initial release 10 - SPU/LSA fixes, CD fixes (getparam, sector reads), COP2 delay slot fix, Auto Pause fixes, DMA2 fixes. Improved compatibility.
+v009 - pre-initial release 9 - MDEC Overhaul. GUI fixes, CD fixes, SPU fixes. Improved compatibility.
+v008 - pre-initial release 8 - Auto Pause implemented, GPU fixes, CD fixes, SPU fixes. Improved compatibility.
+v007 - pre-initial release 7 - Disk change support, CDDA fixes, GPU fixes, COP2 fixes. Improved compatibility. Improved accuracy.
+v006 - pre-initial release 6 - R3000A fixes. COP2 fixes. SPU fixes. CD fixes. improved compatibility.
+v005 - pre-initial release 5 - improved speed, improved compatibility, improved accuracy
+v004 - pre-initial release 4 - reverb support, dithering support, improved speed, improved compatibility
+v003 - pre-initial release 3 - improved compatibility, bin/img/iso/cue/ccd/sub support, memory card support, joystick support, preliminary sound support.
+v002 - pre-initial release 2 - improved compatibility, improved speed, improved accuracy. If something is not working, try enabling analog first thing.
+v001 - pre-initial release - only use this version if you intend to test or evaluate progress
+v000 - pre-initial evaluation only release
+
+
+hps2x64 - Playstation 2 simulator
+---------------------------------
+
+Current System Requirements:
+64-bit x64 Processor
+SSE 4.2 (for R5900 recompiler)
+
+Status: In development - Not ready for release
+Current Version:
+hps2x64 v007 - R5900 recompiler
+Older Versions:
+hps2x64 v006 - NVM write back
+hps2x64 v005 - VU accuracy fixes, IOP sio fixes (Pad/Memcard), Optimized event handling, VU macro mode fixes, GPU fixes
+hps2x64 v004 - IPU fixes, GPU fixes, CDVD fixes
+hps2x64 v003 - IPU fixes, fog implemented, MFIFO fixes, GPU fixes
+hps2x64 v002 - 2D/3D primitive drawing fixes, screen buffer fixes, improved compatibility
+hps2x64 v001 - pre-initial release 1 - preliminary IPU, DMA fixes, R5900 fixes, VU fixes, preliminary mfifo and stall control
+hps2x64 v000 - pre-initial release - SPU2 fixes, SIF fixes, timer interrupt bug fixed, QFSRV implemented, loads/runs some games
+hps2x64 vXXX - very early pre-initial WIP evaluation only release. TEST/DEVELOPMENT USE ONLY.
+
+
+*** HPS1x64 Instructions ***
+----------------------------
+
+To run bios dumped from a Playstation system:
+Use File | Load | Bios to load a bios dump. Use File | Run to run a bios dump after loading it.
+
+To run Playstation formatted game discs:
+Can run bin/img/iso images with cue, ccd, and sub support.
+To run a disc image, use File | Load | Bios to load a bios, then use File | Load | Insert/Remove Game Disk to load a game disk image (bin/img/iso/etc), then File | Run to run it.
+Make sure that cue/ccd/sub files have the same name as the disk image and are in the same folder, or they will not load.
+note: audio is delayed a few seconds by default. You can change the size of the audio buffer via Audio | Buffer Size.
+
+To change disks:
+If a disk image is loaded, you will see a check mark next to the File | Load | Insert/Remove Game Disk option.
+To remove the disk image, select the option again, and then you will see the check mark disappear. You can now load a new disk via the same option.
+
+To load a save state:
+First load the disk image, then load the save state, then use File | Run.
+
+To switch between R3000A recompiler/interpreter:
+You can choose to use the interpreter via CPU | CPU: R3000A | Interpreter: R3000A.
+You can choose to use the recompiler via CPU | CPU: R3000A | Recompiler: R3000A.
+
+Keys:
+Use Peripherals | Configure Joystick... and then follow the instructions to configure a compatible dual analog game pad.
+Note: If the keys don't work for a title, then toggle analog/digital mode (Peripherals->Pad 1->Pad 1 Digital/Analog).
+
+Troubleshooting:
+If controls are not working properly, then try switching between digital/analog mode (for both pads if needed). Pads are set to analog by default for compatibility.
+If a game does not load properly, try deleting/moving the memory card files.
+
+Misc Credits/Disclaimer:
+The MDEC backend is adapted from mame/mess/etc and is not entirely my code.
+
+
+*** HPS2x64 Instructions ***
+----------------------------
+
+To run bios dumped from a Playstation 2 system:
+Use File | Load | Bios to load a bios dump. Use File | Run to run a bios dump after loading it.
+
+To run Playstation 2 formatted game discs:
+Can run bin/iso images.
+To run a disc image, use File | Load | Bios to load a bios, then use File | Load | Insert/Remove PS2 Game Disk to load a PS2 game disk image (bin/img/iso), then File | Run to run it.
+Make sure that cue files have the same name as the disk image and are in the same folder, or they will not load.
+note: audio is delayed a few seconds by default. You can change the size of the audio buffer via Audio | Buffer Size.
+
+To load a save state:
+First load the disk image, then load the save state, then use File | Run.
+
+To switch between R3000A recompiler/interpreter:
+You can choose to use the interpreter via CPU | CPU: R3000A | Interpreter: R3000A.
+You can choose to use the recompiler via CPU | CPU: R3000A | Recompiler: R3000A.
+
+To switch between R5900 recompiler/interpreter:
+You can choose to use the interpreter via CPU | CPU: R5900 | Interpreter: R5900.
+You can choose to use the recompiler via CPU | CPU: R5900 | Recompiler: R5900.
+
+Troubleshooting:
+If a game disk loads improperly, ensure that it has been dumped properly from the original physical game disk. Pads are set to DualShock2 by default for compatibility.
+This program is WIP and for testing only.
+
+Misc Credits/Disclaimer:
+The IPU backend is adapted from pcsx2 and is not entirely my code.
+
+
+Build instructions:
+For hps1x64.exe (PS1 simulator) - install TDM GCC 64 (I use the tools at http://tdm-gcc.tdragon.net/), run MakefilePS1.bat which is in the same folder as this README file (must have "make" installed)
+For hps2x64.exe (PS2 simulator) - same but use MakefilePS2.bat
+Note: A version of hps1x64.exe and hps2x64.exe should have been built for you already and should be in the same folder as this README file. For test/evaluate ONLY.
+
+Special Thanks:
+Martin Korth
+Dr. Hell
+psxAuthor
+doomed
+Anders Gavare
+pcsx2 authors
+unknownbrackets
+anyone else I didn't list
+
+

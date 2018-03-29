@@ -1,0 +1,2 @@
+g++ -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -I./src -I../../debug/src -I../WinFile/src -I../GUIHandler/src -I../InputBox/src -I../../StringUtilities -O3 -o testDebugMemoryViewer testDebugMemoryViewer.cpp ./src/*.cpp ../GUIHandler/src/*.cpp ../WinFile/src/*.cpp ../InputBox/src/*.cpp ../../StringUtilities/*.cpp -Wl,-subsystem,console -lopengl32 -lComctl32
+pause

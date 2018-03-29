@@ -1,0 +1,20 @@
+NAMEOFTEST = TestTimer
+PATHOFSRC = src
+
+DIR_COMMON = ../../../common
+DIR_PLATFORM = $(DIR_COMMON)/WindowsAPI
+
+INC_COMMON = -I$(DIR_COMMON) -I$(DIR_COMMON)/StringUtilities -I$(DIR_COMMON)/breakpoint/src -I$(DIR_COMMON)/debug/src -I$(DIR_COMMON)/DiskImage/cd/src -I$(DIR_COMMON)/x64Encoder/src/ -I$(DIR_COMMON)/config/src/
+INC_PLATFORM = -I./src/ -I$(DIR_PLATFORM)/GUIHandler/src/ -I$(DIR_PLATFORM)/WinFile/src/ -I$(DIR_PLATFORM)/DebugValueList/src/ -I$(DIR_PLATFORM)/DisassemblyViewer/src/ -I$(DIR_PLATFORM)/InputBox/src/ -I$(DIR_PLATFORM)/DebugMemoryViewer/src/ -I$(DIR_PLATFORM)/BreakpointWindow/src/ -I$(DIR_PLATFORM)/Joystick/src/
+
+SRC_PLATFORM = $(wildcard ./src/*.cpp) $(wildcard $(DIR_PLATFORM)/GUIHandler/src/*.cpp) $(wildcard $(DIR_PLATFORM)/WinFile/src/*.cpp) $(wildcard $(DIR_PLATFORM)/DisassemblyViewer/src/*.cpp) $(wildcard $(DIR_PLATFORM)/InputBox/src/*.cpp) $(wildcard $(DIR_PLATFORM)/DebugMemoryViewer/src/*.cpp) $(wildcard $(DIR_PLATFORM)/BreakpointWindow/src/*.cpp) $(wildcard $(DIR_PLATFORM)/Joystick/src/*.cpp)
+SRC_COMMON = $(wildcard $(DIR_COMMON)/StringUtilities/*.cpp) $(wildcard $(DIR_COMMON)/breakpoint/src/*.cpp) $(wildcard $(DIR_COMMON)/debug/src/*.cpp) $(wildcard $(DIR_COMMON)/DiskImage/cd/src/*.cpp) $(wildcard $(DIR_COMMON)/x64Encoder/src/*.cpp) $(wildcard $(DIR_COMMON)/config/src/*.cpp)
+
+LIBS = -Wl,-subsystem,console -lopengl32 -lComctl32 -lwinmm
+CFLAGS = -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -O3 -D_DEBUG_VERSION_ -DENABLE_GUI_DEBUGGER
+INC = -I$(PATHOFSRC) $(INC_COMMON) $(INC_PLATFORM)
+SRC = $(NAMEOFTEST).cpp $(wildcard $(PATHOFSRC)/*.cpp) $(SRC_COMMON) $(SRC_PLATFORM)
+OBJ = $(NAMEOFTEST)
+
+$(OBJ): $(SRC) 
+	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS)

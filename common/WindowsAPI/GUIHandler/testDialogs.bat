@@ -1,0 +1,2 @@
+g++ -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -I./src -I../../debug/src -I../WinFile/src -I../../../../common/StringUtilities -O3 -o testDialogs testDialogs.cpp ./src/*.cpp ../WinFile/src/*.cpp ../../../../common/StringUtilities/*.cpp -Wl,-subsystem,console -lopengl32 -lComctl32
+pause

@@ -1,0 +1,10 @@
+NAMEOFTEST = testR5900Lookup
+PATHOFSRC = src/lookup
+LIBS = 
+CFLAGS = -w -fpermissive -static-libgcc -static-libstdc++
+INC = -I$(PATHOFSRC) -I../../../common -I../../../common/StringUtilities
+SRC = $(NAMEOFTEST).cpp $(wildcard $(PATHOFSRC)/*.cpp) $(wildcard ../../../common/StringUtilities/*.cpp)
+OBJ = $(NAMEOFTEST)
+
+$(OBJ): $(SRC) 
+	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS) 
