@@ -33,7 +33,13 @@ using namespace Playstation2;
 #define VERBOSE_IPU_PACK
 
 
+#define ENABLE_IPU_DITHER
+
+
 //#define DISABLE_INTERRUPTS
+
+
+//#define USE_PEEK_LE
 
 
 #ifdef _DEBUG_VERSION_
@@ -45,9 +51,9 @@ using namespace Playstation2;
 //#define INLINE_DEBUG
 #define INLINE_DEBUG_CONSOLE
 
-/*
+
 #define INLINE_DEBUG_WRITE
-//#define INLINE_DEBUG_READ
+#define INLINE_DEBUG_READ
 #define INLINE_DEBUG_RUN
 
 #define INLINE_DEBUG_READ_NOTBUSY
@@ -59,10 +65,10 @@ using namespace Playstation2;
 //#define INLINE_DEBUG_LOADIQ
 //#define INLINE_DEBUG_PEEK
 
-//#define INLINE_DEBUG_RESERVE
+#define INLINE_DEBUG_RESERVE
 
 #define INLINE_DEBUG_PROCESS
-*/
+
 
 #endif
 
@@ -188,7 +194,7 @@ void IPU::Run ()
 	debug << "\r\n\r\nIPU::Run; CycleCount=" << dec << *_DebugCycleCount;
 	debug << " FifoIn_Size=" << FifoIn_Size << " ipu0_data=" << decoder->ipu0_data;
 	debug << " FifoOut_Size=" << FifoOut_Size;
-	debug << " DMA4STR=" << Dma::_DMA->DmaCh [ 4 ].CHCR_Reg.STR;
+	//debug << " DMA4STR=" << Dma::_DMA->DmaCh [ 4 ].CHCR_Reg.STR;
 	debug << " CurrentOp=" << dec << CurrentOp;
 #endif
 
@@ -218,21 +224,9 @@ void IPU::Run ()
 	CurrentOp = CURRENTOP_NONE;
 	*/
 	
-	
-	// check if data need to be loaded in
-	if ( ( !FifoIn_Size ) /* && ( Dma::_DMA->DmaCh [ 4 ].CHCR_Reg.STR ) || ( !decoder->ipu0_data ) ) */ )
-	{
-#ifdef INLINE_DEBUG_RUN
-	debug << " IPURUNDMA4";
-#endif
-
-		// request data via dma
-		// for now, this should also trigger command to continue processing
-		Dma::_DMA->Transfer ( 4 );
-	}
 
 	// check if data needs to be output via dma
-	else if ( decoder->ipu0_data )
+	if ( decoder->ipu0_data && ( Dma::pRegData [ 3 ]->CHCR.STR ) )
 	{
 #ifdef INLINE_DEBUG_RUN
 	debug << " IPURUNDMA3";
@@ -245,6 +239,19 @@ void IPU::Run ()
 		Dma::_DMA->Transfer ( 3 );
 		
 	}
+	
+	// check if data need to be loaded in
+	else if ( ( !FifoIn_Size ) && ( Dma::pRegData [ 4 ]->CHCR.STR ) /* || ( !decoder->ipu0_data ) ) */ )
+	{
+#ifdef INLINE_DEBUG_RUN
+	debug << " IPURUNDMA4";
+#endif
+
+		// request data via dma
+		// for now, this should also trigger command to continue processing
+		Dma::_DMA->Transfer ( 4 );
+	}
+
 	
 	// even if none of the above, then continue processing of command if there is one
 	else
@@ -345,7 +352,7 @@ void IPU::Process_CMD ()
 			{
 #ifdef INLINE_DEBUG_PROCESS
 	debug << " MoreDataNeeded??";
-	debug << " State=" << dec << " " << ipu_cmd.pos [ 0 ] << " " << ipu_cmd.pos [ 1 ] << " " << ipu_cmd.pos [ 2 ] << " " << ipu_cmd.pos [ 3 ] << " " << ipu_cmd.pos [ 4 ] << " " << ipu_cmd.pos [ 5 ];
+	debug << " State=" << dec << " " << CommandState << " " << ipu_cmd.pos [ 0 ] << " " << ipu_cmd.pos [ 1 ] << " " << ipu_cmd.pos [ 2 ] << " " << ipu_cmd.pos [ 3 ] << " " << ipu_cmd.pos [ 4 ] << " " << ipu_cmd.pos [ 5 ];
 	debug << " OutputDataReady(QW)=" << dec << decoder->ipu0_data;
 	debug << " FifoIn_Size=" << dec << FifoIn_Size;
 	debug << " FifoIn_ReadIndex=" << FifoIn_ReadIndex;
@@ -1030,6 +1037,7 @@ bool IPU::Load_IQTable_FromBitstream ( u8* table )
 			{
 				uTemp64 = Get ( 64 );
 				((u64*) table) [ i ] = uTemp64;
+				//((u64*) table) [ i ] = EndianSwap64 ( uTemp64 );
 			}
 			
 			CommandState++;
@@ -1044,6 +1052,7 @@ bool IPU::Load_IQTable_FromBitstream ( u8* table )
 			{
 				uTemp64 = Get ( 64 );
 				((u64*) table) [ i ] = uTemp64;
+				//((u64*) table) [ i ] = EndianSwap64 ( uTemp64 );
 			}
 			
 			CommandState++;
@@ -1089,6 +1098,7 @@ bool IPU::Load_VQTable_FromBitstream ( u16* table )
 			{
 				uTemp64 = Get ( 64 );
 				((u64*) table) [ i ] = uTemp64;
+				//((u64*) table) [ i ] = EndianSwap64 ( uTemp64 );
 			}
 			
 			CommandState++;
@@ -1112,6 +1122,161 @@ bool IPU::Load_VQTable_FromBitstream ( u16* table )
 	// executed succesfully
 	return true;
 }
+
+
+
+
+
+
+// peeks at up to 64-bits from bit stream
+u64 IPU::PeekBE ( u64 iBits, u32 uBitPosition )
+{
+#ifdef INLINE_DEBUG_PEEK
+	debug << "\r\nIPU::PeekBE";
+	debug << " iBits=" << dec << iBits;
+	debug << " uBitPosition=" << dec << uBitPosition;
+#endif
+
+	u64 uResult64;
+	//u32 uBitsSkip;
+	//s32 sBitsRemaining;
+	u32 BytePosition;
+	u32 LeftShift;
+	u64 Mask, Shift;
+	
+	u32 LeftShift_Bits;
+	
+	u8 *ptr8;
+	
+	// get position of byte to start at
+	BytePosition = uBitPosition >> 3;
+	
+	// the 64-bit block has 8 bytes
+	BytePosition &= 0x7;
+	
+	// get pointer to start of data
+	ptr8 = (u8*) ( & FifoIn [ FifoIn_ReadIndex & c_iFifoMask64 ] );
+	
+	// update pointer to the actual byte to start at
+	ptr8 += BytePosition;
+	
+	// read in reverse order (big endian)
+	//uResult64 = 0;
+	for ( int i = 0; i < ( 8 - BytePosition ); i++ )
+	{
+		uResult64 <<= 8;
+		uResult64 |= (u64) (*ptr8++);
+	}
+	
+	if ( BytePosition )
+	{
+		ptr8 = (u8*) ( & FifoIn [ ( FifoIn_ReadIndex + 1 ) & c_iFifoMask64 ] );
+		for ( int i = 0; i < BytePosition; i++ )
+		{
+			uResult64 <<= 8;
+			uResult64 |= (u64) (*ptr8++);
+		}
+	}
+	
+#ifdef INLINE_DEBUG_PEEK
+	debug << " (MID)uResult64=" << hex << uResult64;
+#endif
+	
+	// fit in the last byte
+	if ( uBitPosition & 0x7 )
+	{
+		// shift left by the number of bits that have been dumped in the byte (8-bits in a byte)
+		uResult64 <<= ( uBitPosition & 0x7 );
+		
+		// put in the last byte
+		uResult64 |= ( (u64) (*ptr8) ) >> ( 8 - ( uBitPosition & 0x7 ) );
+	}
+	
+	// shift right by 64 minus number of bits to read
+	uResult64 >>= ( ( 64 - iBits ) & 0x3f );
+	
+	
+	/*
+	BytePosition = uBitPosition & ~7;
+	
+	// check which half of qw the bit position is currently in
+	if ( BytePosition < 64 )
+	{
+
+		// get the number of bits to skip in the first 64-bit block
+		//uBitsSkip = BytePosition;
+		
+		// should shift left though by 64 - byte position
+		LeftShift = 64 - BytePosition;
+		LeftShift_Bits = 64 - uBitPosition;
+	}
+	else
+	{
+		// get the number of bits to skip in the first 64-bit block
+		//uBitsSkip = BytePosition - 64;
+		
+		// should shift left though by 128 - byte position
+		LeftShift = 128 - BytePosition;
+		LeftShift_Bits = 128 - uBitPosition;
+	}
+
+	// get the number of bits remaining in second 64-bit block if any
+	//sBitsRemaining = iBits - LeftShift;
+	
+#ifdef INLINE_DEBUG_PEEK
+	//debug << " uBitsSkip=" << dec << uBitsSkip;
+	//debug << " sBitsRemaining=" << dec << sBitsRemaining;
+	debug << " LeftShift=" << dec << LeftShift;
+#endif
+
+	// may only want to shift right by a max of 63
+	BytePosition &= 0x3f;
+
+	// shift right by the bit position
+	uResult64 = FifoIn [ FifoIn_ReadIndex & c_iFifoMask64 ]  >> BytePosition;
+	
+	//if ( sBitsRemaining > 0 )
+	if ( iBits > LeftShift_Bits )
+	{
+		//uResult64 |= FifoIn [ ( FifoIn_ReadIndex + 1 ) & c_iFifoMask64 ] << sBitsRemaining;
+		uResult64 |= FifoIn [ ( FifoIn_ReadIndex + 1 ) & c_iFifoMask64 ] << LeftShift;
+	}
+	
+	// if bitposition and byteposition are not the same then load is not byte aligned
+	if ( BytePosition != uBitPosition )
+	{
+		Shift = uBitPosition & 0x7;
+		
+		Mask = 0xff >> Shift;
+		Mask |= ( Mask << 8 );
+		Mask |= ( Mask << 16 );
+		Mask |= ( Mask << 32 );
+		
+		uResult64 = ( ( ~Mask & ( uResult64 >> 8 ) ) >> ( 8 - Shift ) ) | ( ( Mask & uResult64 ) << Shift );
+	}
+	
+#ifdef INLINE_DEBUG_PEEK
+	debug << " (before)Result=" << hex << uResult64;
+#endif
+
+	// remove any top bits that were not requested
+	if ( iBits & 0x3f )
+	{
+		uResult64 &= ( ( 1ULL << iBits ) - 1ULL );
+	}
+	*/
+	
+#ifdef INLINE_DEBUG_PEEK
+	//debug << " Mask0=" << hex << ( 1ULL << iBits );
+	//debug << " Mask=" << hex << ( ( 1ULL << iBits ) - 1ULL );
+	debug << " Fifo0=" << hex << FifoIn [ FifoIn_ReadIndex & c_iFifoMask64 ];
+	debug << " Fifo1=" << hex << FifoIn [ ( FifoIn_ReadIndex + 1 ) & c_iFifoMask64 ];
+	debug << " (final)Result=" << hex << uResult64;
+#endif
+
+	return uResult64;
+}
+
 
 
 // peeks at up to 64-bits from bit stream
@@ -1164,6 +1329,9 @@ u64 IPU::Peek ( u64 iBits, u32 uBitPosition )
 	debug << " LeftShift=" << dec << LeftShift;
 #endif
 
+	// may only want to shift right by a max of 63
+	BytePosition &= 0x3f;
+
 	// shift right by the bit position
 	uResult64 = FifoIn [ FifoIn_ReadIndex & c_iFifoMask64 ]  >> BytePosition;
 	
@@ -1215,7 +1383,11 @@ u64 IPU::Get ( u32 iBits )
 	u32 InputFifoSize;
 	
 	// get the bits from bit stream
+#ifdef USE_PEEK_LE
 	Result = Peek ( iBits, BitPosition );
+#else
+	Result = PeekBE ( iBits, BitPosition );
+#endif
 	
 	// proceed in the bit stream
 	Proceed ( iBits );
@@ -1234,6 +1406,9 @@ u64 IPU::Get ( u32 iBits )
 	
 	return Result;
 }
+
+
+
 
 
 void IPU::Update_OFC ()
@@ -1566,7 +1741,11 @@ bool IPU::Execute_VDEC ()
 	
 	
 	// set TOP register as the next 32-bits in the bit stream
+#ifdef USE_PEEK_LE
 	Regs.TOP.BSTOP = EndianSwap32 ( Peek ( 32, BitPosition ) );
+#else
+	Regs.TOP.BSTOP = PeekBE ( 32, BitPosition );
+#endif
 	
 	// get 32-bits from FIFO
 	//Data = EndianSwap32 ( Peek ( 32, BitPosition ) );
@@ -1637,11 +1816,17 @@ bool IPU::Execute_FDEC ()
 	case 2:
 	
 	// get 32-bits from FIFO
+#ifdef USE_PEEK_LE
 	Data = EndianSwap32 ( Peek ( 32, BitPosition ) );
+#else
+	Data = PeekBE ( 32, BitPosition );
+#endif
+
 	Set_Output ( Data );
 	
 	// set TOP register as the next 32-bits in the bitstream ??
-	Regs.TOP.BSTOP = EndianSwap32 ( Peek ( 32, BitPosition ) );
+	//Regs.TOP.BSTOP = EndianSwap32 ( Peek ( 32, BitPosition ) );
+	Regs.TOP.BSTOP = Data;
 	
 	// no longer busy with command
 	Clear_Busy ();
@@ -1857,12 +2042,12 @@ static void IPU::Write ( u32 Address, u64 Data, u64 Mask )
 					decoder->intra_dc_precision	= _IPU->Regs.CTRL.IDP;
 
 					//from BDEC value
-					decoder->quantizer_scale		= decoder->q_scale_type ? ( non_linear_quantizer_scale [ _IPU->CMD_Write.QSC ] ) : ( _IPU->CMD_Write.QSC << 1 );
+					decoder->quantizer_scale		= ( decoder->q_scale_type ? ( non_linear_quantizer_scale [ _IPU->CMD_Write.QSC ] ) : ( _IPU->CMD_Write.QSC << 1 ) );
 					decoder->frame_pred_frame_dct	= 1;
 					decoder->dcr					= _IPU->CMD_Write.DCR;
 					
-					decoder->macroblock_modes		= _IPU->CMD_Write.DT ? DCT_TYPE_INTERLACED : 0;
-					decoder->macroblock_modes		|= _IPU->CMD_Write.MBI ? MACROBLOCK_INTRA : MACROBLOCK_PATTERN;
+					decoder->macroblock_modes		= ( _IPU->CMD_Write.DT ? DCT_TYPE_INTERLACED : 0 );
+					decoder->macroblock_modes		|= ( _IPU->CMD_Write.MBI ? MACROBLOCK_INTRA : MACROBLOCK_PATTERN );
 
 					//memzero_sse_a(decoder->mb8);
 					//memzero_sse_a(decoder->mb16);
@@ -2325,7 +2510,8 @@ u32 IPU::CSC ( u32 YCbCr )
 
 /* __fi */ void ipu_csc(macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn)
 {
-	s32 Y, Cb, Cr;
+	s32 Y;
+	s32 Cb, Cr;
 	s32 Cb2, Cb3, Cr2, Cr3;
 	s32 Y2, Y3;
 	s32 r0, g0, b0, a0;
@@ -2510,6 +2696,7 @@ u16 IPU::Dither ( u32 x, u32 y, u32 uPixel32 )
 			sG32 <<= 1;
 			sB32 <<= 1;
 			
+#ifdef ENABLE_IPU_DITHER
 			// only dither if dithering is enabled
 			if ( dte )
 			{
@@ -2529,6 +2716,7 @@ u16 IPU::Dither ( u32 x, u32 y, u32 uPixel32 )
 				sG32 = ( sG32 > 511 ) ? 511 : sG32;
 				sB32 = ( sB32 > 511 ) ? 511 : sB32;
 			}
+#endif
 			
 			// round down (3 lower bits + 1 fractional bits = shift right 4 bits)
 			sR32 >>= 4;
@@ -2561,9 +2749,14 @@ u32 UBITS ( unsigned long Bits )
 	
 	uBitPosition = IPU::_IPU->BitPosition;
 	
+#ifdef USE_PEEK_LE
 	Result = IPU::EndianSwap32 ( IPU::_IPU->Peek ( 32, uBitPosition & ~7 ) );
 	Result <<= ( uBitPosition & 7 );
 	Result >>= ( 32 - Bits );
+#else
+	Result = IPU::_IPU->PeekBE ( Bits, uBitPosition );
+#endif
+
 	return Result;
 }
 
@@ -2574,7 +2767,12 @@ s32 SBITS ( unsigned long Bits )
 	
 	uBitPosition = IPU::_IPU->BitPosition;
 	
+#ifdef USE_PEEK_LE
 	Result = IPU::EndianSwap32 ( IPU::_IPU->Peek ( 32, uBitPosition & ~7 ) );
+#else
+	Result = IPU::_IPU->PeekBE ( 32, uBitPosition & ~7 );
+#endif
+
 	Result <<= ( uBitPosition & 7 );
 	Result >>= ( 32 - Bits );
 	return Result;
@@ -2678,7 +2876,11 @@ bool GETBITS(u64* Result, uint num)
 
 u64 PEEKBITS ( uint num )
 {
+#ifdef USE_PEEK_LE
 	return IPU::_IPU->Peek ( num, IPU::_IPU->BitPosition );
+#else
+	return IPU::_IPU->PeekBE ( num, IPU::_IPU->BitPosition );
+#endif
 }
 
 // verify that 16-bits are available

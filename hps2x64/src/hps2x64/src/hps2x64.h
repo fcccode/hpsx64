@@ -231,13 +231,21 @@ namespace Playstation2
 		static void OnClick_File_Run ( u32 i );
 		static void OnClick_File_Exit ( u32 i );
 		
-		static void OnClick_Controllers_Configure ( u32 i );
+		static void OnClick_Controllers0_Configure ( u32 i );
+		static void OnClick_Controllers1_Configure ( u32 i );
 		static void OnClick_Pad1Type_Digital ( u32 i );
 		static void OnClick_Pad1Type_Analog ( u32 i );
 		static void OnClick_Pad1Type_DualShock2 ( u32 i );
 		static void OnClick_Pad2Type_Digital ( u32 i );
 		static void OnClick_Pad2Type_Analog ( u32 i );
 		static void OnClick_Pad2Type_DualShock2 ( u32 i );
+
+		static void OnClick_Pad1Input_None ( u32 i );
+		static void OnClick_Pad1Input_Device0 ( u32 i );
+		static void OnClick_Pad1Input_Device1 ( u32 i );
+		static void OnClick_Pad2Input_None ( u32 i );
+		static void OnClick_Pad2Input_Device0 ( u32 i );
+		static void OnClick_Pad2Input_Device1 ( u32 i );
 		
 		static void OnClick_Card1_Connect ( u32 i );
 		static void OnClick_Card1_Disconnect ( u32 i );
@@ -270,6 +278,13 @@ namespace Playstation2
 		static void OnClick_R3000ACPU_Recompiler ( u32 i );
 		static void OnClick_R5900CPU_Interpreter ( u32 i );
 		static void OnClick_R5900CPU_Recompiler ( u32 i );
+		static void OnClick_VU0_Interpreter ( u32 i );
+		static void OnClick_VU0_Recompiler ( u32 i );
+		static void OnClick_VU1_Interpreter ( u32 i );
+		static void OnClick_VU1_Recompiler ( u32 i );
+		
+		static void OnClick_GPU_0Threads ( u32 i );
+		static void OnClick_GPU_1Threads ( u32 i );
 		
 		static void LoadClick ( u32 i );
 		static void SaveStateClick ( u32 i );

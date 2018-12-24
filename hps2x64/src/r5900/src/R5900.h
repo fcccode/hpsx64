@@ -42,7 +42,7 @@
 
 #include "R5900_Instruction.h"
 #include "R5900_Execute.h"
-//#include "R5900_ICache.h"
+#include "R5900_ICache.h"
 //#include "R5900_COP2.h"
 
 #include "PS2DataBus.h"
@@ -800,12 +800,16 @@ namespace R5900
 		u64 BusyUntil_Cycle;
 		u64 MulDiv_BusyUntil_Cycle;
 		u64 MulDiv_BusyUntil_Cycle1;
+		
+		
+		u32 testvar [ 8 ];
+		
 
 		// used for debugging
 		u32 Last_LoadStore_Address;
 		
 		// this will be used as the icache
-		//ICache_Device ICache;
+		ICache_Device ICache;
 		
 		// need to delay a certain number of cycles during cache miss before execution can continue
 		u32 ICacheMiss_BusyCycles;

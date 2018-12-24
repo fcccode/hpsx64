@@ -33,6 +33,9 @@
 #include "PS2_GPU.h"
 
 
+#include "VU_Recompiler.h"
+
+
 using namespace Playstation2;
 using namespace Vu;
 //using namespace x64Asm::Utilities;
@@ -41,6 +44,17 @@ using namespace Vu;
 
 // this should be enabled to delay the flag update, which is how it appears to work on PS2
 #define DELAY_FLAG_UPDATE
+
+
+//#define ENABLE_NEW_CLIP_BUFFER
+//#define ENABLE_NEW_FLAG_BUFFER
+#define ENABLE_SNAPSHOTS
+
+
+
+#define ENABLE_RECOMPILER_VU
+#define ALLOW_RECOMPILE_INTERPRETER
+
 
 
 //#define VERBOSE_UNPACK
@@ -72,6 +86,10 @@ using namespace Vu;
 //#define ALL_VU0_UPPER_ADDRS_ACCESS_VU1
 
 
+#define HALT_DIRECT_WHILE_VU_RUNNING
+#define HALT_DIRECTHL_WHILE_VU_RUNNING
+
+#define ENABLE_SET_VGW
 
 // enable debugging
 
@@ -82,9 +100,11 @@ using namespace Vu;
 
 //#define INLINE_DEBUG_SPLIT
 
-//#define INLINE_DEBUG
 
 /*
+#define INLINE_DEBUG
+
+
 #define INLINE_DEBUG_PIPELINE
 
 #define INLINE_DEBUG_READ
@@ -101,23 +121,50 @@ using namespace Vu;
 #define INLINE_DEBUG_UNPACK_3
 
 // this sends info to the vu execute debug on when vu gets started, etc
-#define INLINE_DEBUG_VUEXECUTE
-*/
+//#define INLINE_DEBUG_VUEXECUTE
+
 
 #define INLINE_DEBUG_GETMEMPTR_INVALID
 #define INLINE_DEBUG_INVALID
-
+*/
 
 #endif
 
 
+
+
+u16 VU::Temp_StatusFlag, VU::Temp_MacFlag;
+VU::Bitmap128 VU::Temp_Bitmap;
+
+
 VU *VU::_VU [ VU::c_iMaxInstances ];
+
+
+Vu::Instruction::Format2 VU::CurInstLOHI;
+
+Vu::Instruction::Format VU::CurInstLO;
+Vu::Instruction::Format VU::CurInstHI;
+
+
+Vu::Recompiler* vrs [ 2 ];
 
 
 VU *VU0::_VU0;
 VU *VU1::_VU1;
 
 int VU::iInstance = 0;
+
+
+static u32 VU::bCodeModified [ 2 ];
+
+
+// bitmaps for recompiler
+static VU::Bitmap128 VU::FSrcBitmap;
+static u64 VU::ISrcBitmap;
+
+static VU::Bitmap128 VU::FDstBitmap;
+static u64 VU::IDstBitmap;
+
 
 
 u32* VU::_DebugPC;
@@ -136,6 +183,8 @@ u64* VU::_ProcStatus;
 
 
 u64* VU::_NextSystemEvent;
+
+u32* VU::_NextEventIdx;
 
 
 // needs to be removed sometime - no longer needed
@@ -184,8 +233,17 @@ void VU::Reset ()
 	// zero object
 	memset ( this, 0, sizeof( VU ) );
 
-
+	// reset new buffers for the flags
+	Reset_CFBuffer ();
+	Reset_MFBuffer ();
+	Reset_SFBuffer ();
+	Reset_BFBuffer ();
 	
+#ifdef ENABLE_NEW_QP_HANDLING
+	// with the new Q,P reg handling, -1 means that the regs are not processing
+	PBusyUntil_Cycle = -1LL;
+	QBusyUntil_Cycle = -1LL;
+#endif
 }
 
 
@@ -266,6 +324,28 @@ void VU::Start ( int iNumber )
 		_VU [ Number ]->vf [ 0 ].uLo = 0;
 		_VU [ Number ]->vf [ 0 ].uHi = 0;
 		_VU [ Number ]->vf [ 0 ].uw = 0x3f800000;
+
+
+
+		//Recompiler ( VU* v, u32 NumberOfBlocks, u32 BlockSize_PowerOfTwo, u32 MaxIStep );
+		if ( Number )
+		{
+			vrs [ Number ] = new Recompiler ( this, 0, 21, 11 );
+		}
+		else
+		{
+			vrs [ Number ] = new Recompiler ( this, 0, 21, 9 );
+		}
+		
+		//rs->SetOptimizationLevel ( 1 );
+		//vrs [ Number ]->SetOptimizationLevel ( 0 );
+		vrs [ Number ]->SetOptimizationLevel ( 1 );
+		
+		// enable recompiler by default
+		bEnableRecompiler = true;
+
+		// should be set when code is modified (start out as code modified to force recompile)
+		bCodeModified [ Number ] = 1;
 		
 #ifdef ENABLE_GUI_DEBUGGER
 		cout << "\nVU#" << Number << " breakpoint instance";
@@ -274,10 +354,14 @@ void VU::Start ( int iNumber )
 	}
 
 
+	// start as not in use
+	CycleCount = -1LL;
+	//SetNextEvent_Cycle ( -1LL );
 	
 
 	// update number of object instances
 	iInstance++;
+
 	
 
 	cout << "done\n";
@@ -295,7 +379,7 @@ void VU::Start ( int iNumber )
 
 
 
-/*
+
 void VU::SetNextEvent ( u64 CycleOffset )
 {
 	NextEvent_Cycle = CycleOffset + *_DebugCycleCount;
@@ -311,11 +395,20 @@ void VU::SetNextEvent_Cycle ( u64 Cycle )
 	Update_NextEventCycle ();
 }
 
+//void VU::Update_NextEventCycle ()
+//{
+//	if ( NextEvent_Cycle > *_DebugCycleCount && ( NextEvent_Cycle < *_NextSystemEvent || *_NextSystemEvent <= *_DebugCycleCount ) ) *_NextSystemEvent = NextEvent_Cycle;
+//}
+
 void VU::Update_NextEventCycle ()
 {
-	if ( NextEvent_Cycle > *_DebugCycleCount && ( NextEvent_Cycle < *_NextSystemEvent || *_NextSystemEvent <= *_DebugCycleCount ) ) *_NextSystemEvent = NextEvent_Cycle;
+	//if ( NextEvent_Cycle > *_DebugCycleCount && ( NextEvent_Cycle < *_NextSystemEvent || *_NextSystemEvent <= *_DebugCycleCount ) )
+	if ( NextEvent_Cycle < *_NextSystemEvent )
+	{
+		*_NextSystemEvent = NextEvent_Cycle;
+		*_NextEventIdx = NextEvent_Idx;
+	}
 }
-*/
 
 
 
@@ -334,6 +427,12 @@ void VU::Write_CTC ( u32 Register, u32 Data )
 		
 		switch ( Register )
 		{
+			// STATUS FLAG
+			case 16:
+				// lower 6-bits are ignored when writing status flag
+				vi [ 16 ].u = ( vi [ 16 ].u & 0x3f ) | ( Data & 0xfc0 );
+				break;
+				
 			// FBRST
 			case 28:
 				
@@ -869,7 +968,8 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 						//*_DebugCycleCount--;
 						
 						// restart dma#2
-						Dma::_DMA->Transfer ( 2 );
+						// note: should restart on its own
+						//Dma::_DMA->Transfer ( 2 );
 						
 						// restore cycle - to prevent skips for now
 						//*_DebugCycleCount++;
@@ -1005,8 +1105,11 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 
 					VifStopped = 0;
 					
+#ifdef ENABLE_SET_VGW
 					// not waiting for end of GIF transfer currently
 					VifRegs.STAT.VGW = 0;
+#endif
+
 				}
 				
 				break;
@@ -1020,13 +1123,27 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 				// waits for end of vu program and end of transfer to gif
 				// Vu1 ONLY
 				// ***todo*** wait for end of transfer to gif
-				if ( Running )
+				//if ( Running || ( Dma::cbReady [ 2 ] () ) )
+				//if ( Running || ( Dma::pRegData [ 2 ]->CHCR.STR && !( GPU::_GPU->GIFRegs.STAT.M3R || GPU::_GPU->GIFRegs.STAT.M3P ) ) )
+				//if ( Running || ( GPU::_GPU->ulTransferCount [ 3 ] ) )
+				//if ( Running || ( !GPU::_GPU->EndOfPacket [ 3 ] ) )
+				if ( Running || ( Dma::pRegData [ 2 ]->CHCR.STR && GPU::DMA_Write_Ready() ) )
 				{
 #ifdef INLINE_DEBUG_VUCOM
 	debug << " (VIFSTOP)";
 #endif
 
 					VifStopped = 1;
+					
+#ifdef ENABLE_SET_VGW
+					//if ( Dma::pRegData [ 2 ]->CHCR.STR && !( GPU::_GPU->GIFRegs.STAT.M3R || GPU::_GPU->GIFRegs.STAT.M3P ) )
+					//if ( GPU::_GPU->ulTransferCount [ 3 ] )
+					//if ( !GPU::_GPU->EndOfPacket [ 3 ] )
+					//{
+						// when vif is stalled via DIRECTHL or FLUSHA, need to set STAT.VGW
+						VifRegs.STAT.VGW = 1;
+					//}
+#endif
 					
 #ifdef INLINE_DEBUG_VUCOM
 	debug << " (FLUSHA_PENDING)";
@@ -1054,8 +1171,10 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 
 					VifStopped = 0;
 					
+#ifdef ENABLE_SET_VGW
 					// not waiting for end of GIF transfer currently
 					VifRegs.STAT.VGW = 0;
+#endif
 				}
 				
 				break;
@@ -1119,6 +1238,8 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 					
 					// VU is now running
 					Running = 1;
+					CycleCount = *_DebugCycleCount + 1;
+					//SetNextEvent_Cycle ( *_DebugCycleCount + 1 );
 					
 					// set VBSx in VPU STAT to 1 (running)
 					VU0::_VU0->vi [ 29 ].uLo |= ( 1 << ( Number << 3 ) );
@@ -1208,8 +1329,10 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 
 					VifStopped = 0;
 					
+#ifdef ENABLE_SET_VGW
 					// not waiting for end of GIF transfer currently
 					VifRegs.STAT.VGW = 0;
+#endif
 					
 #ifdef INLINE_DEBUG_VUCOM
 	debug << " (RUNVU)";
@@ -1223,6 +1346,8 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 					
 					// VU is now running
 					Running = 1;
+					CycleCount = *_DebugCycleCount + 1;
+					//SetNextEvent_Cycle ( *_DebugCycleCount + 1 );
 					
 					// set VBSx in VPU STAT to 1 (running)
 					VU0::_VU0->vi [ 29 ].uLo |= ( 1 << ( Number << 3 ) );
@@ -1313,6 +1438,8 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 
 					// VU is now running
 					Running = 1;
+					CycleCount = *_DebugCycleCount + 1;
+					//SetNextEvent_Cycle ( *_DebugCycleCount + 1 );
 					
 					// set VBSx in VPU STAT to 1 (running)
 					VU0::_VU0->vi [ 29 ].uLo |= ( 1 << ( Number << 3 ) );
@@ -1541,6 +1668,9 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 						lVifCodeState++;
 						
 						
+						// code has been modified for VU
+						bCodeModified [ Number ] = 1;
+						
 #ifdef INLINE_DEBUG_VUEXECUTE
 					Vu::Instruction::Execute::debug << "\r\n*** MPG";
 					Vu::Instruction::Execute::debug << " VU#" << Number;
@@ -1601,6 +1731,8 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 				
 				// don't perform DIRECT/DIRECTHL command yet while vu1 (path1?) is executing ??
 
+#ifdef HALT_DIRECT_WHILE_VU_RUNNING
+				//if ( Running || ( !GPU::_GPU->EndOfPacket [ 3 ] ) )
 				if ( Running )
 				{
 					// VU program is in progress //
@@ -1630,6 +1762,7 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 					return QWC_Transferred;
 				}
 				else
+#endif
 				{
 					// VU program is NOT in progress //
 					
@@ -1663,6 +1796,10 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 
 						// there is more incoming data than just the tag
 						lVifCodeState++;
+						
+						// direct command is now transferring data
+						// gets priority over path 3 for this
+						bTransferringDirectViaPath2 = true;
 					}
 
 					// if processing next element, also check there is data to process
@@ -1708,6 +1845,9 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 							
 							// also need to clear/flush the path2 pipeline
 							GPU::_GPU->ulPath2_DataWaiting = 0;
+							
+							// Direct command no longer transferring data
+							bTransferringDirectViaPath2 = false;
 						}
 					}
 					
@@ -1728,7 +1868,12 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 				
 				// don't perform DIRECT/DIRECTHL command yet while vu1 (path1?) is executing ??
 
-				if ( Running )
+				//if ( Running || ( GPU::_GPU->ulTransferCount [ 3 ] ) )
+#ifdef HALT_DIRECTHL_WHILE_VU_RUNNING
+				if ( Running || ( !GPU::_GPU->EndOfPacket [ 3 ] ) )
+#else
+				if ( !GPU::_GPU->EndOfPacket [ 3 ] )
+#endif
 				{
 					// VU program is in progress //
 					
@@ -1737,6 +1882,15 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 #endif
 
 					VifStopped = 1;
+					
+#ifdef ENABLE_SET_VGW
+					//if ( GPU::_GPU->ulTransferCount [ 3 ] )
+					//if ( !GPU::_GPU->EndOfPacket [ 3 ] )
+					//{
+						// when vif is stalled via DIRECTHL or FLUSHA, need to set STAT.VGW
+						VifRegs.STAT.VGW = 1;
+					//}
+#endif
 					
 #ifdef INLINE_DEBUG_VUCOM
 	debug << " (DIRECTHL_PENDING)";
@@ -1765,6 +1919,11 @@ u32 VU::VIF_FIFO_Execute ( u32* Data, u32 SizeInWords32 )
 #endif
 
 					VifStopped = 0;
+					
+#ifdef ENABLE_SET_VGW
+					// not waiting for end of GIF transfer currently
+					VifRegs.STAT.VGW = 0;
+#endif
 					
 #ifdef INLINE_DEBUG_VUCOM
 	debug << " (RUNDIRECTHL)";
@@ -2624,10 +2783,28 @@ bool VU::DMA_Read_Ready ()
 bool VU::DMA_Write_Ready ()
 {
 	// if the VIF has been stopped, or if there is a packet in progress in path 3, then do not run dma1??
-	if ( ( VifStopped ) || ( GPU::_GPU->PacketInProgress [ 3 ] ) )
+	//if ( ( VifStopped ) || ( GPU::_GPU->ulTransferCount [ 3 ] ) )
+	if ( ( VifStopped ) )
 	{
 		return 0;
 	}
+	
+	if ( bTransferringDirectViaPath2 && !GPU::_GPU->EndOfPacket [ 3 ] )
+	{
+		return 0;
+	}
+	
+	// next, make sure this is not vu#0
+	/*
+	if ( Number )
+	{
+		// if path 3 packet transfer is in progress and IMT is set to transfer in continuous mode
+		if ( ( GPU::_GPU->ulTransferCount [ 3 ] ) && ( !GPU::_GPU->GIFRegs.MODE.IMT ) )
+		{
+			return 0;
+		}
+	}
+	*/
 
 	return 1;
 }
@@ -2636,6 +2813,8 @@ bool VU::DMA_Write_Ready ()
 
 void VU::Run ()
 {
+	u32 Index;
+	
 
 	// making these part of object rather than local function
 	//Instruction::Format CurInstLO;
@@ -2653,13 +2832,15 @@ void VU::Run ()
 	// if VU is not running, update vu cycle and then return
 	if ( !Running )
 	{
-		CycleCount = *_DebugCycleCount;
+		//CycleCount = *_DebugCycleCount;
+		CycleCount = -1LL;
 		return;
 	}
 	
 
 #ifdef INLINE_DEBUG
 	debug << "\r\n->PC = " << hex << setw( 8 ) << PC << dec;
+	debug << " VU#" << dec << Number;
 #endif
 
 
@@ -2687,23 +2868,32 @@ void VU::Run ()
 	vf [ 0 ].uLo = 0;
 	vf [ 0 ].uHi = 0;
 	vf [ 0 ].uw = 0x3f800000;
+
+	// update instruction
+	NextPC = PC + 8;
+
+#ifdef ENABLE_RECOMPILER_VU
+	if ( !bEnableRecompiler )
+	{
+#endif
 	
 	//cout << "\nVU -> load lo";
 	
 	// load LO instruction
-	//CurInst.Value = Bus->Read ( PC, 0xffffffff );
-	CurInstLO.Value = MicroMem32 [ PC >> 2 ];
+	//CurInstLO.Value = MicroMem32 [ PC >> 2 ];
 	
 	//cout << "\nVU -> load hi";
 	
 	// load HI instruction
-	//CurInst.Value = Bus->Read ( PC, 0xffffffff );
-	CurInstHI.Value = MicroMem32 [ ( PC + 4 ) >> 2 ];
+	//CurInstHI.Value = MicroMem32 [ ( PC + 4 ) >> 2 ];
+	
+	CurInstLOHI.ValueLoHi = MicroMem64 [ PC >> 3 ];
 	
 	//cout << "\nVU -> execute lo";
 	
 	// check if E-bit is set (means end of execution after E-bit delay slot)
-	if ( CurInstHI.E )
+	//if ( CurInstHI.E )
+	if ( CurInstLOHI.E )
 	{
 #ifdef INLINE_DEBUG
 	debug << "; ***E-BIT SET***";
@@ -2713,7 +2903,8 @@ void VU::Run ()
 	}
 	
 	// alert if d or t is set
-	if ( CurInstHI.D )
+	//if ( CurInstHI.D )
+	if ( CurInstLOHI.D )
 	{
 		// register #28 is the FBRST register
 		// the de bit says if the d-bit is enabled or not
@@ -2737,7 +2928,8 @@ void VU::Run ()
 		}
 	}
 	
-	if ( CurInstHI.T )
+	//if ( CurInstHI.T )
+	if ( CurInstLOHI.T )
 	{
 		cout << "\nhps2x64: ALERT: VU#" << Number << " T-bit is set!\n";
 	}
@@ -2746,40 +2938,165 @@ void VU::Run ()
 	// execute HI instruction first ??
 	
 	// check if Immediate or End of execution bit is set
-	if ( CurInstHI.I )
+	//if ( CurInstHI.I )
+	if ( CurInstLOHI.I )
 	{
 		// lower instruction contains an immediate value //
 		
 		// *important* MUST execute the HI instruction BEFORE storing the immediate
-		Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+		//Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+		Instruction::Execute::ExecuteInstructionHI ( this, CurInstLOHI.Hi );
 		
 		// load immediate regiser with LO instruction
-		//I.u = CurInstLO.Value;
-		vi [ 21 ].u = CurInstLO.Value;
+		//vi [ 21 ].u = CurInstLO.Value;
+		vi [ 21 ].u = CurInstLOHI.Lo.Value;
 	}
 	else
 	{
 		// execute lo/hi instruction normally //
 		// unsure of order
 		
+		// set the lo instruction
+		//CurInstLO.Value = CurInstLOHI.Lo.Value;
+		
 		// execute LO instruction since it is an instruction rather than an immediate value
-		Instruction::Execute::ExecuteInstructionLO ( this, CurInstLO );
+		//Instruction::Execute::ExecuteInstructionLO ( this, CurInstLO );
+		Instruction::Execute::ExecuteInstructionLO ( this, CurInstLOHI.Lo );
 		
 		// execute HI instruction
-		Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+		//Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+		Instruction::Execute::ExecuteInstructionHI ( this, CurInstLOHI.Hi );
 		
+		// needs to be cleared to zero when done with it, since it is just to let hi instruction know what is going on
+		//CurInstLO.Value = 0;
 	}
 	
 	//cout << "\nVU -> execute hi";
 	
 	
-	//cout << "\nVU -> update pc";
-	
-	
-	
+	//cout << "\nVU -> update pc";	
 	
 	// update instruction
-	NextPC = PC + 8;
+	//NextPC = PC + 8;
+
+
+#ifdef ENABLE_RECOMPILER_VU
+	}
+	else
+	{
+// no need to interpret while single-stepping during testing
+#ifdef ALLOW_RECOMPILE_INTERPRETER
+		if ( Status.Value )
+		{
+#ifdef INLINE_DEBUG
+	debug << ";Interpret";
+	debug << " Status=" << hex << Status.Value;
+#endif
+
+			// load the instruction
+			CurInstLOHI.ValueLoHi = MicroMem64 [ PC >> 3 ];
+			
+
+			// check if E-bit is set (means end of execution after E-bit delay slot)
+			//if ( CurInstHI.E )
+			if ( CurInstLOHI.E )
+			{
+#ifdef INLINE_DEBUG
+			debug << "; ***E-BIT SET***";
+#endif
+
+				Status.EBitDelaySlot_Valid |= 0x2;
+			}
+			
+
+			if ( CurInstLOHI.I )
+			{
+				// lower instruction contains an immediate value //
+				
+				// *important* MUST execute the HI instruction BEFORE storing the immediate
+				//Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+				Instruction::Execute::ExecuteInstructionHI ( this, CurInstLOHI.Hi );
+				
+				// load immediate regiser with LO instruction
+				//vi [ 21 ].u = CurInstLO.Value;
+				vi [ 21 ].u = CurInstLOHI.Lo.Value;
+			}
+			else
+			{
+				// execute lo/hi instruction normally //
+				// unsure of order
+				
+				// set the lo instruction
+				//CurInstLO.Value = CurInstLOHI.Lo.Value;
+				
+				// execute LO instruction since it is an instruction rather than an immediate value
+				//Instruction::Execute::ExecuteInstructionLO ( this, CurInstLO );
+				Instruction::Execute::ExecuteInstructionLO ( this, CurInstLOHI.Lo );
+				
+				// execute HI instruction
+				//Instruction::Execute::ExecuteInstructionHI ( this, CurInstHI );
+				Instruction::Execute::ExecuteInstructionHI ( this, CurInstLOHI.Hi );
+				
+				// needs to be cleared to zero when done with it, since it is just to let hi instruction know what is going on
+				//CurInstLO.Value = 0;
+			}
+		}
+		else
+#endif
+		{
+		
+		// check that address block is encoded
+		//if ( ! vrs [ Number ]->isRecompiled ( PC ) )
+		if ( bCodeModified [ Number ] )
+		{
+#ifdef INLINE_DEBUG
+	debug << ";NOT Recompiled";
+#endif
+			// address is NOT encoded //
+			
+			// recompile block
+			vrs [ Number ]->Recompile ( this, PC );
+			
+			// code has been recompiled so only need to recompile again if modified
+			bCodeModified [ Number ] = 0;
+		}
+		
+#ifdef INLINE_DEBUG
+	debug << ";Recompiled";
+	debug << ";PC=" << hex << PC;
+	debug << " Status=" << hex << Status.Value;
+#endif
+
+		// clear branches
+		//Recompiler::Status_BranchDelay = 0;
+		Recompiler_EnableFlags = 0;
+		
+		// get the block index
+		Index = vrs [ Number ]->Get_Index ( PC );
+
+#ifdef INLINE_DEBUG
+	debug << ";Index(dec)=" << dec << Index;
+	debug << ";Index(hex)=" << hex << Index;
+#endif
+		
+		// offset cycles before the run, so that it updates to the correct value
+		//CycleCount -= rs->CycleCount [ Index ];
+
+		// already checked that is was either in cache, or etc
+		// execute from address
+		( (func2) (vrs [ Number ]->pCodeStart [ Index ]) ) ();
+		
+#ifdef INLINE_DEBUG
+	debug << "\r\n->RecompilerReturned";
+	debug << " VU#" << dec << Number;
+#endif
+
+		} // end if ( Status.Value )
+			
+	}
+#endif
+
+
 	
 	///////////////////////////////////////////////////
 	// Check if there is anything else going on
@@ -2792,6 +3109,9 @@ void VU::Run ()
 	// *note* by doing this before execution of instruction, pipeline can be stalled as needed
 	if ( Status.Value )
 	{
+		// clear status/clip set flags
+		Status.SetStatus_Flag = 0;
+		Status.SetClip_Flag = 0;
 
 		/////////////////////////////////////////////
 		// check for anything in delay slots
@@ -2814,7 +3134,8 @@ void VU::Run ()
 		if ( Status.EnableLoadMoveDelaySlot )
 		{
 			// this clears the EnableLoadMoveDelaySlot, so no need to do it here
-			Instruction::Execute::Execute_LoadDelaySlot ( this, CurInstLO );
+			//Instruction::Execute::Execute_LoadDelaySlot ( this, CurInstLO );
+			Instruction::Execute::Execute_LoadDelaySlot ( this, CurInstLOHI.Lo );
 		}
 #endif
 
@@ -2859,15 +3180,30 @@ void VU::Run ()
 		if ( Status.EBitDelaySlot_Valid )
 		{
 #ifdef INLINE_DEBUG_VURUN
-			debug << "\r\nEBitDelaySlot; VUDONE";
+			debug << "\r\nEBitDelaySlot_Valid; VU#" << dec << Number;
 			debug << " @Cycle#" << dec << *_DebugCycleCount;
+			debug << " EBitDelaySlot_Valid=" << hex << (u32) Status.EBitDelaySlot_Valid;
 #endif
 
 			Status.EBitDelaySlot_Valid >>= 1;
 
 			if ( !Status.EBitDelaySlot_Valid )
 			{
+#ifdef INLINE_DEBUG_VURUN
+			debug << "\r\nEBitDelaySlot; VU#" << dec << Number << " DONE";
+			debug << " @Cycle#" << dec << *_DebugCycleCount;
+#endif
+
 				Running = 0;
+				CycleCount = -1LL;
+				
+				// for VU#1, clear pipelines
+				//if ( Number )
+				//{
+				//	Pipeline_Bitmap = 0;
+				//	Int_Pipeline_Bitmap = 0;
+				//}
+				
 				
 				// set VBSx in VPU STAT to be zero (idle)
 				VU0::_VU0->vi [ 29 ].uLo &= ~( 1 << ( Number << 3 ) );
@@ -3088,10 +3424,10 @@ void VU::PipelineWait_FMAC ()
 	}
 	
 	// time out, which should never happen theoretically!!!
-	cout << "\nhps2x64: VU: SERIOUS ERROR: FMAC Pipeline wait timeout!!! Should never happen!\n";
+	cout << "\nhps2x64: VU" << dec << Number << ": SERIOUS ERROR: FMAC Pipeline wait timeout!!! Should never happen!\n";
 	
 #ifdef INLINE_DEBUG_PIPELINE
-	debug << "\r\nhps2x64: VU: SERIOUS ERROR: FMAC Pipeline wait timeout!!! Should never happen!\r\n";
+	debug << "\r\nhps2x64: VU#" << dec << Number << ": SERIOUS ERROR: FMAC Pipeline wait timeout!!! Should never happen! P0=" << hex << Pipeline_Bitmap.b0 << " P1=" << Pipeline_Bitmap.b1 << "\r\n";
 #endif
 }
 
@@ -3165,7 +3501,17 @@ void VU::PipelineWaitCycle ( u64 WaitUntil_Cycle )
 	static const u32 c_CycleTimeout = 3;
 	
 	u32 Count;
+	u64 Diff;
 	
+	Diff = WaitUntil_Cycle - CycleCount;
+	
+	if ( Diff > c_CycleTimeout )
+	{
+		Diff = c_CycleTimeout;
+	}
+	
+	
+	/*
 	// check if the P register was set in the meantime too
 	if ( CycleCount >= ( PBusyUntil_Cycle - 1 ) )
 	{
@@ -3178,20 +3524,23 @@ void VU::PipelineWaitCycle ( u64 WaitUntil_Cycle )
 		// no need to wait
 		return;
 	}
+	*/
 	
 	// exaust the fmac pipeline for a maximum of 4 cycles
-	for ( Count = 0; Count < c_CycleTimeout; Count++ )
+	//for ( Count = 0; Count < c_CycleTimeout; Count++ )
+	for ( Count = 0; Count < Diff; Count++ )
 	{
 		AdvanceCycle ();
 		
 		// check if we are at the correct cycle yet
-		if ( CycleCount >= WaitUntil_Cycle ) return;
+		//if ( CycleCount >= WaitUntil_Cycle ) return;
 	}
 	
 	// at this point can just set the cycle# to the correct value
 	// since there is nothing else to wait for
 	CycleCount = WaitUntil_Cycle;
 	
+	/*
 	// check if the Q register was set in the meantime too
 	if ( CycleCount >= QBusyUntil_Cycle )
 	{
@@ -3203,6 +3552,7 @@ void VU::PipelineWaitCycle ( u64 WaitUntil_Cycle )
 	{
 		SetP ();
 	}
+	*/
 }
 
 // force pipeline to wait for the Q register
@@ -3212,6 +3562,11 @@ void VU::PipelineWaitQ ()
 	
 	// done waiting for Q register
 	//QBusyUntil_Cycle = 0LL;
+	
+	if ( QBusyUntil_Cycle != -1LL )
+	{
+		SetQ ();
+	}
 }
 
 // force pipeline to wait for the P register
@@ -3225,6 +3580,8 @@ void VU::PipelineWaitP ()
 	
 	// done waiting for P register
 	//PBusyUntil_Cycle = 0LL;
+	
+	SetP ();
 }
 
 
@@ -3236,9 +3593,13 @@ void VU::AdvanceCycle ()
 	// this counts the bus cycles, not R5900 cycles
 	CycleCount++;
 
+	
+#ifndef ENABLE_NEW_QP_HANDLING
 	// update q and p registers here for now
 	UpdateQ ();
-	UpdateP ();
+	//UpdateP ();
+#endif
+
 
 #ifdef INLINE_DEBUG_VUEXECUTE	
 if ( FlagSave [ ( iFlagSave_Index + 1 ) & c_lFlag_Delay_Mask ].FlagsAffected == 1 )
@@ -3276,10 +3637,12 @@ void VU::MacroMode_AdvanceCycle ( u32 Instruction )
 	if ( Status.IntDelayValid )
 	{
 		vi [ IntDelayReg ].u = IntDelayValue;
-		Status.IntDelayValid = 0;
+		//Status.IntDelayValid = 0;
 	}
 #endif
 
+	// clear the status flag here for macro mode (no longer needed)
+	Status.Value = 0;
 
 #ifdef UPDATE_MACRO_FLAGS_IMMEDIATELY
 	SetCurrentFlags ();

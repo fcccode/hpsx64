@@ -32,6 +32,9 @@ using namespace Playstation1;
 //#define VERBOSE_DEBUG_SIO2_RUN
 
 
+//#define VERBOSE_COMM
+
+
 // for testing a disconnected state
 #define CONNECTION_VALUE 0x1100
 
@@ -40,9 +43,9 @@ using namespace Playstation1;
 #define INLINE_DEBUG_ENABLE
 //#define INLINE_DEBUG
 
-//#define INLINE_DEBUG_SPLIT
+#define INLINE_DEBUG_SPLIT
 
-/*
+
 #define INLINE_DEBUG_WRITE
 #define INLINE_DEBUG_READ
 #define INLINE_DEBUG_RUN
@@ -78,7 +81,7 @@ using namespace Playstation1;
 //#define INLINE_DEBUG_PS2_PAD
 
 #define INLINE_DEBUG_CTRL2
-*/
+
 
 
 #endif
@@ -307,6 +310,8 @@ void SIO::Start ()
 #ifdef PS2_COMPILE
 	ControlPad_Type [ 0 ] = PADTYPE_DUALSHOCK2;
 	ControlPad_Type [ 1 ] = PADTYPE_DUALSHOCK2;
+	//ControlPad_Type [ 0 ] = PADTYPE_ANALOG;
+	//ControlPad_Type [ 1 ] = PADTYPE_ANALOG;
 #else
 	// the default should be to set both controllers to analog mode
 	ControlPad_Type [ 0 ] = PADTYPE_ANALOG;
@@ -325,6 +330,14 @@ void SIO::Start ()
 	//MemoryCard_ConnectionState [ 0 ] = MCD_CONNECTED;
 	//MemoryCard_ConnectionState [ 1 ] = MCD_DISCONNECTED;
 	
+	
+	// initially, controller0 is connected to port0 on the system and controller1 maps to port1
+	PortMapping [ 0 ] = 0;
+	PortMapping [ 1 ] = -1;
+	
+	// for some other time...
+	PortMapping [ 2 ] = 2;
+	PortMapping [ 3 ] = 3;
 
 #ifdef PS2_COMPILE
 
@@ -636,7 +649,6 @@ void SIO::Execute ()
 				*/
 
 				//cout << "\nCommand=" << hex << (u32)Command << ". Changing to 0x42. Cycle#" << dec << *_DebugCycleCount << "\n";
-//#define VERBOSE_COMM
 #ifdef VERBOSE_COMM
 	cout << "\nhps1x64: SIO: Pad Command=" << hex << Command;
 #endif
@@ -974,6 +986,11 @@ void SIO::Execute ()
 						
 						// must end with 0x5a ?
 						Output_Buf [ 1 + 7 ] = 0x5a;
+						
+#ifdef PS2_COMPILE
+						// set controller as a dual shock 2 controller
+						ControlPad_Type [ ( CTRL0 >> 13 ) & 1 ] = PADTYPE_DUALSHOCK2;
+#endif
 						break;
 						
 					// use this one for commands 0x40, 0x41, 0x49, 0x4a, 0x4b, 0x4e, 0x4f //
@@ -1118,12 +1135,31 @@ void SIO::Execute ()
 				{
 					case 0x44:
 					
+						//cout << "\n***PadState0x44," << hex << "isConfigMode=" << isConfigMode [ ( CTRL0 >> 13 ) & 1 ] << ",pad#" << (( CTRL0 >> 13 ) & 1) << "," << (u32) DataIn_Buffer [ 3 ] << "," << (u32) DataIn_Buffer [ 4 ];
 						// set led state //
+						switch ( DataIn_Buffer [ 4 ] )
+						{
+							case 2:
+								break;
+							
+							// also if it is 3 ??
+							case 3:
+								// apply new led state //
+								// *todo* need to look at this further
+								ControlPad_Type [ ( CTRL0 >> 13 ) & 1 ] = DataIn_Buffer [ 3 ];
+								break;
+							
+							default:
+								break;
+						}
+						
+						/*
 						if ( Output_Buf [ 4 ] == 2 )
 						{
 							// apply new led state //
 							ControlPad_Type [ ( CTRL0 >> 13 ) & 1 ] = Output_Buf [ 3 ];
 						}
+						*/
 					
 						break;
 						
@@ -2835,15 +2871,45 @@ void SIO::Run ()
 
 void SIO::Command_0x42 ( bool ForceAnalogOutput )
 {
+	u32 PortMap;
+	u32 PadNum;
+	
 	// check which controller this is for
 	switch ( CTRL0 & 0x2002 )
 	{
 		case 0x2:
+			PortMap = PortMapping [ 0 ];
+			PadNum = 0;
+			break;
+			
+		case 0x2002:
+			PortMap = PortMapping [ 1 ];
+			PadNum = 1;
+			break;
+	}
+	
+	// read the joystick data
+	switch ( PortMap )
+	{
+		case 0:
+			// read joystick
+			Joy.ReadJoystick ( 0 );
+			break;
+			
+		case 1:
+			// read joystick
+			Joy.ReadJoystick ( 1 );
+			break;
+	}
+			
+	// process the joystick data
+	switch ( PortMap )
+	{
+		case 0:
+		case 1:
 			// *** TODO *** check if pad is digital/analog/etc
 			// assuming digital pad for now
 			
-			// read joystick
-			Joy.ReadJoystick ( 0 );
 			
 			// this is the first set of keys for a digital controller - bits 2 and 4 are always high
 			Output_Buf [ 3 ] = 0xff;
@@ -3097,14 +3163,17 @@ void SIO::Command_0x42 ( bool ForceAnalogOutput )
 			// update amount of data to output to include the two bytes just above
 			// note: if in config mode and analog pad, then analog output data is forced
 			// actually, analog output is always forced in config mode
-			if ( ControlPad_Type [ 0 ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
+			//if ( ControlPad_Type [ 0 ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
+			if ( ControlPad_Type [ PadNum ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
 			{
 				// digital controller //
 				SizeOf_Output_Buf += 2 + ( DigitalID_ExtraHalfwordCount [ ( CTRL0 >> 13 ) & 1 ] << 1 );
 			}
 			else
 #ifdef PS2_COMPILE
-			if ( ( ControlPad_Type [ 0 ] == PADTYPE_ANALOG ) || ( ControlPad_Type [ 0 ] == PADTYPE_DIGITAL && ForceAnalogOutput ) )
+			//if ( ( ControlPad_Type [ 0 ] == PADTYPE_ANALOG ) || ( ControlPad_Type [ 0 ] == PADTYPE_DIGITAL && ForceAnalogOutput ) )
+			//if ( ( ControlPad_Type [ 0 ] == PADTYPE_ANALOG ) || ( ForceAnalogOutput ) )
+			if ( ( ControlPad_Type [ PadNum ] == PADTYPE_ANALOG ) || ( ForceAnalogOutput ) )
 #endif
 			{
 				// analog controller //
@@ -3120,7 +3189,7 @@ void SIO::Command_0x42 ( bool ForceAnalogOutput )
 			
 			break;
 			
-		case 0x2002:
+		default:
 			// *** TODO *** check if pad is digital/analog/etc
 			// assuming digital pad for now
 			
@@ -3152,14 +3221,16 @@ void SIO::Command_0x42 ( bool ForceAnalogOutput )
 #endif
 			
 			// update amount of data to output to include the two bytes just above
-			if ( ControlPad_Type [ 1 ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
+			//if ( ControlPad_Type [ 1 ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
+			if ( ControlPad_Type [ PadNum ] == PADTYPE_DIGITAL && !ForceAnalogOutput )
 			{
 				// digital controller //
 				SizeOf_Output_Buf += 2 + ( DigitalID_ExtraHalfwordCount [ ( CTRL0 >> 13 ) & 1 ] << 1 );
 			}
 			else
 #ifdef PS2_COMPILE
-			if ( ( ControlPad_Type [ 1 ] == PADTYPE_ANALOG ) || ( ControlPad_Type [ 1 ] == PADTYPE_DIGITAL && ForceAnalogOutput ) )
+			//if ( ( ControlPad_Type [ 1 ] == PADTYPE_ANALOG ) || ( ControlPad_Type [ 1 ] == PADTYPE_DIGITAL && ForceAnalogOutput ) )
+			if ( ( ControlPad_Type [ PadNum ] == PADTYPE_ANALOG ) || ( ControlPad_Type [ PadNum ] == PADTYPE_DIGITAL && ForceAnalogOutput ) )
 #endif
 			{
 				// analog controller //

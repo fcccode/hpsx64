@@ -371,8 +371,14 @@ namespace Playstation2
 		// it doesn't look like dmas can necessarily always intrude on currently continuous transfers
 		u32 SelectedDMA_Bitmap;
 		
+		// need to know what the last channel was that ran
+		int iLastChannel;
+		
 		static u64 Read ( u32 Address, u64 Mask );
 		static void Write ( u32 Address, u64 Data, u64 Mask );
+
+		// get priority for channel
+		u32 Get_ChannelPriority ( int iChannel );
 		
 		void Start ();
 		
@@ -891,6 +897,9 @@ namespace Playstation2
 		void Transfer ( int iChannel );
 		void EndTransfer ( int iChannel, bool SuppressEventUpdate = false );
 		
+		// checks for and resumes the dma transfer(s)
+		void CheckTransfer ();
+		
 		// suspends dma transfer without triggering interrupt
 		void SuspendTransfer ( int iChannel );
 		
@@ -907,7 +916,7 @@ namespace Playstation2
 		//void DMA0_Run ( bool ContinueToCompletion );
 
 		
-		void DMA5_WriteBlock ( u64 *Data64, u32 QWC_Count );	//( u64 EEDMATag, u64* Data64, u32 QWC_Count );
+		static u32 DMA5_WriteBlock ( u64 *Data64, u32 QWC_Count );	//( u64 EEDMATag, u64* Data64, u32 QWC_Count );
 
 		// must use this to add a reference to the bus
 		//void ConnectDevices ( DataBus *BUS, MDEC *mdec, GPU *g, CD *cd, SPU *spu, R5900::Cpu *cpu );

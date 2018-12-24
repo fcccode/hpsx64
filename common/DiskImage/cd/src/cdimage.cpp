@@ -35,8 +35,8 @@ CDImage::ReadAsync_Params CDImage::_rap_params;
 WinApi::File CDImage::sub;
 bool CDImage::isSubOpen;
 unsigned long CDImage::isDiskOpen;
-u32 CDImage::isReadInProgress;
-u32 CDImage::isSubReadInProgress;
+volatile u32 CDImage::isReadInProgress;
+volatile u32 CDImage::isSubReadInProgress;
 
 ifstream* CDImage::CueFile;
 ifstream* CDImage::CcdFile;
@@ -47,8 +47,8 @@ string CDImage::sCDPath;
 
 
 // need to be able to toggle between reading synchronously and asynchronously
-#define DISK_READ_SYNC
-//#define DISK_READ_ASYNC
+//#define DISK_READ_SYNC
+#define DISK_READ_ASYNC
 
 
 CDImage::CDImage ()
@@ -865,7 +865,7 @@ void CDImage::GetTrackStart ( int TrackNumber, unsigned char & AMin, unsigned ch
 
 bool CDImage::OpenDiskImage ( string DiskImagePath, u32 DiskSectorSize )
 {
-	//cout << "\nCalling CDImage::OpenDiskImage; DiskImagePath=" << DiskImagePath.c_str();
+//cout << "\nCalling CDImage::OpenDiskImage; DiskImagePath=" << DiskImagePath.c_str();
 	
 	bool bDiskOpenedSuccessfully;
 	
@@ -981,7 +981,7 @@ bool CDImage::OpenDiskImage ( string DiskImagePath, u32 DiskSectorSize )
 	}
 	*/
 
-	//cout << "\nExiting CDImage::OpenDiskImage";
+//cout << "\nExiting CDImage::OpenDiskImage";
 	
 	// disk image was opened successfully
 	//isDiskOpen = true;
@@ -1092,6 +1092,8 @@ void CDImage::SeekSector ( u64 Sector )
 {
 	u32 SectorOffset, SectorNumber, i;
 
+//cout << "\nCalled: CDImage::SeekSector";
+//cout << "\n Sector=" << dec << Sector;
 
 	// you can't read data from the disk if you are already reading
 	// so we'll just wait until it is done reading
@@ -1162,6 +1164,8 @@ void CDImage::SeekSector ( u64 Sector )
 	// don't set next sector or read/write index here since this function is used by object
 	//ReadIndex = 0;
 	//WriteIndex = 0;
+	
+//cout << "\nExiting: CDImage::SeekSector";
 }
 
 /*
@@ -1173,13 +1177,14 @@ int CDImage::ReadData ( u8* Data )
 // only call this after doing a seek first
 void CDImage::StartReading ()
 {
-	//cout << "\nCalled: CDImage::StartReading";
+//cout << "\nCalled: CDImage::StartReading";
 
 	// just pre-read some sectors
 	//NumberOfSectorsToWrite = c_SectorReadCount;
 	
 	// you can't read data from the disk if you are already reading
 	// so we'll just wait until it is done reading
+	// already waited when it did the SeekSector etc
 	WaitForAllReadsComplete ();
 	
 	/*
@@ -1200,6 +1205,7 @@ void CDImage::StartReading ()
 	}
 	*/
 	
+	/*
 	// read is in progress
 	isReadInProgress = true;
 	//Lock_Exchange32 ( (long&)isReadInProgress, true );
@@ -1210,6 +1216,7 @@ void CDImage::StartReading ()
 		//Lock_Exchange32 ( (long&)isSubReadInProgress, true );
 		isSubReadInProgress = true;
 	}
+	*/
 	
 	// seek to sector?? or I think this happens asynchronously??
 	
@@ -1223,7 +1230,7 @@ void CDImage::StartReading ()
 
 	
 	// *** TESTING ***
-	WaitForAllReadsComplete ();
+	//WaitForAllReadsComplete ();
 	
 
 	// didn't read the data yet, but did read the subchannel info
@@ -1237,7 +1244,7 @@ void CDImage::StartReading ()
 	}
 	
 
-	//cout << "\nExiting: CDImage::StartReading";
+//cout << "\nExiting: CDImage::StartReading";
 }
 
 
@@ -1246,6 +1253,8 @@ void CDImage::StartReading ()
 u8* CDImage::ReadNextSector ()
 {
 	u8* BufferToReadDataFrom;
+	
+//cout << "\nCDImage::ReadNextSector";
 	
 	// make sure that at least the first block has been read before proceeding
 	//while ( WriteIndex < c_SectorReadCount )
@@ -1271,6 +1280,8 @@ u8* CDImage::ReadNextSector ()
 	
 	if ( isReadingFirstSector )
 	{
+//cout << "\nisReadingFirstSector";
+
 		// jump to where the first sector should be read from
 		ReadIndex = Next_ReadIndex;
 		
@@ -1282,6 +1293,8 @@ u8* CDImage::ReadNextSector ()
 	}
 	else
 	{
+//cout << "\n!isReadingFirstSector";
+
 		// update read index first thing
 		ReadIndex++;
 		
@@ -1295,9 +1308,18 @@ u8* CDImage::ReadNextSector ()
 	// update the simulated subq data
 	UpdateSubQ_Data ();
 	
-	//if ( ReadIndex & c_SectorReadCountMask )
-	if ( ReadIndex < ( WriteIndex - c_SectorReadCount ) )
+	// if ReadIndex has reached WriteIndex, then need to wait for the pending transfers to finish before can read anything
+	if ( ReadIndex >= WriteIndex )
 	{
+//cout << "\nReadIndex>=WriteIndex";
+		WaitForSectorReadComplete ();
+	}
+	
+	//if ( ReadIndex & c_SectorReadCountMask )
+	//if ( ReadIndex < ( WriteIndex - c_SectorReadCount ) )
+	if ( ReadIndex < WriteIndex )
+	{
+//cout << "\nReadIndex<WriteIndex";
 		// get buffer to read sector data from when it becomes ready
 		//BufferToReadDataFrom = & ( Buffer [ ( ReadIndex & c_BufferSectorMask ) * c_SectorSize ] );
 		BufferToReadDataFrom = & ( Buffer [ ( ReadIndex & c_BufferSectorMask ) * SectorSize ] );
@@ -1310,16 +1332,20 @@ u8* CDImage::ReadNextSector ()
 		
 		// return pointer into buffer for reading data
 		// but since read is asynchronous, must call 
-		return BufferToReadDataFrom;
 		//return ReadIndex;
+		//return BufferToReadDataFrom;
 	}
 	
+	
+	if ( ReadIndex == ( WriteIndex - ( c_SectorReadCount ) ) )
+	{
+//cout << "\nReadIndex == ( WriteIndex - ( c_SectorReadCount >> 1 ) )";
 	///////////////////////////////////////////////////////////////////
 	// Time to load in the other half of read buffer
 	
 	// you can't read data from the file if you are already reading from it
 	// so we'll just wait until it is done reading from the file
-	WaitForAllReadsComplete ();
+	//WaitForAllReadsComplete ();
 	
 	/*
 	while ( isReadInProgress )
@@ -1344,6 +1370,7 @@ u8* CDImage::ReadNextSector ()
 	// just pre-read some sectors
 	//NumberOfSectorsToWrite = c_SectorReadCount;
 	
+	/*
 	// read is in progress - do this before starting the read
 	isReadInProgress = true;
 	//Lock_Exchange32 ( (long&)isReadInProgress, true );
@@ -1354,6 +1381,7 @@ u8* CDImage::ReadNextSector ()
 		//Lock_Exchange32 ( (long&)isSubReadInProgress, true );
 		isSubReadInProgress = true;
 	}
+	*/
 	
 	// seek to sector?? or I think this happens asynchronously??
 	
@@ -1364,7 +1392,8 @@ u8* CDImage::ReadNextSector ()
 	WindowClass::Window::RemoteCall ( (WindowClass::Window::RemoteFunction) _RemoteCall_ReadAsync, (void*) NULL, false );
 	
 	// *** TESTING ***
-	//WaitForAllReadsComplete ();
+	/*
+	WaitForAllReadsComplete ();
 	
 	// get buffer to read sector data from when it becomes ready
 	//BufferToReadDataFrom = & ( Buffer [ ( ReadIndex & c_BufferSectorMask ) * c_SectorSize ] );
@@ -1375,13 +1404,16 @@ u8* CDImage::ReadNextSector ()
 	{
 		CurrentSubBuffer = & ( SubBuffer [ ( ReadIndex & c_BufferSectorMask ) * c_SubChannelSizePerSector ] );
 	}
+	*/
 
 	// update read index
 	// no, this should be done first thing
 	//Lock_ExchangeAdd64 ( (long long&)ReadIndex, 1 );
 	//ReadIndex++;
-		
+	}
 	
+//cout << "\nExiting<-CDImage::ReadNextSector";
+
 	// return pointer into buffer for reading data
 	// but since read is asynchronous, must call 
 	return BufferToReadDataFrom;
@@ -1968,11 +2000,13 @@ bool CDImage::_RemoteCall_OpenDiskImage ( string FullImagePath )
 
 static void CDImage::_RemoteCall_ReadAsync ()
 {
-	//cout << "\nCalled CDImage::_RemoteCall_ReadAsync";
+//cout << "\nCalled CDImage::_RemoteCall_ReadAsync isReadInProgress=" << isReadInProgress;
 	
 	int Ret;
 	u32 SectorNumber;
 	
+//cout << "\nCDImage::_RemoteCall_ReadAsync isReadInProgress=" << isReadInProgress;
+
 	// make sure disk is not already reading
 	// no, don't do this since it would freeze
 	//while ( _DISKIMAGE->isReadInProgress );
@@ -2021,16 +2055,61 @@ static void CDImage::_RemoteCall_ReadAsync ()
 	
 #else
 
-	//_DISKIMAGE->image.ReadAsync ( _params.DataOut, _params.BytesToRead, _params.SeekPosition, _params.Callback_Function );
-	//Ret = _DISKIMAGE->image.ReadAsync ( & ( _DISKIMAGE->Buffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * c_SectorSize ] ), c_SectorSize * c_SectorReadCount, _DISKIMAGE->NextSector * c_SectorSize, DiskRead_Callback );
-	Ret = _DISKIMAGE->image.ReadAsync ( & ( _DISKIMAGE->Buffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * _DISKIMAGE->SectorSize ] ), _DISKIMAGE->SectorSize * c_SectorReadCount, _DISKIMAGE->NextSector * _DISKIMAGE->SectorSize, DiskRead_Callback );
+//cout << "\nisReadInProgress isReadInProgress=" << isReadInProgress;
+	
+	// make sure disk is not already reading
+	//while ( isReadInProgress )
+	if ( isReadInProgress )
+	{
+		_DISKIMAGE->WaitForAllReadsComplete ();
+	}
+	
+	isReadInProgress = true;
+	
+//cout << "\nGetSectorNumber_InImage";
+
+	SectorNumber = _DISKIMAGE->GetSectorNumber_InImage ( _DISKIMAGE->NextSector );
+	
+	if ( SectorNumber == -1 )
+	{
+//cout << "\nSectorNumber==-1";
+		// zero sector
+		//for ( int i = 0; i < ( c_SectorSize * c_SectorReadCount ); i++ )
+		for ( int i = 0; i < ( _DISKIMAGE->SectorSize * c_SectorReadCount ); i++ )
+		{
+			//_DISKIMAGE->Buffer [ i + ( ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * c_SectorSize ) ] = 0;
+			_DISKIMAGE->Buffer [ i + ( ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * _DISKIMAGE->SectorSize ) ] = 0;
+		}
+		
+		_DISKIMAGE->WriteIndex += c_SectorReadCount;
+		
+		isReadInProgress = false;
+	}
+	else
+	{
+//cout << "\nSectorNumber!=-1";
+		//_DISKIMAGE->image.ReadAsync ( _params.DataOut, _params.BytesToRead, _params.SeekPosition, _params.Callback_Function );
+		//Ret = _DISKIMAGE->image.ReadAsync ( & ( _DISKIMAGE->Buffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * c_SectorSize ] ), c_SectorSize * c_SectorReadCount, _DISKIMAGE->NextSector * c_SectorSize, DiskRead_Callback );
+		//Ret = _DISKIMAGE->image.ReadAsync ( & ( _DISKIMAGE->Buffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * _DISKIMAGE->SectorSize ] ), _DISKIMAGE->SectorSize * c_SectorReadCount, _DISKIMAGE->NextSector * _DISKIMAGE->SectorSize, DiskRead_Callback );
+		Ret = _DISKIMAGE->image.ReadAsync ( & ( _DISKIMAGE->Buffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * _DISKIMAGE->SectorSize ] ), _DISKIMAGE->SectorSize * c_SectorReadCount, SectorNumber * _DISKIMAGE->SectorSize, DiskRead_Callback );
+	}
 	
 	// if .sub file is open, then also read subchannel data //
 	if ( isSubOpen )
 	{
+//cout << "\nisSubOpen";
+		//while ( _DISKIMAGE->isSubReadInProgress )
+		if ( _DISKIMAGE->isSubReadInProgress )
+		{
+			_DISKIMAGE->WaitForAllReadsComplete ();
+		}
+		
+		_DISKIMAGE->isSubReadInProgress = true;
+	
 		Ret = _DISKIMAGE->sub.ReadAsync ( & ( _DISKIMAGE->SubBuffer [ ( _DISKIMAGE->WriteIndex & c_BufferSectorMask ) * c_SubChannelSizePerSector ] ), c_SubChannelSizePerSector * c_SectorReadCount, _DISKIMAGE->NextSector * c_SubChannelSizePerSector, SubRead_Callback );
 	}
 	
+//cout << "\nUpdate NextSector";
 #endif
 
 	// can update the next sector here
@@ -2038,13 +2117,15 @@ static void CDImage::_RemoteCall_ReadAsync ()
 	//Lock_ExchangeAdd64 ( (long long&)_DISKIMAGE->NextSector, c_SectorReadCount );
 	_DISKIMAGE->NextSector += c_SectorReadCount;
 	
-	//cout << "\nExiting CDImage::_RemoteCall_ReadAsync; ReadAsync=" << Ret << "; LastError=" << GetLastError ();
+//cout << "\nExiting CDImage::_RemoteCall_ReadAsync; ReadAsync=" << Ret << "; LastError=" << GetLastError ();
 }
 
 
 static void CDImage::DiskRead_Callback ()
 {
-	//cout << "\nCalled CDImage::DiskRead_Callback";
+//cout << "\nStart->DiskRead_Callback";
+
+//cout << "\nCalled CDImage::DiskRead_Callback";
 	
 	// update the sector offset for next sectors to be read
 	// this is now done right after sending the asynchronous read
@@ -2066,7 +2147,9 @@ static void CDImage::DiskRead_Callback ()
 	//Lock_Exchange32 ( (long&)_DISKIMAGE->isReadInProgress, false );
 	_DISKIMAGE->isReadInProgress = false;
 	
-	//cout << "\nExiting CDImage::DiskRead_Callback";
+//cout << "\nExiting CDImage::DiskRead_Callback";
+
+//cout << "\nDone->DiskRead_Callback";
 }
 
 
@@ -2084,10 +2167,32 @@ static void CDImage::SubRead_Callback ()
 
 void CDImage::WaitForSectorReadComplete ()
 {
+//cout << "\nStart->WaitForSectorReadComplete";
+
+//cout << "\nWaitAsync";
+
+	while ( isReadInProgress )
+	{
+	_DISKIMAGE->image.WaitAsync ();
+	}
+
+//cout << "\nisSubOpen";
+
+	if ( isSubOpen )
+	{
+		while ( isSubReadInProgress )
+		{
+		_DISKIMAGE->sub.WaitAsync ();
+		}
+	}
+	
+	/*
 	while ( isReadInProgress )
 	{
 		//cout << "\ncdimage: Waiting for read to finish...\n";
 		WindowClass::DoEvents ();
+		//WindowClass::DoEventsNoWait ();
+		//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 	}
 	
 	// check if .sub file is open //
@@ -2098,23 +2203,52 @@ void CDImage::WaitForSectorReadComplete ()
 		{
 			//cout << "\ncdimage: Waiting for sub read to finish...\n";
 			WindowClass::DoEvents ();
+			//WindowClass::DoEventsNoWait ();
+			//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 		}
 	}
+	*/
 	
+//cout << "\nwhile ( ReadIndex >= WriteIndex )";
+
 	while ( ReadIndex >= WriteIndex )
 	{
-		WindowClass::DoEvents ();
+		//WindowClass::DoEvents ();
 		//cout << "\nWaiting for sector read complete...\n";
+		_DISKIMAGE->image.WaitAsync ();
 	}
+
+//cout << "\nDone<-WaitForSectorReadComplete";
 }
 
 
 void CDImage::WaitForAllReadsComplete ()
 {
+//cout << "\nStart->WaitForAllReadsComplete";
+
+	while ( isReadInProgress )
+	{
+	_DISKIMAGE->image.WaitAsync ();
+	}
+
+//cout << "\nisSubOpen";
+
+	if ( isSubOpen )
+	{
+		while ( isSubReadInProgress )
+		{
+		_DISKIMAGE->sub.WaitAsync ();
+		}
+	}
+
+	
+	/*
 	while ( isReadInProgress )
 	{
 		//cout << "\ncdimage: Waiting for read to finish...\n";
 		WindowClass::DoEvents ();
+		//WindowClass::DoEventsNoWait ();
+		//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 	}
 	
 	// check if .sub file is open //
@@ -2125,8 +2259,13 @@ void CDImage::WaitForAllReadsComplete ()
 		{
 			//cout << "\ncdimage: Waiting for sub read to finish...\n";
 			WindowClass::DoEvents ();
+			//WindowClass::DoEventsNoWait ();
+			//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 		}
 	}
+	*/
+	
+//cout << "\nDone->WaitForAllReadsComplete";
 }
 
 

@@ -289,17 +289,17 @@ public:
 	
 	
 	// *** testing *** encode RIP-offset addressing
-	bool x64EncodeRipOffset16 ( long x64InstOpcode, long x64DestReg, char* DataAddress );
-	bool x64EncodeRipOffset32 ( long x64InstOpcode, long x64DestReg, char* DataAddress );
-	bool x64EncodeRipOffset64 ( long x64InstOpcode, long x64DestReg, char* DataAddress );
-	bool x64EncodeRipOffsetImm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 );
-	bool x64EncodeRipOffsetImm16 ( long x64InstOpcode, long x64DestReg, char* DataAddress, short Imm16 );
-	bool x64EncodeRipOffsetImm32 ( long x64InstOpcode, long x64DestReg, char* DataAddress, long Imm32 );
-	bool x64EncodeRipOffsetImm64 ( long x64InstOpcode, long x64DestReg, char* DataAddress, long Imm32 );
+	bool x64EncodeRipOffset16 ( long x64InstOpcode, long x64Reg, char* DataAddress, bool bIsSourceReg = false );
+	bool x64EncodeRipOffset32 ( long x64InstOpcode, long x64Reg, char* DataAddress, bool bIsSourceReg = false );
+	bool x64EncodeRipOffset64 ( long x64InstOpcode, long x64Reg, char* DataAddress, bool bIsSourceReg = false );
+	bool x64EncodeRipOffsetImm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg = false );
+	bool x64EncodeRipOffsetImm16 ( long x64InstOpcode, long x64Reg, char* DataAddress, short Imm16, bool bIsSourceReg = false );
+	bool x64EncodeRipOffsetImm32 ( long x64InstOpcode, long x64Reg, char* DataAddress, long Imm32, bool bIsSourceReg = false );
+	bool x64EncodeRipOffsetImm64 ( long x64InstOpcode, long x64Reg, char* DataAddress, long Imm32, bool bIsSourceReg = false );
 	
-	bool x64EncodeRipOffset16Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 );
-	bool x64EncodeRipOffset32Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 );
-	bool x64EncodeRipOffset64Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 );
+	bool x64EncodeRipOffset16Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg = false );
+	bool x64EncodeRipOffset32Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg = false );
+	bool x64EncodeRipOffset64Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg = false );
 	
 	
 	
@@ -317,6 +317,7 @@ public:
 	// encode an avx instruction (64-bit version) that is just register-register
 	bool x64EncodeRegRegV ( long L, long w, long pp, long mmmmm, long avxInstOpcode, long REG_R, long vvvv, long RM_B );
 
+	bool x64EncodeRipOffsetV ( long L, long w, long pp, long mmmmm, long avxInstOpcode, long REG_R, long vvvv, char* DataAddress );
 	
 	// **** x64 Instuctions **** //
 	
@@ -703,12 +704,21 @@ public:
 	bool CmovERegReg16 ( long DestReg, long SrcReg );
 	bool CmovNERegReg16 ( long DestReg, long SrcReg );
 	bool CmovBRegReg16 ( long DestReg, long SrcReg );
+	bool CmovBERegReg16 ( long DestReg, long SrcReg );
+	bool CmovARegReg16 ( long DestReg, long SrcReg );
+	bool CmovAERegReg16 ( long DestReg, long SrcReg );
 	bool CmovERegReg32 ( long DestReg, long SrcReg );
 	bool CmovNERegReg32 ( long DestReg, long SrcReg );
 	bool CmovBRegReg32 ( long DestReg, long SrcReg );
+	bool CmovBERegReg32 ( long DestReg, long SrcReg );
+	bool CmovARegReg32 ( long DestReg, long SrcReg );
+	bool CmovAERegReg32 ( long DestReg, long SrcReg );
 	bool CmovERegReg64 ( long DestReg, long SrcReg );
 	bool CmovNERegReg64 ( long DestReg, long SrcReg );
 	bool CmovBRegReg64 ( long DestReg, long SrcReg );
+	bool CmovBERegReg64 ( long DestReg, long SrcReg );
+	bool CmovARegReg64 ( long DestReg, long SrcReg );
+	bool CmovAERegReg64 ( long DestReg, long SrcReg );
 	
 	
 	// with memory
@@ -722,12 +732,21 @@ public:
 	bool CmovERegMem16 ( long DestReg, short* Mem16 );
 	bool CmovNERegMem16 ( long DestReg, short* Mem16 );
 	bool CmovBRegMem16 ( long DestReg, short* Mem16 );
+	bool CmovBERegMem16 ( long DestReg, short* Mem16 );
+	bool CmovARegMem16 ( long DestReg, short* Mem16 );
+	bool CmovAERegMem16 ( long DestReg, short* Mem16 );
 	bool CmovERegMem32 ( long DestReg, long* Mem32 );
 	bool CmovNERegMem32 ( long DestReg, long* Mem32 );
 	bool CmovBRegMem32 ( long DestReg, long* Mem32 );
+	bool CmovBERegMem32 ( long DestReg, long* Mem32 );
+	bool CmovARegMem32 ( long DestReg, long* Mem32 );
+	bool CmovAERegMem32 ( long DestReg, long* Mem32 );
 	bool CmovERegMem64 ( long DestReg, long long* Mem64 );
 	bool CmovNERegMem64 ( long DestReg, long long* Mem64 );
 	bool CmovBRegMem64 ( long DestReg, long long* Mem64 );
+	bool CmovBERegMem64 ( long DestReg, long long* Mem64 );
+	bool CmovARegMem64 ( long DestReg, long long* Mem64 );
+	bool CmovAERegMem64 ( long DestReg, long long* Mem64 );
 
 	
 	// signed conditional mov
@@ -1331,7 +1350,18 @@ public:
 	
 
 	// movdqa
-	bool movdqa128 ( long sseDestReg, long sseSrcReg );
+	bool vmovdqa_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vmovdqa_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vmovdqa_memreg128 ( void* DestPtr, long sseSrcReg );
+	bool vmovdqa_memreg128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmovdqa_regmem128 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	
+	bool vmovdqa_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vmovdqa_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vmovdqa_memreg256 ( void* DestPtr, long sseSrcReg );
+	bool vmovdqa_memreg256 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmovdqa_regmem256 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	
 	//bool movdqa_to_mem128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	//bool movdqa_from_mem128 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	//bool movdqa256 ( long sseDestReg, long sseSrcReg );
@@ -1344,21 +1374,30 @@ public:
 	bool movdqa_to_mem128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	bool movdqa_from_mem128 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	
+	// move 32-bit value into lower part of xmm register (zero upper bits)
+	//bool movd_regmem ( long sseDestReg, long* SrcPtr );
+
+	// move 64-bit value into lower part of xmm register (zero upper bits)
+	//bool movq_regmem ( long sseDestReg, long long* SrcPtr );
+	
 	// movss - move single 32-bit value from memory or to memory
 	bool movss_to_mem128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	bool movss_from_mem128 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 
 	// pabs
-	bool pabsw ( long sseDestReg, long sseSrcReg );
-	bool pabsd ( long sseDestReg, long sseSrcReg );
+	bool vpabsb_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpabsw_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpabsd_regreg128 ( long sseDestReg, long sseSrcReg );
 	
-	bool pabsw ( long sseDestReg, void* SrcPtr );
-	bool pabsd ( long sseDestReg, void* SrcPtr );
+	bool vpabsb_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpabsw_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpabsd_regmem128 ( long sseDestReg, void* SrcPtr );
 
 	bool pabswregreg ( long sseDestReg, long sseSrcReg );
 	bool pabswregmem ( long sseDestReg, void* SrcPtr );
 	bool pabsdregreg ( long sseDestReg, long sseSrcReg );
 	bool pabsdregmem ( long sseDestReg, void* SrcPtr );
+
 	
 	// packus
 	bool packusdw ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
@@ -1375,6 +1414,35 @@ public:
 	bool packssdwregmem ( long sseDestReg, void* SrcPtr );
 	
 	// pmovzx
+	bool vpmovzxbw_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbw_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxbd_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbd_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxbq_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbq_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxwd_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxwd_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxwq_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxwq_regmem128 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxdq_regreg128 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxdq_regmem128 ( long sseDestReg, void* SrcPtr );
+
+	bool vpmovzxbw_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbw_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxbd_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbd_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxbq_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxbq_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxwd_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxwd_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxwq_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxwq_regmem256 ( long sseDestReg, void* SrcPtr );
+	bool vpmovzxdq_regreg256 ( long sseDestReg, long sseSrcReg );
+	bool vpmovzxdq_regmem256 ( long sseDestReg, void* SrcPtr );
+	
+	
+	
+	
 	bool pmovzxbwregreg ( long sseDestReg, long sseSrcReg );
 	bool pmovzxbwregmem ( long sseDestReg, void* SrcPtr );
 	bool pmovzxbdregreg ( long sseDestReg, long sseSrcReg );
@@ -1430,6 +1498,9 @@ public:
 	
 	// pandn
 	bool pandn ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+
+	bool pandnregreg ( long sseDestReg, long sseSrcReg );
+	bool pandnregmem ( long sseDestReg, void* SrcPtr );
 
 	// todo
 	
@@ -1502,12 +1573,16 @@ public:
 	bool pshufbregmem ( long sseDestReg, void* SrcPtr );
 	
 	bool pshufdregregimm ( long sseDestReg, long sseSrcReg, char Imm8 );
+	
+	// ***todo*** this instruction crashes for some reason at the moment ***needs fixing***
 	bool pshufdregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 );
 	
 	// pshufhw - packed shuffle high words
 	bool pshufhw ( long sseDestReg, long sseSrcReg, char Imm8 );
 
 	bool pshufhwregregimm ( long sseDestReg, long sseSrcReg, char Imm8 );
+	
+	// ***todo*** this instruction crashes for some reason at the moment ***needs fixing***
 	bool pshufhwregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 );
 	
 	// pshuflw - packed shuffle low words
@@ -1531,6 +1606,10 @@ public:
 	bool pslldregmem ( long sseDestReg, void* SrcPtr );
 	bool pslldregimm ( long sseDestReg, char Imm8 );
 	
+	bool psllqregreg ( long sseDestReg, long sseSrcReg );
+	bool psllqregmem ( long sseDestReg, void* SrcPtr );
+	bool psllqregimm ( long sseDestReg, char Imm8 );
+
 	// psra - packed shift arithemetic right integers
 	bool psraw ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
 	bool psraw_imm ( long sseDestReg, long sseSrcReg, char Imm8 );
@@ -1559,6 +1638,10 @@ public:
 	bool psrldregreg ( long sseDestReg, long sseSrcReg );
 	bool psrldregmem ( long sseDestReg, void* SrcPtr );
 	bool psrldregimm ( long sseDestReg, char Imm8 );
+	
+	bool psrlqregreg ( long sseDestReg, long sseSrcReg );
+	bool psrlqregmem ( long sseDestReg, void* SrcPtr );
+	bool psrlqregimm ( long sseDestReg, char Imm8 );
 	
 	// psub - subtraction of packed integers
 	bool psubb ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
@@ -1636,6 +1719,11 @@ public:
 	bool pxorregmem ( long sseDestReg, void* SrcPtr );
 	
 	
+	// ptest
+	bool ptestregreg ( long sseDestReg, long sseSrcReg );
+	bool ptestregmem ( long sseDestReg, void* SrcPtr );
+	
+	
 	// pmuldq - multiplies 2 signed 32-bit values (index 0 and 2) and stores the results as two 64-bit values
 	bool pmuldqregreg ( long sseDestReg, long sseSrcReg );
 	bool pmuldqregmem ( long sseDestReg, void* SrcPtr );
@@ -1671,6 +1759,9 @@ public:
 	// movmskps
 	bool movmskps256 ( long x64DestReg, long sseSrcReg );
 	
+	bool movmskpsregreg ( long x64DestReg, long sseSrcReg );
+
+	
 	// movaps
 	bool movaps ( long sseDestReg, long sseSrcReg );
 	bool movapd ( long sseDestReg, long sseSrcReg );
@@ -1699,16 +1790,64 @@ public:
 	bool blendps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset, char Imm8 );
 	bool blendpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset, char Imm8 );
 	
-	// addp
-	bool addps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool addpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool addss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool addsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	
+	// *** SSE instructions *** //
+	
+	bool movd_to_sse ( long sseDestReg, long x64SrcReg );
+	bool movd_from_sse ( long x64DestReg, long sseSrcReg );
+	
+	bool movq_to_sse ( long sseDestReg, long x64SrcReg );
+	bool movq_from_sse ( long x64DestReg, long sseSrcReg );
 
-	bool addps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool addpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool addss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool addsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool movd_regmem ( long sseDestReg, long* SrcPtr );
+	bool movd_memreg ( long* DstPtr, long sseSrcReg );
+	bool movq_regmem ( long sseDestReg, long* SrcPtr );
+	bool movq_memreg ( long* DstPtr, long sseSrcReg );
+
+
+	
+	// move and duplicate double floating point values
+	bool movddup_regreg ( long sseDestReg, long sseSrcReg );
+	bool movddup_regmem ( long sseDestReg, long long* SrcPtr );
+	
+	
+
+	
+	// *** SSE floating point instructions *** //
+	
+	bool addsd ( long sseDestReg, long sseSrcReg );
+	bool subsd ( long sseDestReg, long sseSrcReg );
+	bool mulsd ( long sseDestReg, long sseSrcReg );
+	bool divsd ( long sseDestReg, long sseSrcReg );
+	bool sqrtsd ( long sseDestReg, long sseSrcReg );
+	
+	bool addpdregreg ( long sseDestReg, long sseSrcReg );
+	bool addpdregmem ( long sseDestReg, void* SrcPtr );
+
+	bool mulpdregreg ( long sseDestReg, long sseSrcReg );
+	bool mulpdregmem ( long sseDestReg, void* SrcPtr );
+	
+	// convert with truncation scalar single precision floating point value to general purpose register signed doubleword
+	bool cvttss2si ( long x64DestReg, long sseSrcReg );
+	bool cvttps2dq_regreg ( long sseDestReg, long sseSrcReg );
+	
+	// convert doubleword integer to scalar double precision floating point value
+	bool cvtsi2sd ( long sseDestReg, long x64SrcReg );
+	bool cvtdq2pd_regreg ( long sseDestReg, long sseSrcReg );
+	
+	
+	// *** AVX floating point instructions *** //
+	
+	// addp
+	bool vaddps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vaddpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vaddss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vaddsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+
+	bool vaddps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vaddpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vaddss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vaddsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 
 	// andp
 	bool andps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
@@ -1807,15 +1946,15 @@ public:
 	bool cvtpd2ps ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 
 	// divp
-	bool divps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool divpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool divss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool divsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vdivps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vdivpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vdivss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vdivsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
 	
-	bool divps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool divpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool divss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool divsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vdivps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vdivpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vdivss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vdivsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 
 	//maxp
 	bool maxps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
@@ -1840,15 +1979,15 @@ public:
 	bool minsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 
 	// mulp
-	bool mulps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool mulpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool mulss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool mulsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vmulps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vmulpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vmulss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vmulsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
 	
-	bool mulps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool mulpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool mulss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool mulsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmulps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmulpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmulss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vmulsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	
 	// orp
 	bool orps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
@@ -1867,26 +2006,30 @@ public:
 	// rsqrtp - I don't think this is used
 	
 	// sqrtp
-	bool sqrtps ( long sseDestReg, long sseSrc1Reg );
-	bool sqrtpd ( long sseDestReg, long sseSrc1Reg );
-	bool sqrtss ( long sseDestReg, long sseSrc1Reg );
-	bool sqrtsd ( long sseDestReg, long sseSrc1Reg );
+	bool vsqrtps ( long sseDestReg, long sseSrc1Reg );
+	bool vsqrtpd ( long sseDestReg, long sseSrc1Reg );
+	bool vsqrtss ( long sseDestReg, long sseSrc1Reg );
+	bool vsqrtsd ( long sseDestReg, long sseSrc1Reg );
 	
-	bool sqrtps ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool sqrtpd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool sqrtss ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool sqrtsd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsqrtps ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsqrtpd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsqrtss ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsqrtsd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	
 	// subp
-	bool subps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool subpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool subss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
-	bool subsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
 	
-	bool subps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool subpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool subss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
-	bool subsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool subpsregreg ( long sseDestReg, long sseSrcReg );
+	bool subpdregreg ( long sseDestReg, long sseSrcReg );
+	
+	bool vsubps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vsubpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vsubss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	bool vsubsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg );
+	
+	bool vsubps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsubpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsubss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
+	bool vsubsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset );
 	
 	// vperm2f128
 	bool vperm2f128 ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg, char Imm8 );
@@ -1916,6 +2059,7 @@ private:
 	inline bool x64EncodeMem ( long x64DestReg, long BaseAddressReg, long IndexReg, long Scale, long Offset );
 	
 	inline bool x64Encode16Bit ( void );
+	inline bool x64EncodePrefix ( char Prefix );
 	
 	bool x64EncodeRexReg32 ( long DestReg_RM_Base, long SourceReg_Reg_Opcode );
 	bool x64EncodeRexReg64 ( long DestReg_RM_Base, long SourceReg_Reg_Opcode );

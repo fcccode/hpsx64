@@ -51,6 +51,9 @@ using namespace Playstation2;
 #define ENABLE_SSE_IPU
 
 
+//#define USE_PEEK_LE
+
+
 //extern __aligned16 decoder_t decoder;
 //extern ipu_cmd_t ipu_cmd;
 
@@ -178,6 +181,11 @@ int get_macroblock_modes()
 		case B_TYPE:
 			macroblock_modes = UBITS(6);
 
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << "\r\nB_TYPE";
+	IPU::debug << " UBITS(6)=" << hex << macroblock_modes;
+#endif
+
 			if (macroblock_modes == 0) return 0;   // error
 
 			tab = MB_B + macroblock_modes;
@@ -186,23 +194,48 @@ int get_macroblock_modes()
 
 			if (decoder->picture_structure != FRAME_PICTURE)
 			{
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " FRAME_PICTURE";
+#endif
+
 				if (!(macroblock_modes & MACROBLOCK_INTRA))
 				{
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " MACROBLOCK_INTRA";
+#endif
+
 					macroblock_modes |= GETBITS(2) * MOTION_TYPE_BASE;
 				}
+				
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " Output=" << hex << (macroblock_modes | (tab->len << 16));
+#endif
+
 				return (macroblock_modes | (tab->len << 16));
 			}
 			else if (decoder->frame_pred_frame_dct)
 			{
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " frame_pred_frame_dct";
+#endif
+
 				/* if (! (macroblock_modes & MACROBLOCK_INTRA)) */
 				
 				// commenting this out since it does not look like it should be there for ps2?
 				//macroblock_modes |= MC_FRAME;
 				
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " Output=" << hex << (macroblock_modes | (tab->len << 16));
+#endif
+
 				return (macroblock_modes | (tab->len << 16));
 			}
 			else
 			{
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " ELSE";
+#endif
+
 				if (macroblock_modes & MACROBLOCK_INTRA) goto intra;
 
 				macroblock_modes |= GETBITS(2) * MOTION_TYPE_BASE;
@@ -210,8 +243,17 @@ int get_macroblock_modes()
 				if (macroblock_modes & (MACROBLOCK_INTRA | MACROBLOCK_PATTERN))
 				{
 intra:
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " INTRA";
+#endif
+
 					macroblock_modes |= GETBITS(1) * DCT_TYPE_INTERLACED;
 				}
+				
+#ifdef INLINE_DEBUG_IPU
+	IPU::debug << " Output=" << hex << (macroblock_modes | (tab->len << 16));
+#endif
+
 				return (macroblock_modes | (tab->len << 16));
 			}
 
@@ -295,7 +337,9 @@ int /* __fi */ get_dmv()
 {
 	const DMVtab* tab = DMV_2 + UBITS(2);
 	DUMPBITS(tab->len);
-	return (tab->dmv | (tab->len << 16));
+	
+	// tab->dmv could be -1, so masked it to 16-bits
+	return ( ( ((s32)tab->dmv) & 0xffff ) | (tab->len << 16) );
 }
 
 int get_macroblock_address_increment()
@@ -1013,7 +1057,11 @@ finish_idec:
 
 		// replace of pcsx2 specific code
 		//ipuRegs.top = BigEndian(ipuRegs.top);
+#ifdef USE_PEEK_LE
 		IPU::_IPU->Regs.TOP.BSTOP = IPU::EndianSwap32 ( PEEKBITS ( 32 ) );
+#else
+		IPU::_IPU->Regs.TOP.BSTOP = PEEKBITS ( 32 );
+#endif
 
 		
 		break;
@@ -1158,9 +1206,9 @@ finish_idec:
 					d += 32;
 				}
 #else
-				for (uint i = 0; i < (256+64+64) /* / 32 */; ++i)
+				for (uint i = 0; i < (256+64+64) /* / 32 */; i++)
 				{
-					*d++ = *s++;
+					*((s16*)d++) = *((s8*)s++);
 				}
 #endif
 			}
@@ -1306,7 +1354,11 @@ finish_idec:
 		
 		// replace of pcsx2 specific code
 		//ipuRegs.top = BigEndian(ipuRegs.top);
+#ifdef USE_PEEK_LE
 		IPU::_IPU->Regs.TOP.BSTOP = IPU::EndianSwap32 ( PEEKBITS ( 32 ) );
+#else
+		IPU::_IPU->Regs.TOP.BSTOP = PEEKBITS ( 32 );
+#endif
 		
 		break;
 	}

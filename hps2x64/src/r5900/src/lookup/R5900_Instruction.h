@@ -106,6 +106,7 @@ namespace R5900
 					u32 filler9 : 6;
 				};
 				
+				
 				// for VCALLMS
 				struct
 				{
@@ -113,6 +114,45 @@ namespace R5900
 					u32 Imm15 : 15;
 					u32 filler11: 11;
 				};
+				
+				// for VU0 macro mode
+				struct
+				{
+					u32 filler12 : 6;
+					u32 id : 5;
+					u32 is : 5;
+					u32 it : 5;
+					u32 fsf : 2;
+					u32 ftf : 2;
+					u32 filler13 : 7;
+				};
+				
+				struct
+				{
+					u32 filler14 : 6;
+					s32 Imm5 : 5;
+					u32 filler15 : 5;
+					u32 filler16 : 5;
+					u32 xyzw : 4;
+					u32 filler18 : 7;
+				};
+				
+				struct
+				{
+					s32 Imm11 : 11;
+					u32 filler19 : 10;
+					u32 destw : 1;
+					u32 destz : 1;
+					u32 desty : 1;
+					u32 destx : 1;
+					u32 filler20 : 2;
+					u32 T : 1;
+					u32 D : 1;
+					u32 M : 1;
+					u32 E : 1;
+					u32 I : 1;
+				};
+				
 				
 				u32 Value;
 			};

@@ -141,8 +141,11 @@ using namespace R5900;
 
 #define USE_NEW_PSLLH_CODE
 #define USE_NEW_PSLLW_CODE
+
 #define USE_NEW_PSRAH_CODE
+
 #define USE_NEW_PSRAW_CODE
+
 #define USE_NEW_PSRLH_CODE
 #define USE_NEW_PSRLW_CODE
 
@@ -213,12 +216,210 @@ using namespace R5900;
 #define USE_NEW_PPAC5_CODE
 
 
-/*
+#define USE_NEW_ABS_S_CODE
+#define USE_NEW_MOV_S_CODE
+#define USE_NEW_NEG_S_CODE
+#define USE_NEW_MAX_S_CODE
+#define USE_NEW_MIN_S_CODE
+#define USE_NEW_C_F_S_CODE
+
+#define USE_NEW_C_EQ_S_CODE
+#define USE_NEW_C_LT_S_CODE
+#define USE_NEW_C_LE_S_CODE
+
+#define USE_NEW_MUL_S_CODE
+#define USE_NEW_MULA_S_CODE
+
+#define USE_NEW_DIV_S_CODE
+
+#define USE_NEW_ADD_S_CODE
+#define USE_NEW_ADDA_S_CODE
+#define USE_NEW_SUB_S_CODE
+#define USE_NEW_SUBA_S_CODE
+
+#define USE_NEW_SQRT_S_CODE
+#define USE_NEW_RSQRT_S_CODE
+
+
+#define USE_NEW_CVT_S_W_CODE
+#define USE_NEW_CVT_W_S_CODE
+
+#define USE_NEW_MADD_S_CODE
+#define USE_NEW_MADDA_S_CODE
+#define USE_NEW_MSUB_S_CODE
+#define USE_NEW_MSUBA_S_CODE
+
+
+#define USE_NEW_LQC2_CODE
+#define USE_NEW_SQC2_CODE
+
+#define USE_NEW_LOAD_CODE_LWL
+#define USE_NEW_LOAD_CODE_LWR
+#define USE_NEW_LOAD_CODE_LDL
+#define USE_NEW_LOAD_CODE_LDR
+
+#define USE_NEW_STORE_CODE_SWL
+#define USE_NEW_STORE_CODE_SWR
+#define USE_NEW_STORE_CODE_SDL
+#define USE_NEW_STORE_CODE_SDR
+
+
+
+#define USE_NEW_VNOP_CODE
+
+#define USE_NEW_VABS_CODE
+
+#define USE_NEW_VMAX_CODE
+#define USE_NEW_VMIN_CODE
+
+
+#define USE_NEW_VFTOI0_CODE
+#define USE_NEW_VFTOI4_CODE
+#define USE_NEW_VFTOI12_CODE
+#define USE_NEW_VFTOI15_CODE
+
+
+#define USE_NEW_VITOF0_CODE
+#define USE_NEW_VITOF4_CODE
+#define USE_NEW_VITOF12_CODE
+#define USE_NEW_VITOF15_CODE
+
+
+
+#define USE_NEW_VMOVE_CODE
+#define USE_NEW_VMR32_CODE
+
+
+#define USE_NEW_VIADD_CODE
+#define USE_NEW_VIADDI_CODE
+#define USE_NEW_VIAND_CODE
+#define USE_NEW_VIOR_CODE
+#define USE_NEW_VISUB_CODE
+
+
+#define USE_NEW_VMFIR_CODE
+#define USE_NEW_VMTIR_CODE
+
+
+#define USE_NEW_CFC2_NI_CODE
+#define USE_NEW_CTC2_NI_CODE
+
+
+#define USE_NEW_QMFC2_NI_CODE
+#define USE_NEW_QMTC2_NI_CODE
+
+
+#define USE_NEW_VDIV_CODE
+#define USE_NEW_VRSQRT_CODE
+#define USE_NEW_VSQRT_CODE
+
+
+#define USE_NEW_VCLIP_CODE
+
+
+#define USE_NEW_VADD_CODE
+#define USE_NEW_VADDi_CODE
+#define USE_NEW_VADDq_CODE
+#define USE_NEW_VADDX_CODE
+#define USE_NEW_VADDY_CODE
+#define USE_NEW_VADDZ_CODE
+#define USE_NEW_VADDW_CODE
+
+
+
+#define USE_NEW_VADDA_CODE
+#define USE_NEW_VADDAi_CODE
+#define USE_NEW_VADDAq_CODE
+#define USE_NEW_VADDAX_CODE
+#define USE_NEW_VADDAY_CODE
+#define USE_NEW_VADDAZ_CODE
+#define USE_NEW_VADDAW_CODE
+
+
+
+#define USE_NEW_VSUB_CODE
+#define USE_NEW_VSUBi_CODE
+#define USE_NEW_VSUBq_CODE
+#define USE_NEW_VSUBX_CODE
+#define USE_NEW_VSUBY_CODE
+#define USE_NEW_VSUBZ_CODE
+#define USE_NEW_VSUBW_CODE
+
+#define USE_NEW_VSUBA_CODE
+#define USE_NEW_VSUBAi_CODE
+#define USE_NEW_VSUBAq_CODE
+#define USE_NEW_VSUBAX_CODE
+#define USE_NEW_VSUBAY_CODE
+#define USE_NEW_VSUBAZ_CODE
+#define USE_NEW_VSUBAW_CODE
+
+
+#define USE_NEW_VMUL_CODE
+#define USE_NEW_VMULi_CODE
+#define USE_NEW_VMULq_CODE
+#define USE_NEW_VMULX_CODE
+#define USE_NEW_VMULY_CODE
+#define USE_NEW_VMULZ_CODE
+#define USE_NEW_VMULW_CODE
+
+
+#define USE_NEW_VMULA_CODE
+#define USE_NEW_VMULAi_CODE
+#define USE_NEW_VMULAq_CODE
+#define USE_NEW_VMULAX_CODE
+#define USE_NEW_VMULAY_CODE
+#define USE_NEW_VMULAZ_CODE
+#define USE_NEW_VMULAW_CODE
+
+
+
+#define USE_NEW_VMADD_CODE
+#define USE_NEW_VMADDi_CODE
+#define USE_NEW_VMADDq_CODE
+#define USE_NEW_VMADDX_CODE
+#define USE_NEW_VMADDY_CODE
+#define USE_NEW_VMADDZ_CODE
+#define USE_NEW_VMADDW_CODE
+
+
+
+#define USE_NEW_VMADDA_CODE
+#define USE_NEW_VMADDAi_CODE
+#define USE_NEW_VMADDAq_CODE
+#define USE_NEW_VMADDAX_CODE
+#define USE_NEW_VMADDAY_CODE
+#define USE_NEW_VMADDAZ_CODE
+#define USE_NEW_VMADDAW_CODE
+
+
+#define USE_NEW_VMSUB_CODE
+#define USE_NEW_VMSUBi_CODE
+#define USE_NEW_VMSUBq_CODE
+#define USE_NEW_VMSUBX_CODE
+#define USE_NEW_VMSUBY_CODE
+#define USE_NEW_VMSUBZ_CODE
+#define USE_NEW_VMSUBW_CODE
+
+
+#define USE_NEW_VMSUBA_CODE
+#define USE_NEW_VMSUBAi_CODE
+#define USE_NEW_VMSUBAq_CODE
+#define USE_NEW_VMSUBAX_CODE
+#define USE_NEW_VMSUBAY_CODE
+#define USE_NEW_VMSUBAZ_CODE
+#define USE_NEW_VMSUBAW_CODE
+
+
+#define USE_NEW_VOPMSUB_CODE
+#define USE_NEW_VOPMULA_CODE
+
+
 
 #define CHECK_EVENT_AFTER_START
-*/
+
 
 //#define ENABLE_SINGLE_STEP
+//#define ENABLE_SINGLE_STEP_BEFORE
 
 
 
@@ -267,6 +468,10 @@ using namespace R5900;
 
 
 //#define VERBOSE_RECOMPILE
+
+
+#define ENABLE_ICACHE
+
 
 
 x64Encoder *Recompiler::e;
@@ -671,7 +876,7 @@ u32 Recompiler::InitBlock ( u32 Block )
 u32* Recompiler::RGetPointer ( u32 Address )
 {
 
-#ifdef ENABLE_ICACHE
+#ifdef ENABLE_ICACHE_MULTIBLOCK
 	if ( ICache_Device::isCached ( Address ) )
 	{
 		// address is cached //
@@ -1076,7 +1281,7 @@ cout << "\nrecompile: starting recompile.";
 	
 	// get the cycles per instruction
 	// *** TODO FOR PS2 *** 
-	/*
+#ifdef ENABLE_ICACHE
 	if ( ICache_Device::isCached ( Address ) )
 	{
 		// address is cached //
@@ -1105,11 +1310,12 @@ cout << "\nrecompile: starting recompile.";
 		// should be plus 1 like in the interpreter
 		MemCycles += 1;
 	}
-	*/
+#endif
+	
 	
 	// *** todo ***
 	// looks like cycles are set to 1 in interpreter, need to fix
-	MemCycles = 1;
+	//MemCycles = 1;
 
 
 	// need to keep track of cycles for run
@@ -1170,13 +1376,13 @@ cout << "\nRecompiling: ADDR=" << hex << Address;
 		
 
 
-#ifdef ENABLE_ICACHE
+#ifdef ENABLE_ICACHE_MULTIBLOCK
 		// check if we are in a new icache block //
 		// if region is cached and we are transitioning from previous block then need to check:
 		// 1. check that block is in i-cache, and if so, continue
 		// 2. if block is NOT in i-cache, then update Cycles,NextPC, and return
 		// 3. don't put at beginning of block, so need RunCount >= 1 (will not be jumping between blocks)
-		if ( bIsBlockInICache && ( ! ( Address & 0xf ) ) )
+		if ( bIsBlockInICache && ( ! ( Address & 0x3f ) ) )
 		{
 #ifdef VERBOSE_RECOMPILE
 cout << " END-CB";
@@ -1279,7 +1485,7 @@ cout << " CycleDiff=" << dec << LocalCycleCount;
 		NextInst.Value = *(pSrcCodePtr + 1);
 
 		
-#ifdef ENABLE_ICACHE
+#ifdef ENABLE_ICACHE_MULTIBLOCK
 		// check if the address is cached
 		// actually will need to check in the delay slot instruction if the delay slot is in the next cache block and if it is loaded or not
 		//if ( ICache_Device::isCached ( Address ) )
@@ -1288,7 +1494,7 @@ cout << " CycleDiff=" << dec << LocalCycleCount;
 			// address is in cached region //
 			
 			// check if next instruction is in same cache block or not
-			if ( ! ( ( Address + 4 ) & 0xf ) )
+			if ( ! ( ( Address + 4 ) & 0x3f ) )
 			{
 				// instruction is in another cache block
 				
@@ -1404,6 +1610,12 @@ cout << " IDX: " << dec << R5900::Instruction::Lookup::FindByInstruction ( inst.
 			}
 		}
 		
+#ifdef ENABLE_SINGLE_STEP_BEFORE
+			if ( !OpLevel )
+			{
+				bStopEncodingBefore = true;
+			}
+#endif
 		
 		
 			// if this is not the first instruction, then it can halt encoding before it
@@ -1427,19 +1639,23 @@ cout << " bStopEncodingBefore";
 
 				
 #ifdef UPDATE_BEFORE_RETURN
-				// check that NextPC was not modified
-				// doesn't matter here except that RunCount>=1 so it is not first instruction in run, which is handled above
-				// next pc was not modified because that will be handled differently now
-				//if ( RunCount > 1 && !Local_NextPCModified )
-				//{
-					// update NextPC
-					e->MovMemImm32 ( & r->NextPC, Address );
+				// run count has not been updated yet for the instruction to stop encoding before
+				if ( RunCount > 1 )
+				{
+					// check that NextPC was not modified
+					// doesn't matter here except that RunCount>=1 so it is not first instruction in run, which is handled above
+					// next pc was not modified because that will be handled differently now
+					//if ( RunCount > 1 && !Local_NextPCModified )
+					//{
+						// update NextPC
+						e->MovMemImm32 ( & r->NextPC, Address );
+						
+					//}
 					
-				//}
-				
-				// update CPU CycleCount
-				//e->AddMem64ImmX ( & r->CycleCount, CacheBlock_CycleCount - 1 );
-				e->AddMem64ImmX ( & r->CycleCount, LocalCycleCount - MemCycles );
+					// update CPU CycleCount
+					//e->AddMem64ImmX ( & r->CycleCount, CacheBlock_CycleCount - 1 );
+					e->AddMem64ImmX ( & r->CycleCount, LocalCycleCount - MemCycles );
+				}
 #endif
 
 #ifdef VERBOSE_RECOMPILE
@@ -1520,6 +1736,18 @@ cout << " RETURN";
 			LocalCycleCount += MemCycles;
 			//CacheBlock_CycleCount += MemCycles;
 
+#ifdef ENABLE_SINGLE_STEP
+			//if ( ( NextInst.Opcode == 35 ) && ( inst.Opcode == 15 ) )
+			//{
+				//if ( ( (Address-4) > 0x1a6200 ) && ( (Address-4) < 0x1a6300 ) )
+				//{
+					//cout << "\n\n***PC=" << hex << (Address-4) << "***\n\n";
+				
+			bStopEncodingAfter = true;
+				//}
+			//}
+#endif
+
 			// reset the optimization level for next instruction
 			OpLevel = OptimizeLevel;
 			
@@ -1535,9 +1763,6 @@ cout << " RETURN";
 		*/
 
 
-#ifdef ENABLE_SINGLE_STEP
-			bStopEncodingAfter = true;
-#endif
 
 		
 		// if directed to stop encoding after the instruction, then do so
@@ -1551,16 +1776,22 @@ cout << " bStopEncodingAfter";
 
 
 #ifdef UPDATE_BEFORE_RETURN
-			// check that NextPC was not modified and that this is not an isolated instruction
-			// actually just need to check if NextPC was modified by the encoded instruction
-			if ( !Local_NextPCModified )
+			// run count has already been updated at this point, but still on instruction#1
+			if ( RunCount > 1 )
 			{
-				// update NextPC
-				e->MovMemImm32 ( & r->NextPC, Address );
+				// there is more than one instruction in run //
+				
+				// check that NextPC was not modified and that this is not an isolated instruction
+				// actually just need to check if NextPC was modified by the encoded instruction
+				if ( !Local_NextPCModified )
+				{
+					// update NextPC
+					e->MovMemImm32 ( & r->NextPC, Address );
+				}
+				
+				// update CycleCount
+				e->AddMem64ImmX ( & r->CycleCount, LocalCycleCount - MemCycles );
 			}
-			
-			// update CycleCount
-			e->AddMem64ImmX ( & r->CycleCount, LocalCycleCount - MemCycles );
 #endif
 
 				
@@ -1810,8 +2041,8 @@ static long R5900::Recompiler::Generate_Normal_Store ( R5900::Instruction::Forma
 	// so that the correct cycle# gets seen when the store is executed
 	// no need to update the CPU cycle count until either a branch/jump is encountered or returning
 	// this way, there is no need to reset the current cycle number tally unless a branch/jump is encountered
-	e->DecReg64 ( RAX );
-	e->MovMemReg64 ( & Playstation1::System::_SYSTEM->CycleCount, RAX );
+	//e->DecReg64 ( RAX );
+	e->MovMemReg64 ( & Playstation2::System::_SYSTEM->CycleCount, RAX );
 	
 	// part 2: check for synchronous interrupt //
 	
@@ -1860,10 +2091,111 @@ static long R5900::Recompiler::Generate_Normal_Store ( R5900::Instruction::Forma
 			// clear bottom four bits of address
 			e->AndReg32ImmX ( RCX, ~0xf );
 			break;
-		
-		default:
-			// get the value to store
+
+		case OPSQC2:
+			// get address of value to store
+			e->MovRegImm64 ( RDX, & VU0::_VU0->vf [ i.Ft ].uq0 );
+			
+			break;
+			
+		case OPSWC1:
+			// get the value to store from COP1 register
+			e->MovRegMem32 ( RDX, &r->CPR1 [ i.Rt ].u );
+			break;
+			
+		case OPSD:
+			// get the value to store (64-bit)
 			e->MovRegMem64 ( RDX, &r->GPR [ i.Rt ].s );
+			break;
+			
+		case OPSWL:
+			
+			// temporarily save store address
+			e->MovRegReg32 ( RDX, RCX );
+			
+			e->NotReg32 ( RCX );
+			e->AndReg32ImmX ( RCX, 3 );
+			//e->XorReg32ImmX ( RCX, 3 );
+			e->ShlRegImm32 ( RCX, 3 );
+			e->MovReg32ImmX ( RAX, -1 );
+			e->ShrRegReg32 ( RAX );
+			e->MovRegReg32 ( 8, RAX );
+			e->MovRegMem32 ( RAX, &r->GPR [ i.Rt ].uw0 );
+			e->ShrRegReg32 ( RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegReg32 ( RDX, RAX );
+		
+			// clear bottom two bits of address
+			e->AndReg32ImmX ( RCX, ~0x3 );
+			
+			break;
+			
+		case OPSWR:
+			// temporarily save store address
+			e->MovRegReg32 ( RDX, RCX );
+			
+			//e->NotReg32 ( RCX );
+			e->AndReg32ImmX ( RCX, 3 );
+			//e->XorReg32ImmX ( RCX, 3 );
+			e->ShlRegImm32 ( RCX, 3 );
+			e->MovReg32ImmX ( RAX, -1 );
+			e->ShlRegReg32 ( RAX );
+			e->MovRegReg32 ( 8, RAX );
+			e->MovRegMem32 ( RAX, &r->GPR [ i.Rt ].uw0 );
+			e->ShlRegReg32 ( RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegReg32 ( RDX, RAX );
+		
+			// clear bottom two bits of address
+			e->AndReg32ImmX ( RCX, ~0x3 );
+			break;
+
+		case OPSDL:
+			
+			// temporarily save store address
+			e->MovRegReg32 ( RDX, RCX );
+			
+			e->NotReg32 ( RCX );
+			e->AndReg32ImmX ( RCX, 7 );
+			//e->XorReg32ImmX ( RCX, 3 );
+			e->ShlRegImm32 ( RCX, 3 );
+			e->MovReg64ImmX ( RAX, -1 );
+			e->ShrRegReg64 ( RAX );
+			e->MovRegReg64 ( 8, RAX );
+			e->MovRegMem64 ( RAX, &r->GPR [ i.Rt ].uq0 );
+			e->ShrRegReg64 ( RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegReg64 ( RDX, RAX );
+		
+			// clear bottom three bits of address
+			e->AndReg32ImmX ( RCX, ~0x7 );
+			
+			break;
+			
+		case OPSDR:
+			// temporarily save store address
+			e->MovRegReg32 ( RDX, RCX );
+			
+			//e->NotReg32 ( RCX );
+			e->AndReg32ImmX ( RCX, 7 );
+			//e->XorReg32ImmX ( RCX, 3 );
+			e->ShlRegImm32 ( RCX, 3 );
+			e->MovReg64ImmX ( RAX, -1 );
+			e->ShlRegReg64 ( RAX );
+			e->MovRegReg64 ( 8, RAX );
+			e->MovRegMem64 ( RAX, &r->GPR [ i.Rt ].uq0 );
+			e->ShlRegReg64 ( RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegReg64 ( RDX, RAX );
+		
+			// clear bottom three bits of address
+			e->AndReg32ImmX ( RCX, ~0x7 );
+			break;
+
+			
+		default:
+			// get the value to store (32-bit)
+			e->MovRegMem32 ( RDX, &r->GPR [ i.Rt ].uw0 );
 			
 			break;
 			
@@ -1904,7 +2236,7 @@ static long Recompiler::Generate_Normal_Load ( R5900::Instruction::Format i, u32
 	// get the current cycle count and compare with next event cycle
 	// note: actually need to either offset the next event cycle and correct when done or
 	// or need to offset the next even cycle into another variable and check against that one
-	e->CmpRegMem64 ( RAX, & Playstation1::System::_SYSTEM->NextEvent_Cycle );
+	e->CmpRegMem64 ( RAX, & Playstation2::System::_SYSTEM->NextEvent_Cycle );
 	
 	// branch if current cycle is greater (or equal?) than next event cycle
 	// changing this so that it branches if not returning
@@ -1928,7 +2260,7 @@ static long Recompiler::Generate_Normal_Load ( R5900::Instruction::Format i, u32
 	// so that the correct cycle# gets seen when the store is executed
 	// no need to update the CPU cycle count until either a branch/jump is encountered or returning
 	// this way, there is no need to reset the current cycle number tally unless a branch/jump is encountered
-	e->MovMemReg64 ( & Playstation1::System::_SYSTEM->CycleCount, RAX );
+	e->MovMemReg64 ( & Playstation2::System::_SYSTEM->CycleCount, RAX );
 	
 	// part 2: check for synchronous interrupt //
 	
@@ -1966,10 +2298,25 @@ static long Recompiler::Generate_Normal_Load ( R5900::Instruction::Format i, u32
 		e->SetJmpTarget8 ( 0 );
 	}
 	
-	// if 128-bit load, then clear bottom four bits of address
-	if ( i.Opcode == OPLQ )
+	switch ( i.Opcode )
 	{
-		e->AndReg32ImmX ( RCX, ~0xf );
+		case OPLQ:
+			// if LQ 128-bit load, then clear bottom four bits of address
+			e->AndReg32ImmX ( RCX, ~0xf );
+			break;
+			
+		case OPLWL:
+		case OPLWR:
+			e->AndReg32ImmX ( RCX, ~0x3 );
+			break;
+			
+		case OPLDL:
+		case OPLDR:
+			e->AndReg32ImmX ( RCX, ~0x7 );
+			break;
+			
+		default:
+			break;
 	}
 	
 	// part 3: execute the load //
@@ -2101,7 +2448,7 @@ cout << "\nAddress=" << hex << Address << " sOffset=" << i.sImmediate;
 	}
 	
 	
-#ifdef CHECK_EVENT_AFTER_START
+#ifdef CHECK_EVENT_AFTER_START_BRANCH
 	// part 1: first check for event //
 	
 	// get updated CycleCount value for CPU
@@ -2297,7 +2644,7 @@ cout << "\nbIsBlockInICache";
 #endif
 			
 			// check if instruction in delay slot is in another cache block
-			if ( ! ( ( Address + 4 ) & 0xf ) )
+			if ( ! ( ( Address + 4 ) & 0x3f ) )
 			{
 				// instruction in delay slot is in next cache block //
 				
@@ -4193,6 +4540,9 @@ long Recompiler::JR ( R5900::Instruction::Format i, u32 Address )
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// could potentially encounter a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -4313,6 +4663,9 @@ long Recompiler::JALR ( R5900::Instruction::Format i, u32 Address )
 			// so it has to have PC,LastPC updated (or could set it and move up the entry point)
 			bStopEncodingBefore = true;
 			bStopEncodingAfter = true;
+			
+			// could potentially encounter a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -6308,17 +6661,26 @@ long Recompiler::CFC2_I ( R5900::Instruction::Format i, u32 Address )
 	int ret = 1;
 	
 	// for now, stop encoding after this instruction
-	bStopEncodingAfter = true;
+	//bStopEncodingAfter = true;
 	
 	// probably needs an updated CycleCount, so need to stop encoding before too for now
-	bStopEncodingBefore = true;
+	//bStopEncodingBefore = true;
 	
 	// to keep accurate cycle count, update minus 1 after the instruction
-	bResetCycleCount = true;
+	//bResetCycleCount = true;
 	
 	switch ( OpLevel )
 	{
 		case 0:
+			// for now, stop encoding after this instruction
+			bStopEncodingAfter = true;
+			
+			// probably needs an updated CycleCount, so need to stop encoding before too for now
+			bStopEncodingBefore = true;
+			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -6354,17 +6716,26 @@ long Recompiler::CTC2_I ( R5900::Instruction::Format i, u32 Address )
 	int ret = 1;
 	
 	// for now, stop encoding after this instruction
-	bStopEncodingAfter = true;
+	//bStopEncodingAfter = true;
 	
 	// probably needs an updated CycleCount, so need to stop encoding before too for now
-	bStopEncodingBefore = true;
+	//bStopEncodingBefore = true;
 	
 	// to keep accurate cycle count, update minus 1 after the instruction
-	bResetCycleCount = true;
+	//bResetCycleCount = true;
 	
 	switch ( OpLevel )
 	{
 		case 0:
+			// for now, stop encoding after this instruction
+			bStopEncodingAfter = true;
+			
+			// probably needs an updated CycleCount, so need to stop encoding before too for now
+			bStopEncodingBefore = true;
+			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -6399,18 +6770,19 @@ long Recompiler::CFC2_NI ( R5900::Instruction::Format i, u32 Address )
 	
 	int ret = 1;
 	
-	// for now, stop encoding after this instruction
-	bStopEncodingAfter = true;
-	
-	// probably needs an updated CycleCount, so need to stop encoding before too for now
-	bStopEncodingBefore = true;
-	
-	// to keep accurate cycle count, update minus 1 after the instruction
-	bResetCycleCount = true;
 	
 	switch ( OpLevel )
 	{
 		case 0:
+			// for now, stop encoding after this instruction
+			bStopEncodingAfter = true;
+			
+			// probably needs an updated CycleCount, so need to stop encoding before too for now
+			bStopEncodingBefore = true;
+			
+			// to keep accurate cycle count, update minus 1 after the instruction
+			bResetCycleCount = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -6422,6 +6794,31 @@ long Recompiler::CFC2_NI ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_CFC2_NI_CODE
+		case 1:
+			if ( i.Rt )
+			{
+				switch ( i.Rd )
+				{
+					case 0:
+						e->MovMemImm64 ( &r->GPR [ i.Rt ].sq0, 0 );
+						break;
+						
+					case 28:
+						e->MovRegMem32 ( RAX, &VU0::_VU0->vi [ i.Rd ].u );
+						e->AndReg32ImmX ( RAX, 0xc0c );
+						e->MovMemReg64 ( &r->GPR [ i.Rt ].sq0, RAX );
+						break;
+						
+					default:
+						e->MovsxdReg64Mem32 ( RAX, &VU0::_VU0->vi [ i.Rd ].u );
+						e->MovMemReg64 ( &r->GPR [ i.Rt ].sq0, RAX );
+						break;
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -6445,18 +6842,19 @@ long Recompiler::CTC2_NI ( R5900::Instruction::Format i, u32 Address )
 	
 	int ret = 1;
 	
-	// for now, stop encoding after this instruction
-	bStopEncodingAfter = true;
-	
-	// probably needs an updated CycleCount, so need to stop encoding before too for now
-	bStopEncodingBefore = true;
-	
-	// to keep accurate cycle count, update minus 1 after the instruction
-	bResetCycleCount = true;
 	
 	switch ( OpLevel )
 	{
 		case 0:
+			// for now, stop encoding after this instruction
+			bStopEncodingAfter = true;
+			
+			// probably needs an updated CycleCount, so need to stop encoding before too for now
+			bStopEncodingBefore = true;
+			
+			// to keep accurate cycle count, update minus 1 after the instruction
+			bResetCycleCount = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -6468,6 +6866,48 @@ long Recompiler::CTC2_NI ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_CTC2_NI_CODE
+		case 1:
+			if ( i.Rd )
+			{
+				if ( i.Rd == 28 )
+				{
+#ifdef RESERVE_STACK_FRAME_FOR_CALL
+					e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
+#endif
+
+					e->LoadImm32 ( RCX, i.Value );
+					ret = e->Call ( c_vFunction ); //CTC2 );
+			
+#ifdef RESERVE_STACK_FRAME_FOR_CALL
+					ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
+#endif
+				}
+				else if ( i.Rd == 16 )
+				{
+					e->MovRegMem32 ( RAX, &r->GPR [ i.Rt ].sw0 );
+					e->MovRegMem32 ( RCX, &VU0::_VU0->vi [ i.Rd ].u );
+					e->AndReg32ImmX ( RAX, 0xfc0 );
+					e->AndReg32ImmX ( RCX, 0x3f );
+					e->OrRegReg32 ( RAX, RCX );
+					e->MovMemReg32 ( &VU0::_VU0->vi [ i.Rd ].u, RAX );
+				}
+				else
+				{
+					if ( !i.Rt )
+					{
+						e->MovMemImm32 ( &VU0::_VU0->vi [ i.Rd ].u, 0 );
+					}
+					else
+					{
+						e->MovRegMem32 ( RAX, &r->GPR [ i.Rt ].sw0 );
+						e->MovMemReg32 ( &VU0::_VU0->vi [ i.Rd ].u, RAX );
+					}
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -6709,14 +7149,12 @@ long Recompiler::SWL ( R5900::Instruction::Format i, u32 Address )
 			break;
 			
 		
-		case 1:
 #ifdef USE_NEW_STORE_CODE_SWL
-			ret = Generate_Normal_Store ( i, Address, 0x0, R5900::Instruction::Execute::SWL_Recompiler );
-#else
-			return -1;
-#endif
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0x0, (void*) Playstation2::DataBus::Write );
 
 			break;
+#endif
 			
 		default:
 			return -1;
@@ -6767,14 +7205,13 @@ long Recompiler::SWR ( R5900::Instruction::Format i, u32 Address )
 			break;
 			
 			
-		case 1:
 #ifdef USE_NEW_STORE_CODE_SWR
-			ret = Generate_Normal_Store ( i, Address, 0x0, R5900::Instruction::Execute::SWR_Recompiler );
-#else
-			return -1;
-#endif
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0x0, (void*) Playstation2::DataBus::Write );
 
 			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -6838,7 +7275,7 @@ long Recompiler::LB ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xff> );
+			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xff> );
 			
 			// store result //
 			
@@ -6850,7 +7287,7 @@ long Recompiler::LB ( R5900::Instruction::Format i, u32 Address )
 				e->Cdqe ();
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -6918,7 +7355,7 @@ long Recompiler::LH ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0x1, (void*) Playstation2::DataBus::Read_t<0xffff> );
+			ret = Generate_Normal_Load ( i, Address, 0x1, (void*) Playstation2::DataBus::Read_t<0xffff> );
 			
 			// store result //
 			
@@ -6930,7 +7367,7 @@ long Recompiler::LH ( R5900::Instruction::Format i, u32 Address )
 				e->Cdqe ();
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -6999,7 +7436,7 @@ long Recompiler::LW ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0x3, (void*) Playstation2::DataBus::Read_t<0xffffffff> );
+			ret = Generate_Normal_Load ( i, Address, 0x3, (void*) Playstation2::DataBus::Read_t<0xffffffff> );
 			
 			// store result //
 			
@@ -7011,7 +7448,7 @@ long Recompiler::LW ( R5900::Instruction::Format i, u32 Address )
 				e->Cdqe ();
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -7083,7 +7520,7 @@ long Recompiler::LBU ( R5900::Instruction::Format i, u32 Address )
 				e->AndReg32ImmX ( RAX, 0xff );
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -7145,7 +7582,7 @@ long Recompiler::LHU ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0x1, (void*) Playstation2::DataBus::Read_t<0xffff> );
+			ret = Generate_Normal_Load ( i, Address, 0x1, (void*) Playstation2::DataBus::Read_t<0xffff> );
 			
 			// store result //
 			
@@ -7155,7 +7592,7 @@ long Recompiler::LHU ( R5900::Instruction::Format i, u32 Address )
 				e->AndReg32ImmX ( RAX, 0xffff );
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -7220,22 +7657,34 @@ long Recompiler::LWL ( R5900::Instruction::Format i, u32 Address )
 #endif
 			break;
 			
-		case 1:
 #ifdef USE_NEW_LOAD_CODE_LWL
-			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Cpu::ProcessLoadDelaySlot_t<OPLWL,0> );
-#else
-			return -1;
-#endif
+		case 1:
+			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xffffffffULL> );
 			
-			/*
-			e->MovRegImm32 ( 0, i.sOffset );
-			e->AddRegMem32 ( 0, &r->GPR [ i.Base ].u );
-			e->MovMemImm32 ( &r->DelaySlot0.Instruction.Value, i.Value );
-			e->MovRegToMem32 ( &r->DelaySlot0.Data, 0 );
-			e->OrMemImm64 ( &r->Status.Value, 1 );
-			ret = e->MovMemImm32 ( &r->LastModifiedRegister, 255 );
-			*/
+			if ( i.Rt )
+			{
+				e->MovRegFromMem32 ( RCX, &r->GPR [ i.Base ].sw0 );
+				e->AddReg32ImmX ( RCX, i.sOffset );
+				
+				//e->XorReg32ImmX ( RCX, 3 );
+				e->NotReg32 ( RCX );
+				e->AndReg32ImmX ( RCX, 3 );
+				e->ShlRegImm32 ( RCX, 3 );
+				e->ShlRegReg32 ( RAX );
+				e->MovRegReg32 ( RDX, RAX );
+				e->MovReg32ImmX ( RAX, -1 );
+				//e->SubReg32ImmX ( RCX, 32 );
+				//e->NegReg32 ( RCX );
+				e->ShlRegReg32 ( RAX );
+				e->NotReg32 ( RAX );
+				e->AndRegMem32 ( RAX, &r->GPR [ i.Rt ].sw0 );
+				e->OrRegReg32 ( RAX, RDX );
+				e->Cdqe ();
+				ret = e->MovMemReg64 ( &r->GPR [ i.Rt ].sq0, RAX );
+			}
+
 			break;
+#endif
 			
 		default:
 			return -1;
@@ -7281,22 +7730,35 @@ long Recompiler::LWR ( R5900::Instruction::Format i, u32 Address )
 #endif
 			break;
 			
-		case 1:
 #ifdef USE_NEW_LOAD_CODE_LWR
-			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Cpu::ProcessLoadDelaySlot_t<OPLWR,0> );
-#else
-			return -1;
-#endif
+		case 1:
+			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xffffffffULL> );
 			
-			/*
-			e->MovRegImm32 ( 0, i.sOffset );
-			e->AddRegMem32 ( 0, &r->GPR [ i.Base ].u );
-			e->MovMemImm32 ( &r->DelaySlot0.Instruction.Value, i.Value );
-			e->MovRegToMem32 ( &r->DelaySlot0.Data, 0 );
-			e->OrMemImm64 ( &r->Status.Value, 1 );
-			ret = e->MovMemImm32 ( &r->LastModifiedRegister, 255 );
-			*/
+			if ( i.Rt )
+			{
+				e->MovRegFromMem32 ( RCX, &r->GPR [ i.Base ].sw0 );
+				e->AddReg32ImmX ( RCX, i.sOffset );
+				
+				//e->XorReg32ImmX ( RCX, 3 );
+				e->AndReg32ImmX ( RCX, 3 );
+				e->ShlRegImm32 ( RCX, 3 );
+				e->ShrRegReg32 ( RAX );
+				e->Cdqe ();
+				e->MovRegReg64 ( RDX, RAX );
+				e->MovReg32ImmX ( RAX, -1 );
+				//e->SubReg32ImmX ( RCX, 32 );
+				//e->NegReg32 ( RCX );
+				e->ShrRegReg32 ( RAX );
+				e->Cdqe ();
+				e->NotReg64 ( RAX );
+				e->AndRegMem64 ( RAX, &r->GPR [ i.Rt ].s );
+				e->OrRegReg64 ( RAX, RDX );
+				//e->Cdqe ();
+				ret = e->MovMemReg64 ( &r->GPR [ i.Rt ].s, RAX );
+			}
+
 			break;
+#endif
 			
 		default:
 			return -1;
@@ -10551,7 +11013,7 @@ static long R5900::Recompiler::LD ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0x7, (void*) Playstation2::DataBus::Read_t<0xffffffffffffffffULL> );
+			ret = Generate_Normal_Load ( i, Address, 0x7, (void*) Playstation2::DataBus::Read_t<0xffffffffffffffffULL> );
 			
 			// store result //
 			
@@ -10563,7 +11025,7 @@ static long R5900::Recompiler::LD ( R5900::Instruction::Format i, u32 Address )
 				//e->Cdqe ();
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -10622,7 +11084,7 @@ static long R5900::Recompiler::LWU ( R5900::Instruction::Format i, u32 Address )
 				//e->AndReg32ImmX ( RAX, 0xff );
 				
 				// store
-				e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
+				ret = e->MovMemReg64 ( & r->GPR [ i.Rt ].sq0, RAX );
 			}
 #else
 			return -1;
@@ -10668,6 +11130,15 @@ static long R5900::Recompiler::SDL ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_STORE_CODE_SDL
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0x0, (void*) Playstation2::DataBus::Write );
+
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -10708,6 +11179,15 @@ static long R5900::Recompiler::SDR ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_STORE_CODE_SDR
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0x0, (void*) Playstation2::DataBus::Write );
+
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -10748,6 +11228,37 @@ static long R5900::Recompiler::LDL ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_LOAD_CODE_LDL
+		case 1:
+			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xffffffffffffffffULL> );
+			
+			if ( i.Rt )
+			{
+				e->MovRegFromMem32 ( RCX, &r->GPR [ i.Base ].sw0 );
+				e->AddReg32ImmX ( RCX, i.sOffset );
+				
+				//e->XorReg32ImmX ( RCX, 7 );
+				e->NotReg32 ( RCX );
+				e->AndReg32ImmX ( RCX, 7 );
+				e->ShlRegImm32 ( RCX, 3 );
+				e->ShlRegReg64 ( RAX );
+				e->MovRegReg64 ( RDX, RAX );
+				e->MovReg64ImmX ( RAX, -1 );
+				//e->SubReg32ImmX ( RCX, 32 );
+				//e->NegReg32 ( RCX );
+				e->ShlRegReg64 ( RAX );
+				e->NotReg64 ( RAX );
+				e->AndRegMem64 ( RAX, &r->GPR [ i.Rt ].sq0 );
+				e->OrRegReg64 ( RAX, RDX );
+				//e->Cdqe ();
+				ret = e->MovMemReg64 ( &r->GPR [ i.Rt ].sq0, RAX );
+			}
+
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -10788,6 +11299,38 @@ static long R5900::Recompiler::LDR ( R5900::Instruction::Format i, u32 Address )
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_LOAD_CODE_LDR
+		case 1:
+			ret = Generate_Normal_Load ( i, Address, 0x0, (void*) Playstation2::DataBus::Read_t<0xffffffffffffffffULL> );
+			
+			if ( i.Rt )
+			{
+				e->MovRegFromMem32 ( RCX, &r->GPR [ i.Base ].sw0 );
+				e->AddReg32ImmX ( RCX, i.sOffset );
+				
+				//e->XorReg32ImmX ( RCX, 3 );
+				e->AndReg32ImmX ( RCX, 7 );
+				e->ShlRegImm32 ( RCX, 3 );
+				e->ShrRegReg64 ( RAX );
+				//e->Cdqe ();
+				e->MovRegReg64 ( RDX, RAX );
+				e->MovReg64ImmX ( RAX, -1 );
+				//e->SubReg32ImmX ( RCX, 32 );
+				//e->NegReg32 ( RCX );
+				e->ShrRegReg64 ( RAX );
+				//e->Cdqe ();
+				e->NotReg64 ( RAX );
+				e->AndRegMem64 ( RAX, &r->GPR [ i.Rt ].sq0 );
+				e->OrRegReg64 ( RAX, RDX );
+				//e->Cdqe ();
+				ret = e->MovMemReg64 ( &r->GPR [ i.Rt ].sq0, RAX );
+			}
+
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -10832,7 +11375,7 @@ static long R5900::Recompiler::LQ ( R5900::Instruction::Format i, u32 Address )
 			
 		case 1:
 #ifdef USE_NEW_LOAD_CODE
-			Generate_Normal_Load ( i, Address, 0, (void*) Playstation2::DataBus::Read_t<0> );
+			ret = Generate_Normal_Load ( i, Address, 0, (void*) Playstation2::DataBus::Read_t<0> );
 			
 			// store result //
 			
@@ -12478,6 +13021,9 @@ static long R5900::Recompiler::TGEI ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12521,6 +13067,9 @@ static long R5900::Recompiler::TGEIU ( R5900::Instruction::Format i, u32 Address
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -12566,6 +13115,9 @@ static long R5900::Recompiler::TLTI ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12609,6 +13161,9 @@ static long R5900::Recompiler::TLTIU ( R5900::Instruction::Format i, u32 Address
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -12654,6 +13209,9 @@ static long R5900::Recompiler::TEQI ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12697,6 +13255,9 @@ static long R5900::Recompiler::TNEI ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -12743,6 +13304,9 @@ static long R5900::Recompiler::TGE ( R5900::Instruction::Format i, u32 Address )
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12786,6 +13350,9 @@ static long R5900::Recompiler::TGEU ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -12831,6 +13398,9 @@ static long R5900::Recompiler::TLT ( R5900::Instruction::Format i, u32 Address )
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12874,6 +13444,9 @@ static long R5900::Recompiler::TLTU ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -12919,6 +13492,9 @@ static long R5900::Recompiler::TEQ ( R5900::Instruction::Format i, u32 Address )
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -12962,6 +13538,9 @@ static long R5900::Recompiler::TNE ( R5900::Instruction::Format i, u32 Address )
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// this instruction might have a synchronous interrupt
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -13568,9 +14147,11 @@ static long R5900::Recompiler::PLZCW ( R5900::Instruction::Format i, u32 Address
 			if ( i.Rd )
 			{
 				e->MovRegMem32 ( RAX, & r->GPR [ i.Rs ].uw0 );
+				e->MovReg32ImmX ( RCX, -1 );
 				e->Cdq ();
 				e->XorRegReg32 ( RAX, RDX );
 				e->BsrRegReg32 ( RAX, RAX );
+				e->CmovERegReg32 ( RAX, RCX );
 				e->NegReg32 ( RAX );
 				e->AddReg32ImmX ( RAX, 30 );
 				e->MovMemReg32 ( & r->GPR [ i.Rd ].uw0, RAX );
@@ -13579,6 +14160,7 @@ static long R5900::Recompiler::PLZCW ( R5900::Instruction::Format i, u32 Address
 				e->Cdq ();
 				e->XorRegReg32 ( RAX, RDX );
 				e->BsrRegReg32 ( RAX, RAX );
+				e->CmovERegReg32 ( RAX, RCX );
 				e->NegReg32 ( RAX );
 				e->AddReg32ImmX ( RAX, 30 );
 				e->MovMemReg32 ( & r->GPR [ i.Rd ].uw1, RAX );
@@ -14250,7 +14832,7 @@ static long R5900::Recompiler::PSLLW ( R5900::Instruction::Format i, u32 Address
 					e->pxorregreg ( RAX, RAX );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
-				else if ( !( i.Shift & 0xf ) )
+				else if ( !( i.Shift ) )
 				{
 					if ( i.Rd != i.Rt )
 					{
@@ -14261,7 +14843,7 @@ static long R5900::Recompiler::PSLLW ( R5900::Instruction::Format i, u32 Address
 				else
 				{
 					e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
-					e->pslldregimm ( RAX, i.Shift & 0xf );
+					e->pslldregimm ( RAX, i.Shift );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
 			}
@@ -14392,7 +14974,7 @@ static long R5900::Recompiler::PSRLW ( R5900::Instruction::Format i, u32 Address
 					e->pxorregreg ( RAX, RAX );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
-				else if ( !( i.Shift & 0xf ) )
+				else if ( !( i.Shift ) )
 				{
 					if ( i.Rd != i.Rt )
 					{
@@ -14403,7 +14985,7 @@ static long R5900::Recompiler::PSRLW ( R5900::Instruction::Format i, u32 Address
 				else
 				{
 					e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
-					e->psrldregimm ( RAX, i.Shift & 0xf );
+					e->psrldregimm ( RAX, i.Shift );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
 			}
@@ -14535,7 +15117,7 @@ static long R5900::Recompiler::PSRAW ( R5900::Instruction::Format i, u32 Address
 					e->pxorregreg ( RAX, RAX );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
-				else if ( !( i.Shift & 0xf ) )
+				else if ( !( i.Shift ) )
 				{
 					if ( i.Rd != i.Rt )
 					{
@@ -14546,7 +15128,7 @@ static long R5900::Recompiler::PSRAW ( R5900::Instruction::Format i, u32 Address
 				else
 				{
 					e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
-					e->psradregimm ( RAX, i.Shift & 0xf );
+					e->psradregimm ( RAX, i.Shift );
 					ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 				}
 			}
@@ -17640,7 +18222,9 @@ static long R5900::Recompiler::PINTH ( R5900::Instruction::Format i, u32 Address
 #ifdef USE_NEW_PINTH_CODE
 			if ( i.Rd )
 			{
-				e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 1 << 6 ) + ( 0 << 4 ) );
+				e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
+				e->pshufdregregimm ( RAX, RAX, ( 1 << 6 ) + ( 0 << 4 ) );
+				//e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 1 << 6 ) + ( 0 << 4 ) );
 				e->punpckhwdregmem ( RAX, & r->GPR [ i.Rs ].u );
 				ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 			}
@@ -17696,10 +18280,9 @@ static long R5900::Recompiler::PINTEH ( R5900::Instruction::Format i, u32 Addres
 			if ( i.Rd )
 			{
 				e->movdqa_regmem ( RAX, & r->GPR [ i.Rs ].u );
-				//pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 1 << 6 ) + ( 0 << 4 ) );
+				e->movdqa_regmem ( RCX, & r->GPR [ i.Rt ].u );
 				e->pslldregimm ( RAX, 16 );
-				//e->punpckhwdregmem ( RAX, & r->GPR [ i.Rs ].u );
-				e->pblendwregmemimm ( RAX, & r->GPR [ i.Rt ].u, 0x55 );
+				e->pblendwregregimm ( RAX, RCX, 0x55 );
 				ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 			}
 #else
@@ -19459,7 +20042,9 @@ static long R5900::Recompiler::PEXEW ( R5900::Instruction::Format i, u32 Address
 #ifdef USE_NEW_PEXEW_CODE
 			if ( i.Rd )
 			{
-				e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 0 << 4 ) + ( 1 << 2 ) + ( 2 ) );
+				e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
+				//e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 0 << 4 ) + ( 1 << 2 ) + ( 2 ) );
+				e->pshufdregregimm ( RAX, RAX, ( 3 << 6 ) + ( 0 << 4 ) + ( 1 << 2 ) + ( 2 ) );
 				ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 			}
 #else
@@ -19513,7 +20098,9 @@ static long R5900::Recompiler::PROT3W ( R5900::Instruction::Format i, u32 Addres
 #ifdef USE_NEW_PROT3W_CODE
 			if ( i.Rd )
 			{
-				e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 0 << 4 ) + ( 2 << 2 ) + ( 1 ) );
+				e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
+				e->pshufdregregimm ( RAX, RAX, ( 3 << 6 ) + ( 0 << 4 ) + ( 2 << 2 ) + ( 1 ) );
+				//e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 0 << 4 ) + ( 2 << 2 ) + ( 1 ) );
 				ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 			}
 #else
@@ -19908,7 +20495,9 @@ static long R5900::Recompiler::PEXCW ( R5900::Instruction::Format i, u32 Address
 #ifdef USE_NEW_PEXCW_CODE
 			if ( i.Rd )
 			{
-				e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 1 << 4 ) + ( 2 << 2 ) + ( 0 ) );
+				e->movdqa_regmem ( RAX, & r->GPR [ i.Rt ].u );
+				e->pshufdregregimm ( RAX, RAX, ( 3 << 6 ) + ( 1 << 4 ) + ( 2 << 2 ) + ( 0 ) );
+				//e->pshufdregmemimm ( RAX, & r->GPR [ i.Rt ].u, ( 3 << 6 ) + ( 1 << 4 ) + ( 2 << 2 ) + ( 0 ) );
 				ret = e->movdqa_memreg ( & r->GPR [ i.Rd ].u, RAX );
 			}
 #else
@@ -20208,6 +20797,10 @@ static long R5900::Recompiler::SYNC ( R5900::Instruction::Format i, u32 Address 
 #endif
 			break;
 			
+		case 1:
+			// this instruction doesn't do anything currently
+			break;
+			
 		default:
 			return -1;
 			break;
@@ -20287,6 +20880,10 @@ static long R5900::Recompiler::PREF ( R5900::Instruction::Format i, u32 Address 
 #endif
 			break;
 			
+		case 1:
+			// this instruction doesn't do anything currently
+			break;
+			
 		default:
 			return -1;
 			break;
@@ -20324,6 +20921,10 @@ static long R5900::Recompiler::TLBR ( R5900::Instruction::Format i, u32 Address 
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
+			break;
+			
+		case 1:
+			// this instruction doesn't do anything currently
 			break;
 			
 		default:
@@ -20365,6 +20966,10 @@ static long R5900::Recompiler::TLBWI ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+		case 1:
+			// this instruction doesn't do anything currently
+			break;
+			
 		default:
 			return -1;
 			break;
@@ -20402,6 +21007,10 @@ static long R5900::Recompiler::TLBWR ( R5900::Instruction::Format i, u32 Address
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
+			break;
+			
+		case 1:
+			// this instruction doesn't do anything currently
 			break;
 			
 		default:
@@ -20443,6 +21052,10 @@ static long R5900::Recompiler::TLBP ( R5900::Instruction::Format i, u32 Address 
 #endif
 			break;
 			
+		case 1:
+			// this instruction doesn't do anything currently
+			break;
+			
 		default:
 			return -1;
 			break;
@@ -20467,7 +21080,7 @@ static long R5900::Recompiler::ERET ( R5900::Instruction::Format i, u32 Address 
 	bStopEncodingAfter = true;
 	//bStopEncodingBefore = true;
 	
-	// this instruction always has a synchronous interrupt
+	// this instruction always modifies the NextPC
 	Local_NextPCModified = true;
 	
 	switch ( OpLevel )
@@ -20526,6 +21139,10 @@ static long R5900::Recompiler::DERET ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+		case 1:
+			// this instruction doesn't do anything currently
+			break;
+			
 		default:
 			return -1;
 			break;
@@ -20563,6 +21180,10 @@ static long R5900::Recompiler::WAIT ( R5900::Instruction::Format i, u32 Address 
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
+			break;
+			
+		case 1:
+			// this instruction doesn't do anything currently
 			break;
 			
 		default:
@@ -20769,6 +21390,18 @@ static long R5900::Recompiler::LWC1 ( R5900::Instruction::Format i, u32 Address 
 #endif
 			break;
 			
+#ifdef USE_NEW_LOAD_CODE
+		case 1:
+			Generate_Normal_Load ( i, Address, 0x3, (void*) Playstation2::DataBus::Read_t<0xffffffff> );
+			
+			// store result //
+			
+			// store
+			ret = e->MovMemReg32 ( & r->CPR1 [ i.Rt ].s, RAX );
+			
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -20808,6 +21441,13 @@ static long R5900::Recompiler::SWC1 ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_STORE_CODE
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0x3, (void*) Playstation2::DataBus::Write_t<0xffffffffULL> );
+
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -20852,6 +21492,27 @@ static long R5900::Recompiler::ABS_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_ABS_S_CODE
+		case 1:
+			//r->CPR1 [ i.Fd ].u = r->CPR1 [ i.Fs ].u & 0x7fffffff;
+			// flags affected:
+			// clears flags o,u (bits 14,15)
+			//r->CPC1 [ 31 ] &= ~0x0000c000;
+			if ( i.Fd == i.Fs )
+			{
+				e->AndMem32ImmX ( &r->CPR1 [ i.Fs ].u, 0x7fffffff );
+				ret = e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+				e->AndReg32ImmX ( RAX, 0x7fffffff );
+				e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+				ret = e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			}
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -20892,6 +21553,94 @@ static long R5900::Recompiler::ADD_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_ADD_S_CODE
+		case 1:
+		
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+		
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -20931,6 +21680,93 @@ static long R5900::Recompiler::ADDA_S ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_ADDA_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->dACC.l, RAX );
+			
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -20973,6 +21809,32 @@ static long R5900::Recompiler::CVT_S_W ( R5900::Instruction::Format i, u32 Addre
 #endif
 			break;
 			
+#ifdef USE_NEW_CVT_S_W_CODE
+		case 1:
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			
+			// convert single precision to signed 
+			e->cvtsi2sd ( RAX, RAX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			e->MovReg64ImmX ( RCX, 896 << 23 );
+			e->Cqo();
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RDX );
+			e->SubRegReg64 ( RAX, RCX );
+			
+			
+			//e->CmovSRegReg32 ( RAX, RDX );
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -21013,6 +21875,93 @@ static long R5900::Recompiler::SUB_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_SUB_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->subsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21052,6 +22001,106 @@ static long R5900::Recompiler::MUL_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_MUL_S_CODE
+		case 1:
+			
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			//e->MovRegReg32 ( 9, RAX );
+			e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			// debug
+			//e->MovMemReg64 ( &ll0, RAX );
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( RDX, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll1, RAX );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll2, RAX );
+
+			
+			// set sign
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+			
+			
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->MovReg32ImmX ( 8, 0x4008 );
+			e->LeaRegRegReg32 ( RAX, RAX, 10 );
+			e->CmovLERegReg32 ( RAX, 11 );
+			//e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( 8, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+			
+			// debug
+			//e->MovMemReg64 ( &ll3, RAX );
+			
+			// check for overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmpRegReg32 ( RAX, RCX );
+			e->CmovARegReg32 ( RAX, RCX );
+			e->LeaRegRegReg32 ( RAX, RAX, RDX );
+			e->MovReg32ImmX ( RDX, 0x8010 );
+			e->CmovBERegReg32 ( RDX, 8 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RDX );
+			
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -21090,6 +22139,106 @@ static long R5900::Recompiler::MULA_S ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_MULA_S_CODE
+		case 1:
+			
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			//e->MovRegReg32 ( 9, RAX );
+			e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			// debug
+			//e->MovMemReg64 ( &ll0, RAX );
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( RDX, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll1, RAX );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll2, RAX );
+
+			
+			// set sign
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+			
+			
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->MovReg32ImmX ( 8, 0x4008 );
+			e->LeaRegRegReg32 ( RAX, RAX, 10 );
+			e->CmovLERegReg32 ( RAX, 11 );
+			//e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( 8, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+			
+			// debug
+			//e->MovMemReg64 ( &ll3, RAX );
+			
+			// check for overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmpRegReg32 ( RAX, RCX );
+			e->CmovARegReg32 ( RAX, RCX );
+			e->LeaRegRegReg32 ( RAX, RAX, RDX );
+			e->MovReg32ImmX ( RDX, 0x8010 );
+			e->CmovBERegReg32 ( RDX, 8 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RDX );
+			
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->dACC.l, RAX );
+			
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21131,6 +22280,88 @@ static long R5900::Recompiler::DIV_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_DIV_S_CODE
+		case 1:
+			
+			// clear bits 16 and 17 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00030000 );		// r->CPC1 [ 31 ], ~0x00030000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovReg32ImmX ( 8, 0x00030060 );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			e->AddRegReg64 ( RCX, RAX );
+			//e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( 8, 11 );
+			e->CmovNERegReg64 ( RAX, RCX );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->movq_to_sse ( RCX, RAX );
+			
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			//e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			//e->XorRegReg32 ( 8, RAX );
+			e->XorRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			//e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->MovReg32ImmX ( 9, 0x00010020 );
+			e->MovReg32ImmX ( 10, 0x00020040 );
+			e->CmovERegReg32 ( 9, 10 );
+			e->CmovERegReg32 ( RAX, 11 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->movq_to_sse ( RAX, RAX );
+
+			
+			// get sign in R8
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+			
+			// set flags
+			e->AndRegReg32 ( 8, 9 );
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], 8 );
+			
+			// perform div
+			e->divsd ( RAX, RCX );
+
+
+			// get result
+			e->movq_from_sse ( RAX, RAX );
+
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// clear on underflow or zero
+			e->TestReg32ImmX ( RAX, 0xff800000 );
+			e->CmovERegReg32 ( RAX, 11 );
+			
+			
+			// set to max on overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmovSRegReg32 ( RAX, RCX );
+			
+			// or if any flags are set
+			e->OrRegReg32 ( 8, 8 );
+			e->CmovNERegReg32 ( RAX, RCX );
+			
+			// set sign
+			e->OrRegReg32 ( RAX, RDX );
+			
+
+			// store result
+			e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );		// &r->CPR1 [ i.Fd ].u, RAX );
+
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21169,6 +22400,61 @@ static long R5900::Recompiler::SQRT_S ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_SQRT_S_CODE
+		case 1:
+			// clear bits 16 and 17 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00030000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			
+			// get flags
+			e->Cdq();
+			e->AndReg32ImmX ( RDX, 0x20040 );
+			
+			
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( 8, RAX, RCX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovERegReg32 ( RDX, RAX );
+			e->CmovNERegReg64 ( RAX, 8 );
+			e->ShlRegImm64 ( RAX, 29 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RDX );
+			
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			//e->movq_to_sse ( RCX, RDX );
+			
+			
+			// sqrt
+			e->sqrtsd ( RAX, RAX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// ??
+			e->AddReg64ImmX ( RAX, 0x10000000 );
+			
+			
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// if zero, then clear RCX
+			e->CmovERegReg64 ( RCX, RAX );
+			
+			// subtract exponent
+			e->SubRegReg64 ( RAX, RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21209,6 +22495,113 @@ static long R5900::Recompiler::RSQRT_S ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+			
+#ifdef USE_NEW_RSQRT_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00030000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			
+			// get flags
+			e->Cdq();
+			e->AndReg32ImmX ( RDX, 0x20040 );
+			
+			
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( 8, RAX, RCX );
+			e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovReg32ImmX ( 8, 0x10020 );
+			e->CmovNERegReg32 ( 8, RDX );
+			e->CmovNERegReg64 ( RAX, RCX );
+			e->ShlRegImm64 ( RAX, 29 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], 8 );
+			
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			//e->movq_to_sse ( RCX, RDX );
+			
+			
+			// sqrt
+			e->sqrtsd ( RAX, RAX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// ??
+			e->AddReg64ImmX ( RAX, 0x10000000 );
+			e->AndReg64ImmX ( RAX, ~0x1fffffff );
+			
+
+			e->movq_to_sse ( RCX, RAX );
+
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			//e->MovRegReg32 ( RCX, RAX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 10, 31 );
+			//e->ShlRegImm64 ( 10, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, 10 );
+			e->movq_to_sse ( RAX, RAX );
+
+			
+			// divide
+			e->divsd ( RAX, RCX );
+			
+			
+			// get result
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// subtract exponent
+			//e->XorRegReg32 ( 10, 10 );
+			//e->MovRegReg32 ( RDX, RAX );
+			//e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->SubRegReg64 ( RAX, RCX );
+			e->TestReg32ImmX ( RAX, 0xff800000 );
+			
+			// clear on underflow or zero
+			//e->CmovLERegReg32 ( RAX, 10 );
+			//e->CmovLERegReg32 ( RDX, 10 );
+			e->CmovERegReg32 ( RAX, 11 );
+			
+			
+			// set to max on overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			//e->OrRegReg32 ( RDX, RDX );
+			e->CmovSRegReg32 ( RAX, RCX );
+			
+			
+			// or if any flags are set indicating denominator is zero
+			e->AndReg32ImmX ( 8, 0x00020 );
+			e->CmovNERegReg32 ( RAX, RCX );
+
+			
+			// set sign
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+
+			// store result
+			e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );		// &r->CPR1 [ i.Fd ].u, RAX );
+			
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21252,6 +22645,18 @@ static long R5900::Recompiler::MOV_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_MOV_S_CODE
+		case 1:
+			//r->CPR1 [ i.Fd ].u = r->CPR1 [ i.Fs ].u;
+			// flags affected: none
+			if ( i.Fd != i.Fs )
+			{
+				e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+				ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			}
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21291,6 +22696,27 @@ static long R5900::Recompiler::NEG_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_NEG_S_CODE
+		case 1:
+			//r->CPR1 [ i.Fd ].u = r->CPR1 [ i.Fs ].u ^ 0x80000000;
+			// flags affected:
+			// clears flags o,u (bits 14,15)
+			//r->CPC1 [ 31 ] &= ~0x0000c000;
+			if ( i.Fd == i.Fs )
+			{
+				e->XorMem32ImmX ( &r->CPR1 [ i.Fs ].u, 0x80000000 );
+				ret = e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+				e->XorReg32ImmX ( RAX, 0x80000000 );
+				e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+				ret = e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			}
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21332,6 +22758,92 @@ static long R5900::Recompiler::SUBA_S ( R5900::Instruction::Format i, u32 Addres
 #endif
 			break;
 			
+#ifdef USE_NEW_SUBA_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->subsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->dACC.l, RAX );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21371,6 +22883,227 @@ static long R5900::Recompiler::MADD_S ( R5900::Instruction::Format i, u32 Addres
 #endif
 			break;
 			
+			
+#ifdef USE_NEW_MADD_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			
+			// get sign
+			e->AndReg32ImmX ( 9, 0x80000000 );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RDX, 0x0008 );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->CmovLERegReg32 ( RAX, 11 );
+			e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( RDX, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+
+			
+			// get ACC
+			e->MovRegMem32 ( 8, &r->dACC.l );
+			
+			
+			// running out of registers.. combine sign and mantissa
+			e->OrRegReg32 ( 9, 10 );
+
+			
+			
+			
+			// if multiply underflow, then go ahead and set result to ACC here
+			e->OrRegReg32 ( RDX, RDX );
+			e->CmovNERegReg32 ( 9, 8 );
+			e->CmovNERegReg32 ( RAX, 11 );
+			
+			
+			
+			
+			// get multi-use constant for later
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			
+			// test for ACC overflow
+			e->MovRegReg32 ( 10, 8 );
+			e->AndRegReg32 ( 10, RCX );
+			e->CmpRegReg32 ( 10, RCX );
+			
+			
+			// if ACC overflow, then set result to acc and set overflow
+			//e->CmovERegReg32 ( RAX, RCX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->MovReg32ImmX ( 10, 0x8010 );
+			e->CmovNERegReg32 ( 10, 11 );
+			e->OrRegReg32 ( RDX, 10 );
+			
+			
+			// test for multiply overflow
+			//e->CmpRegReg32 ( RAX, RCX );
+			e->OrRegReg32 ( RAX, RAX );
+			
+			// if multiply overflow, then set result to +/-max and set flags
+			e->CmovSRegReg32 ( RAX, RCX );
+			e->MovReg32ImmX ( RCX, 0x8010 );
+			e->CmovNSRegReg32 ( RCX, 11 );
+			
+			
+			// set sign/mantissa
+			e->OrRegReg32 ( RAX, 9 );
+			
+			// or in the flag from the last overflow check
+			e->OrRegReg32 ( RCX, RDX );
+			
+			
+			// done
+			e->Jmp_NE ( 0, 1 );
+			//e->Jmp8_NE ( 0, 1 );
+			
+			
+			
+			
+			// *** perform the ADD operation *** //
+			
+			
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &b );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+
+			
+			//e->MovRegMem32 ( RAX, &a );
+			e->MovRegReg32 ( RAX, 8 );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 10, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 8, RAX );
+			e->CmovNERegReg32 ( RAX, 10 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+
+			
+			// finish here
+			e->SetJmpTarget ( 1 );
+			//e->SetJmpTarget8 ( 1 );
+
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			break;
+#endif
+
+			
 		default:
 			return -1;
 			break;
@@ -21383,6 +23116,7 @@ static long R5900::Recompiler::MADD_S ( R5900::Instruction::Format i, u32 Addres
 	}
 	return 1;
 }
+
 
 static long R5900::Recompiler::MSUB_S ( R5900::Instruction::Format i, u32 Address )
 {
@@ -21409,6 +23143,232 @@ static long R5900::Recompiler::MSUB_S ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_MSUB_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			
+			// get sign
+			e->AndReg32ImmX ( 9, 0x80000000 );
+
+			// reverse sign for sub
+			e->XorReg32ImmX ( 9, 0x80000000 );
+			
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RDX, 0x0008 );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->CmovLERegReg32 ( RAX, 11 );
+			e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( RDX, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+
+			
+			// get ACC
+			e->MovRegMem32 ( 8, &r->dACC.l );
+			
+			
+			// running out of registers.. combine sign and mantissa
+			e->OrRegReg32 ( 9, 10 );
+
+			
+			
+			
+			// if multiply underflow, then go ahead and set result to ACC here
+			e->OrRegReg32 ( RDX, RDX );
+			e->CmovNERegReg32 ( 9, 8 );
+			e->CmovNERegReg32 ( RAX, 11 );
+			
+			
+			
+			
+			// get multi-use constant for later
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			
+			// test for ACC overflow
+			e->MovRegReg32 ( 10, 8 );
+			e->AndRegReg32 ( 10, RCX );
+			e->CmpRegReg32 ( 10, RCX );
+			
+			
+			// if ACC overflow, then set result to acc and set overflow
+			//e->CmovERegReg32 ( RAX, RCX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->MovReg32ImmX ( 10, 0x8010 );
+			e->CmovNERegReg32 ( 10, 11 );
+			e->OrRegReg32 ( RDX, 10 );
+			
+			
+			// test for multiply overflow
+			//e->CmpRegReg32 ( RAX, RCX );
+			e->OrRegReg32 ( RAX, RAX );
+			
+			// if multiply overflow, then set result to +/-max and set flags
+			e->CmovSRegReg32 ( RAX, RCX );
+			e->MovReg32ImmX ( RCX, 0x8010 );
+			e->CmovNSRegReg32 ( RCX, 11 );
+			
+			
+			// set sign/mantissa
+			e->OrRegReg32 ( RAX, 9 );
+			
+			// or in the flag from the last overflow check
+			e->OrRegReg32 ( RCX, RDX );
+			
+			
+			// done
+			e->Jmp_NE ( 0, 1 );
+			//e->Jmp8_NE ( 0, 1 );
+			
+			
+			
+			
+			// *** perform the ADD operation *** //
+			
+			
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &b );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+
+			
+			//e->MovRegMem32 ( RAX, &a );
+			e->MovRegReg32 ( RAX, 8 );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 10, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 8, RAX );
+			e->CmovNERegReg32 ( RAX, 10 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+
+			
+			// finish here
+			e->SetJmpTarget ( 1 );
+			//e->SetJmpTarget8 ( 1 );
+
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			break;
+#endif
+
+			
 			
 		default:
 			return -1;
@@ -21448,6 +23408,231 @@ static long R5900::Recompiler::MSUBA_S ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_MSUBA_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			
+			// get sign
+			e->AndReg32ImmX ( 9, 0x80000000 );
+			
+			// reverse sign for sub
+			e->XorReg32ImmX ( 9, 0x80000000 );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RDX, 0x0008 );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->CmovLERegReg32 ( RAX, 11 );
+			e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( RDX, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+
+			
+			// get ACC
+			e->MovRegMem32 ( 8, &r->dACC.l );
+			
+			
+			// running out of registers.. combine sign and mantissa
+			e->OrRegReg32 ( 9, 10 );
+
+			
+			
+			
+			// if multiply underflow, then go ahead and set result to ACC here
+			e->OrRegReg32 ( RDX, RDX );
+			e->CmovNERegReg32 ( 9, 8 );
+			e->CmovNERegReg32 ( RAX, 11 );
+			
+			
+			
+			
+			// get multi-use constant for later
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			
+			// test for ACC overflow
+			e->MovRegReg32 ( 10, 8 );
+			e->AndRegReg32 ( 10, RCX );
+			e->CmpRegReg32 ( 10, RCX );
+			
+			
+			// if ACC overflow, then set result to acc and set overflow
+			//e->CmovERegReg32 ( RAX, RCX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->MovReg32ImmX ( 10, 0x8010 );
+			e->CmovNERegReg32 ( 10, 11 );
+			e->OrRegReg32 ( RDX, 10 );
+			
+			
+			// test for multiply overflow
+			//e->CmpRegReg32 ( RAX, RCX );
+			e->OrRegReg32 ( RAX, RAX );
+			
+			// if multiply overflow, then set result to +/-max and set flags
+			e->CmovSRegReg32 ( RAX, RCX );
+			e->MovReg32ImmX ( RCX, 0x8010 );
+			e->CmovNSRegReg32 ( RCX, 11 );
+			
+			
+			// set sign/mantissa
+			e->OrRegReg32 ( RAX, 9 );
+			
+			// or in the flag from the last overflow check
+			e->OrRegReg32 ( RCX, RDX );
+			
+			
+			// done
+			e->Jmp_NE ( 0, 1 );
+			//e->Jmp8_NE ( 0, 1 );
+			
+			
+			
+			
+			// *** perform the ADD operation *** //
+			
+			
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &b );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+
+			
+			//e->MovRegMem32 ( RAX, &a );
+			e->MovRegReg32 ( RAX, 8 );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 10, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 8, RAX );
+			e->CmovNERegReg32 ( RAX, 10 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+
+			
+			// finish here
+			e->SetJmpTarget ( 1 );
+			//e->SetJmpTarget8 ( 1 );
+
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->dACC.l, RAX );
+			break;
+#endif
+
+
 			
 		default:
 			return -1;
@@ -21487,6 +23672,228 @@ static long R5900::Recompiler::MADDA_S ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_MADDA_S_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x0000c000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->XorRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			
+			// get sign
+			e->AndReg32ImmX ( 9, 0x80000000 );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RDX, 0x0008 );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->CmovLERegReg32 ( RAX, 11 );
+			e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( RDX, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+
+			
+			// get ACC
+			e->MovRegMem32 ( 8, &r->dACC.l );
+			
+			
+			// running out of registers.. combine sign and mantissa
+			e->OrRegReg32 ( 9, 10 );
+
+			
+			
+			
+			// if multiply underflow, then go ahead and set result to ACC here
+			e->OrRegReg32 ( RDX, RDX );
+			e->CmovNERegReg32 ( 9, 8 );
+			e->CmovNERegReg32 ( RAX, 11 );
+			
+			
+			
+			
+			// get multi-use constant for later
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			
+			// test for ACC overflow
+			e->MovRegReg32 ( 10, 8 );
+			e->AndRegReg32 ( 10, RCX );
+			e->CmpRegReg32 ( 10, RCX );
+			
+			
+			// if ACC overflow, then set result to acc and set overflow
+			//e->CmovERegReg32 ( RAX, RCX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->MovReg32ImmX ( 10, 0x8010 );
+			e->CmovNERegReg32 ( 10, 11 );
+			e->OrRegReg32 ( RDX, 10 );
+			
+			
+			// test for multiply overflow
+			//e->CmpRegReg32 ( RAX, RCX );
+			e->OrRegReg32 ( RAX, RAX );
+			
+			// if multiply overflow, then set result to +/-max and set flags
+			e->CmovSRegReg32 ( RAX, RCX );
+			e->MovReg32ImmX ( RCX, 0x8010 );
+			e->CmovNSRegReg32 ( RCX, 11 );
+			
+			
+			// set sign/mantissa
+			e->OrRegReg32 ( RAX, 9 );
+			
+			// or in the flag from the last overflow check
+			e->OrRegReg32 ( RCX, RDX );
+			
+			
+			// done
+			e->Jmp_NE ( 0, 1 );
+			//e->Jmp8_NE ( 0, 1 );
+			
+			
+			
+			
+			// *** perform the ADD operation *** //
+			
+			
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &b );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+
+			
+			//e->MovRegMem32 ( RAX, &a );
+			e->MovRegReg32 ( RAX, 8 );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 10, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 8, RAX );
+			e->CmovNERegReg32 ( RAX, 10 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+
+			
+			// finish here
+			e->SetJmpTarget ( 1 );
+			//e->SetJmpTarget8 ( 1 );
+
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->dACC.l, RAX );
+			break;
+#endif
+
+
 			
 		default:
 			return -1;
@@ -21527,6 +23934,42 @@ static long R5900::Recompiler::CVT_W_S ( R5900::Instruction::Format i, u32 Addre
 #endif
 			break;
 			
+#ifdef USE_NEW_CVT_W_S_CODE
+		case 1:
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			
+			//e->MovRegReg32 ( RCX, RAX );
+			//e->AndReg32ImmX ( RAX, 0x7f800000 );
+			//e->CmovNERegReg32 ( RAX, RCX );
+			
+			// move the registers now to floating point unit
+			e->movd_to_sse ( RAX, RAX );
+			
+			// convert single precision to signed 
+			e->cvttss2si ( RCX, RAX );
+			
+			
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			//e->CmovERegReg32 ( RDX, RAX );
+			e->XorReg32ImmX ( RDX, 0x7fffffff );
+			
+			// compare exponent of magnitude and maximize if needed
+			e->CmpReg32ImmX ( RAX, 0x4e800000 );
+			//e->MovReg32ImmX ( RAX, 0x7fffffff );
+			//e->CmovLERegReg32 ( RAX, RCX );
+			e->CmovLERegReg32 ( RDX, RCX );
+			//e->ShlRegImm32 ( RDX, 31 );
+			//e->OrRegReg32 ( RAX, RDX );
+			
+			// set result
+			ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RDX );
+			
+			
+			break;
+#endif
+			
 		default:
 			return -1;
 			break;
@@ -21565,6 +24008,29 @@ static long R5900::Recompiler::MAX_S ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_MAX_S_CODE
+		case 1:
+			//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+			//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+			// compare as integer and return original value?
+			//fResult = ( ( lfs > lft ) ? fs : ft );
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq ();
+			e->MovRegReg32 ( 9, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq ();
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->CmpRegReg32 ( RCX, RDX );
+			e->CmovGRegReg32 ( 8, 9 );
+			e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, 8 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21605,6 +24071,29 @@ static long R5900::Recompiler::MIN_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_MIN_S_CODE
+		case 1:
+			//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+			//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+			// compare as integer and return original value?
+			//fResult = ( ( lfs < lft ) ? fs : ft );
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->Cdq ();
+			e->MovRegReg32 ( 9, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->Cdq ();
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->CmpRegReg32 ( RCX, RDX );
+			e->CmovLRegReg32 ( 8, 9 );
+			e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, 8 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21644,6 +24133,14 @@ static long R5900::Recompiler::C_F_S ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_C_F_S_CODE
+		case 1:
+			// clears bit 23 in FCR31
+			//r->CPC1 [ 31 ] &= ~0x00800000;
+			ret = e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00800000 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21683,6 +24180,47 @@ static long R5900::Recompiler::C_EQ_S ( R5900::Instruction::Format i, u32 Addres
 #endif
 			break;
 			
+#ifdef USE_NEW_C_EQ_S_CODE
+		case 1:
+			//inline static long FlushConvertToComparableInt_f ( float& f1 )
+			//if ( ! ( lf1 & c_lFloat_ExpMask ) ) lf1 = 0;
+			//if ( lf1 < 0 ) lf1 = -( lf1 & 0x7fffffff );
+		
+			//fs = r->CPR1 [ i.Fs ].f;
+			//ft = r->CPR1 [ i.Ft ].f;
+			//lfs = PS2Float::FlushConvertToComparableInt_f ( fs );
+			//lft = PS2Float::FlushConvertToComparableInt_f ( ft );
+			//if ( lfs == lft ) r->CPC1 [ 31 ] |= 0x00800000; else r->CPC1 [ 31 ] &= ~0x00800000;
+			
+			// clear the flag first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00800000 );
+			
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->MovRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( RAX, RDX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RAX, RDX );
+
+			e->MovRegReg32 ( RCX, RAX );
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->MovRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( RAX, RDX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RAX, RDX );
+			
+			e->CmpRegReg32 ( RAX, RCX );
+			e->Set_E ( RAX );
+			e->Cbw ();
+			e->ShlRegImm32 ( RAX, 23 );
+			ret = e->OrMemReg32 ( &r->CPC1 [ 31 ], RAX );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21722,6 +24260,62 @@ static long R5900::Recompiler::C_LT_S ( R5900::Instruction::Format i, u32 Addres
 #endif
 			break;
 			
+#ifdef USE_NEW_C_LT_S_CODE
+		case 1:
+			//inline static long FlushConvertToComparableInt_f ( float& f1 )
+			//if ( ! ( lf1 & c_lFloat_ExpMask ) ) lf1 = 0;
+			//if ( lf1 < 0 ) lf1 = -( lf1 & 0x7fffffff );
+		
+			//fs = r->CPR1 [ i.Fs ].f;
+			//ft = r->CPR1 [ i.Ft ].f;
+			//lfs = PS2Float::FlushConvertToComparableInt_f ( fs );
+			//lft = PS2Float::FlushConvertToComparableInt_f ( ft );
+			//if ( lfs < lft ) r->CPC1 [ 31 ] |= 0x00800000; else r->CPC1 [ 31 ] &= ~0x00800000;
+			
+			// clear the flag first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00800000 );
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			//e->MovMemReg32 ( &r->testvar [ 0 ], RAX );
+			e->MovRegReg32 ( RDX, RAX );
+			//e->MovMemReg32 ( &r->testvar [ 1 ], RDX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			//e->MovMemReg32 ( &r->testvar [ 2 ], RAX );
+			e->CmovNERegReg32 ( RAX, RDX );
+			//e->MovMemReg32 ( &r->testvar [ 3 ], RAX );
+			e->Cdq ();
+			//e->MovMemReg32 ( &r->testvar [ 4 ], RDX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovMemReg32 ( &r->testvar [ 5 ], RAX );
+			e->XorRegReg32 ( RAX, RDX );
+			//e->MovMemReg32 ( &r->testvar [ 6 ], RAX );
+			
+			e->MovRegReg32 ( RCX, RAX );
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->MovRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( RAX, RDX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RAX, RDX );
+			//e->MovMemReg32 ( &r->testvar [ 7 ], RAX );
+			
+			//e->XorRegReg32 ( RDX, RDX );
+			e->CmpRegReg32 ( RAX, RCX );
+			//e->MovReg32ImmX ( RCX, 0x00800000 );
+			e->Set_L ( RAX );
+			e->Cbw ();
+			e->ShlRegImm32 ( RAX, 23 );
+			//e->MovMemReg32 ( &r->testvar [ 7 ], RAX );
+
+			//e->NegReg32 ( RDX );
+			//e->AndReg32ImmX ( RDX, 0x00800000 );
+			//e->CmovLRegReg32 ( RDX, RCX );
+			ret = e->OrMemReg32 ( &r->CPC1 [ 31 ], RAX );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21761,6 +24355,47 @@ static long R5900::Recompiler::C_LE_S ( R5900::Instruction::Format i, u32 Addres
 #endif
 			break;
 			
+#ifdef USE_NEW_C_LE_S_CODE
+		case 1:
+			//inline static long FlushConvertToComparableInt_f ( float& f1 )
+			//if ( ! ( lf1 & c_lFloat_ExpMask ) ) lf1 = 0;
+			//if ( lf1 < 0 ) lf1 = -( lf1 & 0x7fffffff );
+		
+			//fs = r->CPR1 [ i.Fs ].f;
+			//ft = r->CPR1 [ i.Ft ].f;
+			//lfs = PS2Float::FlushConvertToComparableInt_f ( fs );
+			//lft = PS2Float::FlushConvertToComparableInt_f ( ft );
+			//if ( lfs <= lft ) r->CPC1 [ 31 ] |= 0x00800000; else r->CPC1 [ 31 ] &= ~0x00800000;
+			
+			// clear the flag first
+			e->AndMem32ImmX ( &r->CPC1 [ 31 ], ~0x00800000 );
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			e->MovRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( RAX, RDX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RAX, RDX );
+			
+			e->MovRegReg32 ( RCX, RAX );
+
+			e->MovRegMem32 ( RAX, &r->CPR1 [ i.Fs ].u );
+			e->MovRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( RAX, RDX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RAX, RDX );
+			
+			e->CmpRegReg32 ( RAX, RCX );
+			e->Set_LE ( RAX );
+			e->Cbw ();
+			e->ShlRegImm32 ( RAX, 23 );
+			ret = e->OrMemReg32 ( &r->CPC1 [ 31 ], RAX );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -21807,6 +24442,23 @@ static long R5900::Recompiler::LQC2 ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_LQC2_CODE
+		case 1:
+			ret = Generate_Normal_Load ( i, Address, 0xf, (void*) Playstation2::DataBus::Read_t<0> );
+			
+			// store result //
+			
+			if ( i.Ft )
+			{
+				// store
+				e->movdqa_from_mem128 ( RAX, RAX, NO_INDEX, 0, 0 );
+				ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].uq0, RAX );
+			}
+			
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -21847,6 +24499,12 @@ static long R5900::Recompiler::SQC2 ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_SQC2_CODE
+		case 1:
+			ret = Generate_Normal_Store ( i, Address, 0xf, (void*) Playstation2::DataBus::Write_t<0> );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21891,6 +24549,27 @@ static long R5900::Recompiler::QMFC2_NI ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_QMFC2_NI_CODE
+		case 1:
+			if ( i.Rt )
+			{
+				switch ( i.Rd )
+				{
+					case 0:
+						e->MovMemImm64 ( &r->GPR [ i.Rt ].sq0, 0 );
+						e->MovMemImm64 ( &r->GPR [ i.Rt ].sq1, 0 );
+						e->MovMemImm32 ( &r->GPR [ i.Rt ].sw3, 0x3f800000 );
+						break;
+						
+					default:
+						e->movdqa_regmem ( RAX, &VU0::_VU0->vf [ i.Rd ].u );
+						e->movdqa_memreg ( &r->GPR [ i.Rt ].u, RAX );
+						break;
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -21922,6 +24601,9 @@ static long R5900::Recompiler::QMFC2_I ( R5900::Instruction::Format i, u32 Addre
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -21977,6 +24659,26 @@ static long R5900::Recompiler::QMTC2_NI ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_QMTC2_NI_CODE
+		case 1:
+			if ( i.Rd )
+			{
+				switch ( i.Rt )
+				{
+					case 0:
+						e->pxorregreg ( RAX, RAX );
+						e->movdqa_memreg ( &VU0::_VU0->vf [ i.Rd ].u, RAX );
+						break;
+						
+					default:
+						e->movdqa_regmem ( RAX, &r->GPR [ i.Rt ].u );
+						e->movdqa_memreg ( &VU0::_VU0->vf [ i.Rd ].u, RAX );
+						break;
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22009,6 +24711,9 @@ static long R5900::Recompiler::QMTC2_I ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22039,6 +24744,3717 @@ static long R5900::Recompiler::QMTC2_I ( R5900::Instruction::Format i, u32 Addre
 //{
 //}
 
+static long R5900::Recompiler::Generate_VABSp ( R5900::Instruction::Format i )
+{
+	long ret;
+	
+	ret = 1;
+	
+	if ( i.Ft && i.xyzw )
+	{
+		if ( !i.Fs )
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+				e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+			}
+			
+			ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+		}
+		else
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+			}
+			
+			e->pslldregimm ( RCX, 1 );
+			e->psrldregimm ( RCX, 1 );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+			}
+			
+			ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+		}
+	}
+	
+	return ret;
+}
+
+static long R5900::Recompiler::Generate_VABS ( R5900::Instruction::Format i, u32 Address, u32 Component )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( Component ^ 3 ) + 21 ) ) )
+	{
+		if ( !i.Ft )
+		{
+			// can't write to register zero
+			return 1;
+		}
+		else if ( !i.Fs )
+		{
+			if ( Component < 3 )
+			{
+				ret = e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + Component, 0 );
+			}
+			else
+			{
+				ret = e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + Component, 0x3f800000 );
+			}
+		}
+		else if ( i.Ft == i.Fs )
+		{
+			ret = e->AndMem32ImmX ( ( & VU0::_VU0->vf [ i.Fs ].sw0 ) + Component, 0x7fffffff );
+		}
+		else if ( i.Fd )
+		{
+			e->MovRegMem32 ( RAX, ( & VU0::_VU0->vf [ i.Fs ].sw0 ) + Component );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			ret = e->MovMemReg32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + Component, RAX );
+		}
+		
+	}
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMAXp ( R5900::Instruction::Format i, u32 *pFt, u32 FtComponent )
+{
+	//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+	//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+	// compare as integer and return original value?
+	//fResult = ( ( lfs > lft ) ? fs : ft );
+	long ret;
+	
+	ret = 1;
+	
+	
+	if ( i.Fd && i.xyzw )
+	{
+		e->movdqa_regmem ( RBX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( !pFt )
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		else
+		{
+			e->movd_regmem( RCX, pFt );
+		}
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Fd ].sw0 );
+		}
+		
+		e->movdqa_regreg ( RDX, RBX );
+		e->movdqa_regreg ( 4, RBX );
+		e->pslldregimm ( RDX, 1 );
+		e->psrldregimm ( RDX, 1 );
+		e->psradregimm ( 4, 31 );
+		e->pxorregreg ( RDX, 4 );
+		
+		if ( pFt )
+		{
+			// need to "broadcast" the value in sse ??
+			e->pshufdregregimm ( RCX, RCX, 0 );
+		}
+		
+		/*
+		e->movdqa_regreg ( 5, 4 );
+		e->pandregreg ( 4, RCX );
+		e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Fd ].sw0 );
+		e->pxorregreg ( 4, RBX );
+		*/
+		
+		e->movdqa_regreg ( RAX, RCX );
+		e->movdqa_regreg ( 4, RCX );
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+		e->psradregimm ( 4, 31 );
+		e->pxorregreg ( RAX, 4 );
+		
+		e->pcmpgtdregreg ( RAX, RDX );
+		e->pblendvbregreg ( RBX, RCX );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RBX, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Fd ].sw0, RBX );
+	}
+	
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMINp ( R5900::Instruction::Format i, u32 *pFt, u32 FtComponent )
+{
+	//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+	//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+	// compare as integer and return original value?
+	//fResult = ( ( lfs > lft ) ? fs : ft );
+	long ret;
+	
+	ret = 1;
+	
+	if ( i.Fd && i.xyzw )
+	{
+		e->movdqa_regmem ( RBX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( !pFt )
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		else
+		{
+			e->movd_regmem( RCX, pFt );
+		}
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Fd ].sw0 );
+		}
+		
+		e->movdqa_regreg ( RAX, RBX );
+		e->movdqa_regreg ( 4, RBX );
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+		e->psradregimm ( 4, 31 );
+		e->pxorregreg ( RAX, 4 );
+
+		if ( pFt )
+		{
+			// need to "broadcast" the value in sse ??
+			e->pshufdregregimm ( RCX, RCX, 0 );
+		}
+		
+		e->movdqa_regreg ( RDX, RCX );
+		e->movdqa_regreg ( 4, RCX );
+		e->pslldregimm ( RDX, 1 );
+		e->psrldregimm ( RDX, 1 );
+		e->psradregimm ( 4, 31 );
+		e->pxorregreg ( RDX, 4 );
+		
+		e->pcmpgtdregreg ( RAX, RDX );
+		e->pblendvbregreg ( RBX, RCX );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RBX, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Fd ].sw0, RBX );
+	}
+	
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VFTOIXp ( R5900::Instruction::Format i, u32 IX )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Ft && i.xyzw )
+	{
+		//e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+		e->movdqa_regmem ( RBX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		//if ( i.xyzw != 0xf )
+		//{
+		//	e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		//}
+
+		if ( IX )
+		{
+			e->MovRegImm32 ( RAX, IX << 23 );
+			e->movd_to_sse ( RCX, RAX );
+			e->pshufdregregimm ( RCX, RCX, 0 );
+			e->padddregreg ( RCX, RBX );
+		}
+		else
+		{
+			//e->MovRegReg32 ( RCX, RAX );
+			e->movdqa_regreg ( RCX, RBX );
+		}
+		
+		// move the registers now to floating point unit
+		//e->movd_to_sse ( RAX, RCX );
+		
+		// convert single precision to signed 
+		//e->cvttss2si ( RCX, RAX );
+		e->cvttps2dq_regreg ( RCX, RCX );
+		
+		//e->Cdq ();
+		//e->AndReg32ImmX ( RAX, 0x7f800000 );
+		//e->CmovERegReg32 ( RDX, RAX );
+		
+		
+		// compare exponent of magnitude and maximize if needed
+		//e->CmpReg32ImmX ( RAX, 0x4e800000 - ( IX << 23 ) );
+		//e->MovReg32ImmX ( RAX, 0x7fffffff );
+		//e->CmovLERegReg32 ( RAX, RCX );
+		//e->ShlRegImm32 ( RDX, 31 );
+		//e->OrRegReg32 ( RAX, RDX );
+		e->MovRegImm32 ( RAX, 0x4e800000 - ( IX << 23 ) - 1 );
+		e->movd_to_sse ( RDX, RAX );
+		e->pshufdregregimm ( RDX, RDX, 0 );
+		e->pcmpeqbregreg ( RAX, RAX );
+		e->psrldregimm ( RAX, 1 );
+		
+		e->movdqa_regreg ( 5, RAX );
+		
+		e->pandregreg ( RAX, RBX );
+		
+		e->psrldregimm ( RBX, 31 );
+		e->padddregreg ( RBX, 5 );
+
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		e->pcmpgtdregreg ( RAX, RDX );
+		
+		e->pblendvbregreg ( RCX, RBX );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RCX, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		// set result
+		//ret = e->MovMemReg32 ( ( & v->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VITOFXp ( R5900::Instruction::Format i, u32 FX )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Ft && i.xyzw )
+	{
+		//e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+		e->movdqa_regmem ( RBX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		// convert single precision to signed 
+		//e->cvtsi2sd ( RAX, RAX );
+		//e->movq_from_sse ( RAX, RAX );
+		e->cvtdq2pd ( RCX, RBX );
+				
+				
+		//e->MovReg64ImmX ( RCX, ( 896 << 23 ) + ( FX << 23 ) );
+		//e->Cqo();
+		e->MovReg64ImmX ( RAX, ( 896 << 23 ) + ( FX << 23 ) );
+		e->movq_to_sse ( RDX, RAX );
+		e->movddup_regreg ( RDX, RDX );
+		
+		//e->ShrRegImm64 ( RAX, 29 );
+		//e->CmovERegReg64 ( RCX, RDX );
+		//e->SubRegReg64 ( RAX, RCX );
+		e->movdqa_regreg ( 4, RCX );
+		e->psrlqregimm ( 4, 63 );
+		e->pslldregimm ( 4, 31 );
+		e->psrlqregimm ( RCX, 29 );
+		e->psubqregreg ( RCX, RDX );
+		e->porregreg ( RCX, 4 );
+		
+		e->pshufdregregimm ( 5, RBX, ( 3 << 2 ) | ( 2 << 0 ) );
+		e->cvtdq2pd ( 5, 5 );
+
+		e->movdqa_regreg ( RAX, 5 );
+		e->psrlqregimm ( RAX, 63 );
+		e->pslldregimm ( RAX, 31 );
+		e->psrlqregimm ( 5, 29 );
+		e->psubqregreg ( 5, RDX );
+		e->porregreg ( 5, RAX );
+		
+		// combine RCX (bottom) and 5 (top)
+		e->pshufdregregimm ( RCX, RCX, ( 2 << 2 ) | ( 0 << 0 ) );
+		e->pshufdregregimm ( RDX, 5, ( 2 << 6 ) | ( 0 << 4 ) );
+		e->pblendwregregimm ( RCX, RDX, 0xf0 );
+		
+		// load destination register
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		// clear zeros
+		e->pxorregreg ( RAX, RAX );
+		e->pcmpeqdregreg ( RAX, RBX );
+		e->pandnregreg ( RAX, RCX );
+		
+		// select result
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RAX, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		// store result
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RAX );
+		
+		//e->ShlRegImm32 ( RDX, 31 );
+		//e->OrRegReg32 ( RAX, RDX );
+				
+		// set result
+		//ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+	}
+
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMOVEp ( R5900::Instruction::Format i )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Ft && i.xyzw )
+	{
+		e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+			e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VMR32p ( R5900::Instruction::Format i )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Ft && i.xyzw )
+	{
+		e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		e->pshufdregregimm ( RCX, RCX, ( 0 << 6 ) | ( 3 << 4 ) | ( 2 << 2 ) | ( 1 << 0 ) );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+	}
+
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMFIRp ( R5900::Instruction::Format i )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Ft && i.xyzw )
+	{
+		// flush ps2 float to zero
+		if ( !( i.is & 0xf ) )
+		{
+			//e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+			}
+			
+			e->pxorregreg ( RCX, RCX );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+			}
+			
+			ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+		}
+		else
+		{
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, ( &VU0::_VU0->vi [ i.is & 0xf ].s ) );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+			}
+			
+			// sign-extend from 16-bit to 32-bit
+			e->Cwde();
+			
+			e->movd_to_sse ( RCX, RAX );
+			e->pshufdregregimm ( RCX, RCX, 0 );
+			
+			if ( i.xyzw != 0xf )
+			{
+				e->pblendwregregimm ( RCX, RAX, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+			}
+			
+			// set result
+			//ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			ret = e->movdqa_memreg ( & VU0::_VU0->vf [ i.Ft ].sw0, RCX );
+		}
+		
+	}
+
+	return ret;
+}
+
+
+
+
+static long R5900::Recompiler::Generate_VMTIRp ( R5900::Instruction::Format i )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( ( i.it & 0xf ) )
+	{
+		//v->Set_IntDelaySlot ( i.it & 0xf, (u16) v->vf [ i.Fs ].vuw [ i.fsf ] );
+		
+		// flush ps2 float to zero
+		if ( ( !i.Fs ) && ( i.fsf < 3 ) )
+		{
+			//e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+			e->MovMemImm32 ( & VU0::_VU0->vi [ i.it & 0xf ].u, 0 );
+		}
+		else
+		{
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, & VU0::_VU0->vf [ i.Fs ].vuw [ i.fsf ] );
+			e->AndRegImm32 ( RAX, 0xffff );
+			
+			// set result
+			ret = e->MovMemReg32 ( & VU0::_VU0->vi [ i.it & 0xf ].u, RAX );
+		}
+		
+	}
+
+	return ret;
+}
+
+
+// set bSub to 1 for subtraction
+static long R5900::Recompiler::Generate_VADDp ( u32 bSub, R5900::Instruction::Format i, u32 FtComponent, void *pFd, u32 *pFt )
+{
+	static const u64 c_lUpperBound = ( 24LL << 32 ) | ( 24LL );
+	static const u64 c_lLowerBound = ( 0xffffffe8LL << 32 ) | ( 0xffffffe8LL );
+	static const u64 c_lUFTest = ( 0x800000LL << 32 ) | ( 0x800000LL );
+	long ret;
+	
+	ret = 1;
+
+
+	if ( i.xyzw )
+	{
+		// load source regs
+		// but they need to be shuffled into reverse on load
+		e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( pFt )
+		{
+			e->movd_regmem ( RCX, pFt );
+		}
+		else
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		
+		//e->pshufdregmemimm ( RAX, & va, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		//e->pshufdregmemimm ( RCX, & vb, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		e->pshufdregregimm ( RAX, RAX, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		
+		if ( FtComponent < 4 )
+		{
+			e->pshufdregregimm ( RCX, RCX, ( FtComponent << 6 ) | ( FtComponent << 4 ) | ( FtComponent << 2 ) | ( FtComponent << 0 ) );
+		}
+		else
+		{
+			e->pshufdregregimm ( RCX, RCX, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		}
+		
+		// get exponents
+		e->movdqa_regreg ( RDX, RAX );
+		e->pslldregimm ( RDX, 1 );
+		e->psrldregimm ( RDX, 24 );
+		e->movdqa_regreg ( 4, RCX );
+		e->pslldregimm ( 4, 1 );
+		e->psrldregimm ( 4, 24 );
+
+		
+		// debug
+		//e->movdqa_memreg ( & v0, RDX );
+
+		// debug
+		//e->movdqa_memreg ( & v1, 4 );
+
+		// clear zero exponents ??
+		e->pxorregreg ( RBX, RBX );
+		e->pcmpeqdregreg ( RBX, RDX );
+		e->psrldregimm ( RBX, 1 );
+		e->pandnregreg ( RBX, RAX );
+		e->movdqa_regreg ( RAX, RBX );
+		e->pxorregreg ( RBX, RBX );
+		e->pcmpeqdregreg ( RBX, 4 );
+		e->psrldregimm ( RBX, 1 );
+		e->pandnregreg ( RBX, RCX );
+		e->movdqa_regreg ( RCX, RBX );
+		
+		
+		// get difference
+		e->psubdregreg ( RDX, 4 );
+		
+		
+		// if positive 24 or greater then zero Ft
+		e->movddup_regmem ( 5, &c_lUpperBound );
+		e->pcmpgtdregreg ( 5, RDX );
+		e->pandregreg ( RCX, 5 );
+
+
+		// if negative 24 or less, then zero Fs
+		e->movddup_regmem ( 5, &c_lLowerBound );
+		e->pcmpgtdregreg ( RDX, 5 );
+		e->pandregreg ( RAX, RDX );
+
+		
+		if ( i.xyzw & 0x5 )
+		{
+			// convert to double (round1)
+			e->movdqa_regreg ( RDX, RAX );
+			e->movdqa_regreg ( 4, RAX );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psrldregimm ( 4, 31 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( RDX, 4 );
+			
+			
+			e->movdqa_regreg ( 5, RCX );
+			e->movdqa_regreg ( 4, RCX );
+			e->psllqregimm ( 5, 33 );
+			e->psrlqregimm ( 5, 1 + 11 - 8 );
+			e->psrldregimm ( 4, 31 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( 5, 4 );
+			
+			
+			if ( bSub )
+			{
+				// subtract (round1)
+				e->subpdregreg ( RDX, 5 );
+			}
+			else
+			{
+				// add (round1)
+				e->addpdregreg ( RDX, 5 );
+			}
+			
+			
+			// merge result (round1) without sign into RAX, and sign into RCX
+			e->movdqa_regreg ( 4, RDX );
+			e->psrlqregimm ( 4, 63 );
+			e->pslldregimm ( 4, 31 );
+			//e->psllqregimm ( RDX, 4 );
+			e->psrlqregimm ( RDX, 29 );
+			e->pblendwregregimm ( RAX, RDX, 0x33 );
+			e->movdqa_regreg ( RBX, 4 );
+		}
+		
+		if ( i.xyzw & 0xa )
+		{
+			// convert to double (round2)
+			e->movdqa_regreg ( RDX, RAX );
+			e->movdqa_regreg ( 4, RAX );
+			e->psrlqregimm ( RDX, 32 );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( RDX, 4 );
+
+			
+			e->movdqa_regreg ( 5, RCX );
+			e->movdqa_regreg ( 4, RCX );
+			e->psrlqregimm ( 5, 32 );
+			e->psllqregimm ( 5, 33 );
+			e->psrlqregimm ( 5, 1 + 11 - 8 );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( 5, 4 );
+
+
+			// debug
+			//e->movdqa_memreg ( & v4, RAX );
+			//e->movdqa_memreg ( & v5, RCX );
+			
+			if ( bSub )
+			{
+				// subtract (round2)
+				e->subpdregreg ( RDX, 5 );
+			}
+			else
+			{
+				// add (round2)
+				e->addpdregreg ( RDX, 5 );
+			}
+			
+			// merge result (round2) without sign into RAX, and sign into RCX
+			e->movdqa_regreg ( 4, RDX );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->psllqregimm ( RDX, 3 );
+			//e->psrlqregimm ( RDX, 1 );
+			e->pblendwregregimm ( RAX, RDX, 0xcc );
+			e->pblendwregregimm ( RBX, 4, 0xcc );
+		}
+		
+		// pull overflow flags
+		e->movmskpsregreg ( RAX, RAX );
+		
+		// if overflow, then maximize result
+		e->movdqa_regreg ( RCX, RAX );
+		e->psradregimm ( RCX, 31 );
+		//e->psrldregimm ( RCX, 1 );
+		e->porregreg ( RAX, RCX );
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+
+		// debug
+		//e->movdqa_memreg ( & v1, RCX );
+
+		// test for zero (also zero flag on underflow)
+		e->pxorregreg ( RCX, RCX );
+		e->pcmpeqdregreg ( RCX, RAX );
+
+		// test for underflow
+		e->movddup_regmem ( RDX, &c_lUFTest );
+		e->pcmpgtdregreg ( RDX, RAX );
+		
+		// if underflow, then clear result (but keep sign ??)
+		e->movdqa_regreg ( 4, RDX );
+		e->pandnregreg ( 4, RAX );
+		
+		
+		// combine result with sign now
+		e->pslldregimm ( 4, 1 );
+		e->psrldregimm ( 4, 1 );
+		e->porregreg ( 4, RBX );
+
+		// not underflow if it is zero
+		// puts underflow in RAX
+		e->movdqa_regreg ( RAX, RCX );
+		e->pandnregreg( RAX, RDX );
+		
+		
+		
+		// clear sign flag if signed zero ?? unless underflow ??
+		// but test for underflow before testing for zero
+		// so and not zero, then and underflow
+		e->movdqa_regreg ( RDX, RCX );
+		e->pandnregreg ( RDX, RBX );
+		//e->pandregreg ( RDX, RAX );
+		
+		// pull sign flags
+		// RDX = sign flag
+		e->movmskpsregreg ( RCX, RDX );
+		
+		// zero flag is also set when underflow
+		// RAX = underflow flag, RCX = zero flag
+		e->porregreg ( RCX, RAX );
+		
+		// pull zero flags
+		e->movmskpsregreg ( RDX, RCX );
+		
+		// pull underflow flags
+		// RAX = underflow flag
+		e->movmskpsregreg ( 8, RAX );
+		
+		// set result
+		if ( i.xyzw != 0xf )
+		{
+			if ( pFd )
+			{
+				e->movdqa_regmem ( 5, pFd );
+			}
+			else
+			{
+				e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Fd ].sw0 );
+			}
+		}
+		
+		e->pshufdregregimm ( 4, 4, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( 4, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		if ( pFd )
+		{
+			e->movdqa_memreg ( pFd, 4 );
+		}
+		else
+		{
+			if ( i.Fd )
+			{
+				e->movdqa_memreg ( & VU0::_VU0->vf [ i.Fd ].sw0, 4 );
+			}
+		}
+		
+		// clear flags for vu units that do not operate
+		if ( i.xyzw != 0xf )
+		{
+			e->AndReg32ImmX ( RAX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RCX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RDX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( 8, ( i.Value >> 21 ) & 0xf );
+		}
+		
+		// set status flags
+		// RAX=overflow, RCX=sign, RDX=zero, 8=underflow
+		
+		// set overflow status flag
+		e->XorRegReg32 ( 9, 9 );
+		e->MovRegImm32 ( 10, 0x208 );
+		e->OrRegReg32 ( RAX, RAX );
+		e->CmovNERegReg32 ( 9, 10 );
+		
+		// set sign status flag
+		e->MovRegImm32 ( 10, 0x82 );
+		e->OrRegReg32 ( RCX, RCX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		// set zero status flag
+		e->MovRegImm32 ( 10, 0x41 );
+		e->OrRegReg32 ( RDX, RDX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+
+		// set underflow status flag
+		e->MovRegImm32 ( 10, 0x104 );
+		e->OrRegReg32 ( 8, 8 );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		// combine MAC flags
+		e->ShlRegImm32 ( RCX, 4 );
+		e->ShlRegImm32 ( 8, 8 );
+		e->ShlRegImm32 ( RAX, 12 );
+		
+		e->OrRegReg32 ( RAX, RCX );
+		e->OrRegReg32 ( RAX, RDX );
+		e->OrRegReg32 ( RAX, 8 );
+		
+		// set status flags (Reg 9)
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0xf );
+		e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, 9 );
+		
+		// set MAC flags (RAX)
+		ret = e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, RAX );
+	}
+	
+	
+	return ret;
+}
+
+
+
+//static long R5900::Recompiler::Generate_VMULp ( R5900::Instruction::Format i, u32 FtComponent, void *pFd, u32 *pFt )
+static long R5900::Recompiler::Generate_VMULp ( R5900::Instruction::Format i, u32 FtComponentp, void *pFd, u32 *pFt, u32 FsComponentp )
+{
+	static const unsigned long long c_llMinExpDbl = ( 896LL << 52 );
+	static const unsigned long long c_llExpMask = ( 0xffLL << 23 ) | ( 0xffLL << ( 23 + 32 ) );
+	static const u64 c_lUFTest = ( 0x800000LL << 32 ) | ( 0x800000LL );
+	
+	long ret;
+	
+	ret = 1;
+
+
+	if ( i.xyzw )
+	{
+		// load source regs
+		// but they need to be shuffled into reverse on load
+		e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( pFt )
+		{
+			e->movd_regmem ( RCX, pFt );
+		}
+		else
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		//e->pshufdregmemimm ( RAX, & va, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		//e->pshufdregmemimm ( RCX, & vb, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		e->pshufdregregimm ( RAX, RAX, FsComponentp );
+		
+		e->pshufdregregimm ( RCX, RCX, FtComponentp );
+
+
+		// get signs into RBX
+		e->movdqa_regreg ( RBX, RAX );
+		e->pxorregreg ( RBX, RCX );
+		
+		// clear signs
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+		e->pslldregimm ( RCX, 1 );
+		e->psrldregimm ( RCX, 1 );
+		
+		// clear zero exponents
+		e->pcmpeqbregreg ( RDX, RDX );
+		e->psrldregimm ( RDX, 9 );
+		e->movdqa_regreg ( 5, RAX );
+		e->pcmpgtdregreg ( 5, RDX );
+		e->pandregreg ( RAX, 5 );
+		e->pandregreg ( RCX, 5 );
+		e->movdqa_regreg ( 4, RCX );
+		e->pcmpgtdregreg ( 4, RDX );
+		e->pandregreg ( RAX, 4 );
+		e->pandregreg ( RCX, 4 );
+		
+		// get the non-zero results with logical and
+		e->pandregreg ( 4, 5 );
+		
+		// load constant into R5
+		e->movddup_regmem ( 5, & c_llMinExpDbl );
+		
+		// stuff into RBX with the signs for now
+		//e->psrldregimm ( 4, 1 );
+		//e->porregreg ( RBX, 4 );
+		
+		// get the non-zero flags
+		e->movmskpsregreg ( 8, 4 );
+
+		
+		// get exponents
+		//e->movdqa_regreg ( RDX, RAX );
+		//e->pslldregimm ( RDX, 1 );
+		//e->psrldregimm ( RDX, 24 );
+		//e->movdqa_regreg ( 4, RCX );
+		//e->pslldregimm ( 4, 1 );
+		//e->psrldregimm ( 4, 24 );
+
+
+		
+
+		// clear zero exponents ??
+		/*
+		e->movddup_regmem ( RDX, & c_llExpMask );
+		e->pcmpeqbregreg ( 5, 5 );
+		e->pxorregreg ( RBX, RBX );
+		e->movdqa_regreg ( 4, RAX );
+		e->pandregreg ( 4, RDX );
+		e->pcmpeqdregreg ( 4, RBX );
+		e->psrldregimm ( 4, 1 );
+		//e->pandnregreg ( RDX, RAX );
+		//e->movdqa_regreg ( RAX, RDX );
+		e->pxorregreg ( 4, 5 );
+		e->pandregreg ( RAX, 4 );
+		e->pandregreg ( RCX, 4 );
+
+		
+
+		
+		//e->movdqa_regreg ( 4, RCX );
+		e->pandregreg ( RDX, RCX );
+		e->pcmpeqdregreg ( RDX, RBX );
+		e->psrldregimm ( RDX, 1 );
+		//e->pandnregreg ( RDX, RCX );
+		//e->movdqa_regreg ( RCX, RDX );
+		e->pxorregreg ( 5, RDX );
+		e->pandregreg ( RAX, 5 );
+		e->pandregreg ( RCX, 5 );
+
+		// if result is zero, then overflow if both ops are not zero
+		// R4 has bits clear if zero (except sign)
+		// RDX has bits set if zero (except sign)
+		// R5 has bits clear if zero (except sign)
+		// want to know if both are non-zero, then set the bits
+		e->pandregreg ( 4, 5 );
+		e->pslldregimm ( 4, 1 );
+		e->psrldregimm ( 4, 1 );
+		
+		e->movddup_regmem ( 5, & c_llMinExpDbl );
+		
+		
+		// get signs into RBX
+		e->movdqa_regreg ( RBX, RAX );
+		e->pxorregreg ( RBX, RCX );
+		
+		// combine with non-zero ops flag for now
+		e->porregreg ( RBX, 4 );
+		*/
+		
+		// get difference
+		//e->psubdregreg ( RDX, 4 );
+		
+		
+		// if positive 24 or greater then zero Ft
+		//e->movddup_regmem ( 5, &c_lUpperBound );
+		//e->pcmpgtdregreg ( 5, RDX );
+		//e->pandregreg ( RCX, 5 );
+
+
+		// if negative 24 or less, then zero Fs
+		//e->movddup_regmem ( 5, &c_lLowerBound );
+		//e->pcmpgtdregreg ( RDX, 5 );
+		//e->pandregreg ( RAX, RDX );
+
+		
+		if ( i.xyzw & 0x5 )
+		{
+			// convert to double (round1)
+			e->movdqa_regreg ( RDX, RAX );
+			//e->movdqa_regreg ( 4, RAX );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			//e->psrldregimm ( 4, 31 );
+			//e->psllqregimm ( 4, 63 );
+			//e->porregreg ( RDX, 4 );
+			
+			
+			e->movdqa_regreg ( 4, RCX );
+			//e->movdqa_regreg ( 5, RCX );
+			e->psllqregimm ( 4, 33 );
+			e->psrlqregimm ( 4, 1 + 11 - 8 );
+			//e->psrldregimm ( 5, 31 );
+			//e->psllqregimm ( 5, 63 );
+			//e->porregreg ( 4, 5 );
+
+
+
+
+			// add to one arg
+			e->paddqregreg ( RDX, 5 );
+
+
+			
+			// multiply (round1)
+			e->mulpdregreg ( RDX, 4 );
+
+			
+
+			
+			// merge result (round1) without sign into RAX, and sign into RCX
+			//e->movdqa_regreg ( 4, RDX );
+			//e->psrlqregimm ( 4, 63 );
+			//e->pslldregimm ( 4, 31 );
+			e->psrlqregimm ( RDX, 29 );
+			e->pblendwregregimm ( RAX, RDX, 0x33 );
+			//e->movdqa_regreg ( RBX, 4 );
+		}
+		
+		if ( i.xyzw & 0xa )
+		{
+			// convert to double (round2)
+			e->movdqa_regreg ( RDX, RAX );
+			//e->movdqa_regreg ( 4, RAX );
+			e->psrlqregimm ( RDX, 32 );
+			//e->psllqregimm ( RDX, 33 );
+			//e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psllqregimm ( RDX, 29 );
+			//e->psrlqregimm ( 4, 63 );
+			//e->psllqregimm ( 4, 63 );
+			//e->porregreg ( RDX, 4 );
+
+			
+			e->movdqa_regreg ( 4, RCX );
+			//e->movdqa_regreg ( 5, RCX );
+			e->psrlqregimm ( 4, 32 );
+			//e->psllqregimm ( 4, 33 );
+			//e->psrlqregimm ( 4, 1 + 11 - 8 );
+			e->psllqregimm ( 4, 29 );
+			//e->psrlqregimm ( 5, 63 );
+			//e->psllqregimm ( 5, 63 );
+			//e->porregreg ( 4, 5 );
+
+			
+			// debug
+			//e->movdqa_memreg ( & v4, RAX );
+			//e->movdqa_memreg ( & v5, RCX );
+			
+			// add to one arg
+			e->paddqregreg ( RDX, 5 );
+			
+			// multiply (round2)
+			e->mulpdregreg ( RDX, 4 );
+
+			
+
+			
+			// merge result (round2) without sign into RAX, and sign into RCX
+			//e->movdqa_regreg ( 4, RDX );
+			//e->psrlqregimm ( 4, 63 );
+			//e->psllqregimm ( 4, 63 );
+			e->psllqregimm ( RDX, 3 );
+			//e->psrlqregimm ( RDX, 1 );
+			e->pblendwregregimm ( RAX, RDX, 0xcc );
+			//e->pblendwregregimm ( RBX, 4, 0xcc );
+		}
+		
+		// debug
+		//e->movdqa_memreg ( & v0, RDX );
+		
+		// debug
+		//e->movdqa_memreg ( & v1, 4 );
+
+		
+		// pull overflow flags
+		e->movmskpsregreg ( RAX, RAX );
+		
+		// if overflow, then maximize result
+		e->movdqa_regreg ( RCX, RAX );
+		e->psradregimm ( RCX, 31 );
+		//e->psrldregimm ( RCX, 1 );
+		e->porregreg ( RAX, RCX );
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+
+		// debug
+		//e->movdqa_memreg ( & v1, RCX );
+
+		// test for zero (also zero flag on underflow)
+		//e->pxorregreg ( RCX, RCX );
+		//e->pcmpeqdregreg ( RCX, RAX );
+
+		// test for zero
+		// puts zero flag in RDX
+		e->movddup_regmem ( RDX, &c_lUFTest );
+		e->pcmpgtdregreg ( RDX, RAX );
+		
+		// pull zero flags
+		e->movmskpsregreg ( RDX, RDX );
+
+		
+		// pull sign flags
+		e->movmskpsregreg ( RCX, RBX );
+		
+		
+		// pull non-zero op flags
+		//e->movdqa_regreg ( 4, RBX );
+		//e->pslldregimm ( 4, 31 );
+		//e->movmskpsregreg ( 8, 4 );
+		
+		
+		// and non-zero op flags with zero flags
+		e->AndRegReg32 ( 8, RDX );
+		
+		// clear sign flags where result is zero but not overflow
+		e->MovRegReg32 ( 9, 8 );
+		e->NotReg32 ( 9 );
+		e->AndRegReg32 ( 9, RDX );
+		e->NotReg32 ( 9 );
+		e->AndRegReg32 ( RCX, 9 );
+		
+		// check zero flag against non-zero ops
+		// zero flag is now in RDX
+		// puts underflow flag in R4
+		//e->movdqa_regreg ( 4, RBX );
+		//e->pslldregimm ( 4, 31 );
+		//e->pandregreg ( 4, RDX );
+		
+		// if zero/underflow, then clear result (but keep sign ??)
+		// puts result in RDX
+		//e->movdqa_regreg ( 4, RDX );
+		e->pandnregreg ( RDX, RAX );
+		
+		
+		// combine result with sign now
+		//e->pslldregimm ( RDX, 1 );
+		//e->psrldregimm ( RDX, 1 );
+		e->psrldregimm ( RBX, 31 );
+		e->pslldregimm ( RBX, 31 );
+		e->porregreg ( RDX, RBX );
+
+		// not underflow if it is zero
+		// puts underflow in RAX
+		//e->movdqa_regreg ( RAX, RCX );
+		//e->pandnregreg( RAX, RDX );
+		
+		
+		
+		// clear sign flag if zero ?? unless underflow ??
+		// but test for underflow before testing for zero
+		// so and not zero, then and underflow
+		// zero flag is in RDX
+		// underflow flag is in R4
+		// need zero and not underflow
+		//e->movdqa_regreg ( RDX, RCX );
+		//e->pandnregreg ( RDX, RBX );
+		//e->pandregreg ( RDX, RAX );
+		
+		// pull sign flags
+		// RDX = sign flag
+		//e->movmskpsregreg ( RCX, RDX );
+		
+		// zero flag is also set when underflow
+		// RAX = underflow flag, RCX = zero flag
+		//e->porregreg ( RCX, RAX );
+		
+		// pull zero flags
+		//e->movmskpsregreg ( RDX, RCX );
+		
+		// pull underflow flags
+		// RAX = underflow flag
+		//e->movmskpsregreg ( 8, RAX );
+		
+		// set result
+		if ( i.xyzw != 0xf )
+		{
+			if ( pFd )
+			{
+				e->movdqa_regmem ( 5, pFd );
+			}
+			else
+			{
+				e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Fd ].sw0 );
+			}
+		}
+		
+		e->pshufdregregimm ( RDX, RDX, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( RDX, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		if ( pFd )
+		{
+			e->movdqa_memreg ( pFd, RDX );
+		}
+		else
+		{
+			if ( i.Fd )
+			{
+				e->movdqa_memreg ( & VU0::_VU0->vf [ i.Fd ].sw0, RDX );
+			}
+		}
+
+		
+		// clear flags for vu units that do not operate
+		if ( i.xyzw != 0xf )
+		{
+			e->AndReg32ImmX ( RAX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RCX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RDX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( 8, ( i.Value >> 21 ) & 0xf );
+		}
+
+		
+		// set status flags
+		// RAX=overflow, RCX=sign, RDX=zero, 8=underflow
+		
+		// set overflow status flag
+		e->XorRegReg32 ( 9, 9 );
+		e->MovRegImm32 ( 10, 0x208 );
+		e->OrRegReg32 ( RAX, RAX );
+		e->CmovNERegReg32 ( 9, 10 );
+		
+		// set sign status flag
+		e->MovRegImm32 ( 10, 0x82 );
+		e->OrRegReg32 ( RCX, RCX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		// set zero status flag
+		e->MovRegImm32 ( 10, 0x41 );
+		e->OrRegReg32 ( RDX, RDX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+
+		// set underflow status flag
+		e->MovRegImm32 ( 10, 0x104 );
+		e->OrRegReg32 ( 8, 8 );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		// combine MAC flags
+		e->ShlRegImm32 ( RCX, 4 );
+		e->ShlRegImm32 ( 8, 8 );
+		e->ShlRegImm32 ( RAX, 12 );
+		
+		e->OrRegReg32 ( RAX, RCX );
+		e->OrRegReg32 ( RAX, RDX );
+		e->OrRegReg32 ( RAX, 8 );
+		
+		// set status flags (Reg 9)
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0xf );
+		e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, 9 );
+		
+		// set MAC flags (RAX)
+		ret = e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, RAX );
+	}
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMADDp ( u32 bSub, R5900::Instruction::Format i, u32 FtComponentp, void *pFd, u32 *pFt, u32 FsComponentp )
+{
+	static const unsigned long long c_llMinExpDbl = ( 896LL << 52 );
+	static const unsigned long long c_llExpMask = ( 0xffLL << 23 ) | ( 0xffLL << ( 23 + 32 ) );
+	static const u64 c_lUFTest = ( 0x800000LL << 32 ) | ( 0x800000LL );
+	
+	static const u64 c_lUpperBound = ( 24LL << 32 ) | ( 24LL );
+	static const u64 c_lLowerBound = ( 0xffffffe8LL << 32 ) | ( 0xffffffe8LL );
+	
+	long ret;
+	
+	ret = 1;
+
+
+	if ( i.xyzw )
+	{
+		// load source regs
+		// but they need to be shuffled into reverse on load
+		e->movdqa_regmem ( RAX, & VU0::_VU0->vf [ i.Fs ].sw0 );
+		
+		if ( pFt )
+		{
+			e->movd_regmem ( RCX, pFt );
+		}
+		else
+		{
+			e->movdqa_regmem ( RCX, & VU0::_VU0->vf [ i.Ft ].sw0 );
+		}
+		
+		//e->pshufdregmemimm ( RAX, & va, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		//e->pshufdregmemimm ( RCX, & vb, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 0 << 0 ) );
+		e->pshufdregregimm ( RAX, RAX, FsComponentp );
+		
+		e->pshufdregregimm ( RCX, RCX, FtComponentp );
+		
+
+
+
+		// get signs into RBX
+		e->movdqa_regreg ( RBX, RAX );
+		e->pxorregreg ( RBX, RCX );
+		
+		// clear signs
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+		e->pslldregimm ( RCX, 1 );
+		e->psrldregimm ( RCX, 1 );
+		
+		// clear zero exponents
+		e->pcmpeqbregreg ( RDX, RDX );
+		e->psrldregimm ( RDX, 9 );
+		e->movdqa_regreg ( 5, RAX );
+		e->pcmpgtdregreg ( 5, RDX );
+		e->pandregreg ( RAX, 5 );
+		e->pandregreg ( RCX, 5 );
+		e->movdqa_regreg ( 4, RCX );
+		e->pcmpgtdregreg ( 4, RDX );
+		e->pandregreg ( RAX, 4 );
+		e->pandregreg ( RCX, 4 );
+		
+		// get the non-zero results with logical and
+		e->pandregreg ( 4, 5 );
+		
+		// load constant into R5
+		e->movddup_regmem ( 5, & c_llMinExpDbl );
+		
+		// stuff into RBX with the signs for now
+		//e->psrldregimm ( 4, 1 );
+		//e->porregreg ( RBX, 4 );
+		
+		// get the non-zero flags
+		e->movmskpsregreg ( 10, 4 );
+
+
+
+
+		
+
+		
+		if ( i.xyzw & 0x5 )
+		{
+			// convert to double (round1)
+			e->movdqa_regreg ( RDX, RAX );
+			//e->movdqa_regreg ( 4, RAX );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			//e->psrldregimm ( 4, 31 );
+			//e->psllqregimm ( 4, 63 );
+			//e->porregreg ( RDX, 4 );
+			
+			
+			e->movdqa_regreg ( 4, RCX );
+			//e->movdqa_regreg ( 5, RCX );
+			e->psllqregimm ( 4, 33 );
+			e->psrlqregimm ( 4, 1 + 11 - 8 );
+			//e->psrldregimm ( 5, 31 );
+			//e->psllqregimm ( 5, 63 );
+			//e->porregreg ( 4, 5 );
+
+
+
+
+			// add to one arg
+			e->paddqregreg ( RDX, 5 );
+
+
+			
+			// multiply (round1)
+			e->mulpdregreg ( RDX, 4 );
+
+			
+
+			
+			// merge result (round1) without sign into RAX, and sign into RCX
+			//e->movdqa_regreg ( 4, RDX );
+			//e->psrlqregimm ( 4, 63 );
+			//e->pslldregimm ( 4, 31 );
+			e->psrlqregimm ( RDX, 29 );
+			e->pblendwregregimm ( RAX, RDX, 0x33 );
+			//e->movdqa_regreg ( RBX, 4 );
+		}
+		
+		if ( i.xyzw & 0xa )
+		{
+			// convert to double (round2)
+			e->movdqa_regreg ( RDX, RAX );
+			//e->movdqa_regreg ( 4, RAX );
+			e->psrlqregimm ( RDX, 32 );
+			//e->psllqregimm ( RDX, 33 );
+			//e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psllqregimm ( RDX, 29 );
+			//e->psrlqregimm ( 4, 63 );
+			//e->psllqregimm ( 4, 63 );
+			//e->porregreg ( RDX, 4 );
+
+			
+			e->movdqa_regreg ( 4, RCX );
+			//e->movdqa_regreg ( 5, RCX );
+			e->psrlqregimm ( 4, 32 );
+			//e->psllqregimm ( 4, 33 );
+			//e->psrlqregimm ( 4, 1 + 11 - 8 );
+			e->psllqregimm ( 4, 29 );
+			//e->psrlqregimm ( 5, 63 );
+			//e->psllqregimm ( 5, 63 );
+			//e->porregreg ( 4, 5 );
+
+			
+			// debug
+			//e->movdqa_memreg ( & v4, RAX );
+			//e->movdqa_memreg ( & v5, RCX );
+			
+			// add to one arg
+			e->paddqregreg ( RDX, 5 );
+			
+			// multiply (round2)
+			e->mulpdregreg ( RDX, 4 );
+
+			
+
+			
+			// merge result (round2) without sign into RAX, and sign into RCX
+			//e->movdqa_regreg ( 4, RDX );
+			//e->psrlqregimm ( 4, 63 );
+			//e->psllqregimm ( 4, 63 );
+			e->psllqregimm ( RDX, 3 );
+			//e->psrlqregimm ( RDX, 1 );
+			e->pblendwregregimm ( RAX, RDX, 0xcc );
+			//e->pblendwregregimm ( RBX, 4, 0xcc );
+		}
+		
+		// debug
+		//e->movdqa_memreg ( & v0, RDX );
+		
+		// debug
+		//e->movdqa_memreg ( & v1, 4 );
+
+		
+		// pull overflow flags
+		
+		// if overflow, then maximize result
+		// puts multiply overflow flag into RAX
+		// puts result into after overflow check into RCX
+		e->movdqa_regreg ( RCX, RAX );
+		e->psradregimm ( RAX, 31 );
+		
+		// save overflow flags for multiply result
+		//e->movdqa_memreg ( vOverflow, RCX );
+		
+		//e->psrldregimm ( RCX, 1 );
+		e->porregreg ( RCX, RAX );
+		e->pslldregimm ( RCX, 1 );
+		e->psrldregimm ( RCX, 1 );
+
+		// debug
+		//e->movdqa_memreg ( & v1, RCX );
+
+		// test for zero (also zero flag on underflow)
+		//e->pxorregreg ( RCX, RCX );
+		//e->pcmpeqdregreg ( RCX, RAX );
+
+		// test for zero
+		// puts zero flag in RDX
+		e->movddup_regmem ( RDX, &c_lUFTest );
+		e->pcmpgtdregreg ( RDX, RCX );
+
+
+		// save zero flags into R11
+		e->movmskpsregreg ( 11, RDX );
+		
+		
+		// check zero flag against non-zero ops
+		// zero flag is now in RDX
+		// puts underflow flag in R4
+		//e->movdqa_regreg ( 4, RBX );
+		//e->pslldregimm ( 4, 31 );
+		//e->pandregreg ( 4, RDX );
+		
+		// if zero/underflow, then clear result (but keep sign ??)
+		// puts result in RDX
+		//e->movdqa_regreg ( 4, RDX );
+		e->pandnregreg ( RDX, RCX );
+		
+		
+		// if result should be non-zero but is zero, then underflow
+		// underflow = nonzero and zero
+		// this puts underflow in RAX
+		//e->pandregreg ( RCX, 4 );
+		
+		// save flags for multiply underflow into R11
+		//e->movdqa_memreg ( & vUnderflow, RCX );
+		//e->movmskpsregreg ( 11, RCX );
+		
+		// this line has a multi-purpose
+		e->pcmpeqbregreg ( 4, 4 );
+		
+		// if MSUB and not MADD, then toggle sign
+		if ( bSub )
+		{
+			e->pxorregreg ( RBX, 4 );
+		}
+		
+		
+		// combine result with sign now
+		//e->pslldregimm ( RDX, 1 );
+		//e->psrldregimm ( RDX, 1 );
+		e->psrldregimm ( RBX, 31 );
+		e->pslldregimm ( RBX, 31 );
+		e->porregreg ( RDX, RBX );
+
+		
+		
+		
+		// get multiply underflow sticky status flag
+		e->AndRegReg32 ( 11, 10 );
+		
+		
+
+
+		// -----------------------------ADD ---------------------------
+
+
+		// load source regs
+		// but they need to be shuffled into reverse on load
+		//e->movdqa_regmem ( RAX, & va );
+		//e->movdqa_regmem ( RAX, RDX );
+		
+		
+
+
+		
+		//e->movdqa_regmem ( RCX, & vb );
+		e->movdqa_regmem ( RCX, &VU0::_VU0->dACC[ 0 ].l );
+		
+		//e->pshufdregregimm ( RAX, RAX, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		e->pshufdregregimm ( RCX, RCX, ( 0 << 6 ) | ( 1 << 4 ) | ( 2 << 2 ) | ( 3 << 0 ) );
+		
+		// check for multiply overflow
+		e->pblendvbregreg ( RCX, RDX );
+
+		
+		// debug
+		//e->movdqa_memreg ( & v0, RAX );
+		
+		// debug
+		//e->movdqa_memreg ( & v1, RCX );
+
+
+		
+		// check for accumulator +/-max
+		
+		// the multi-purpose line from above
+		//e->pcmpeqbregreg ( 4, 4 );
+		
+		e->psrldregimm ( 4, 1 );
+		e->movdqa_regreg ( RAX, 4 );
+		e->pandregreg ( 4, RCX );
+		e->pcmpeqdregreg ( RAX, 4 );
+		e->pblendvbregreg ( RDX, RCX );
+		
+		
+		
+		
+		// get exponents
+		
+		// no need to move into RDX in this case because it was here previously
+		e->movdqa_regreg ( RAX, RDX );
+		e->pslldregimm ( RDX, 1 );
+		e->psrldregimm ( RDX, 24 );
+		e->movdqa_regreg ( 4, RCX );
+		e->pslldregimm ( 4, 1 );
+		e->psrldregimm ( 4, 24 );
+
+		
+
+
+		// clear zero exponents ??
+		e->pxorregreg ( RBX, RBX );
+		e->pcmpeqdregreg ( RBX, RDX );
+		e->psrldregimm ( RBX, 1 );
+		e->pandnregreg ( RBX, RAX );
+		e->movdqa_regreg ( RAX, RBX );
+		e->pxorregreg ( RBX, RBX );
+		e->pcmpeqdregreg ( RBX, 4 );
+		e->psrldregimm ( RBX, 1 );
+		e->pandnregreg ( RBX, RCX );
+		e->movdqa_regreg ( RCX, RBX );
+		
+		
+		// get difference
+		e->psubdregreg ( RDX, 4 );
+		
+		
+		// if positive 24 or greater then zero Ft
+		e->movddup_regmem ( 5, &c_lUpperBound );
+		e->pcmpgtdregreg ( 5, RDX );
+		e->pandregreg ( RCX, 5 );
+
+
+		// if negative 24 or less, then zero Fs
+		e->movddup_regmem ( 5, &c_lLowerBound );
+		e->pcmpgtdregreg ( RDX, 5 );
+		e->pandregreg ( RAX, RDX );
+
+		
+		if ( i.xyzw & 0x5 )
+		{
+			// convert to double (round1)
+			e->movdqa_regreg ( RDX, RAX );
+			e->movdqa_regreg ( 4, RAX );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psrldregimm ( 4, 31 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( RDX, 4 );
+			
+			
+			e->movdqa_regreg ( 5, RCX );
+			e->movdqa_regreg ( 4, RCX );
+			e->psllqregimm ( 5, 33 );
+			e->psrlqregimm ( 5, 1 + 11 - 8 );
+			e->psrldregimm ( 4, 31 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( 5, 4 );
+			
+			
+			// add (round1)
+			e->addpdregreg ( RDX, 5 );
+			
+			
+			// merge result (round1) without sign into RAX, and sign into RCX
+			e->movdqa_regreg ( 4, RDX );
+			e->psrlqregimm ( 4, 63 );
+			e->pslldregimm ( 4, 31 );
+			//e->psllqregimm ( RDX, 4 );
+			e->psrlqregimm ( RDX, 29 );
+			e->pblendwregregimm ( RAX, RDX, 0x33 );
+			e->movdqa_regreg ( RBX, 4 );
+		}
+		
+		if ( i.xyzw & 0xa )
+		{
+			// convert to double (round2)
+			e->movdqa_regreg ( RDX, RAX );
+			e->movdqa_regreg ( 4, RAX );
+			e->psrlqregimm ( RDX, 32 );
+			e->psllqregimm ( RDX, 33 );
+			e->psrlqregimm ( RDX, 1 + 11 - 8 );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( RDX, 4 );
+
+			
+			e->movdqa_regreg ( 5, RCX );
+			e->movdqa_regreg ( 4, RCX );
+			e->psrlqregimm ( 5, 32 );
+			e->psllqregimm ( 5, 33 );
+			e->psrlqregimm ( 5, 1 + 11 - 8 );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->porregreg ( 5, 4 );
+
+
+			// debug
+			//e->movdqa_memreg ( & v4, RAX );
+			//e->movdqa_memreg ( & v5, RCX );
+			
+			
+			// add (round2)
+			e->addpdregreg ( RDX, 5 );
+
+			
+			// merge result (round2) without sign into RAX, and sign into RCX
+			e->movdqa_regreg ( 4, RDX );
+			e->psrlqregimm ( 4, 63 );
+			e->psllqregimm ( 4, 63 );
+			e->psllqregimm ( RDX, 3 );
+			//e->psrlqregimm ( RDX, 1 );
+			
+			// want to merge into RDX in this case since pblendvb is coming up
+			e->pblendwregregimm ( RAX, RDX, 0xcc );
+			
+			
+			e->pblendwregregimm ( RBX, 4, 0xcc );
+		}
+		
+		
+		// pull overflow flags
+		e->movmskpsregreg ( RAX, RAX );
+		
+		// if overflow, then maximize result
+		e->movdqa_regreg ( RCX, RAX );
+		e->psradregimm ( RCX, 31 );
+		//e->psrldregimm ( RCX, 1 );
+		e->porregreg ( RAX, RCX );
+		e->pslldregimm ( RAX, 1 );
+		e->psrldregimm ( RAX, 1 );
+
+		// debug
+		//e->movdqa_memreg ( & v1, RCX );
+
+		// test for zero (also zero flag on underflow)
+		e->pxorregreg ( RCX, RCX );
+		e->pcmpeqdregreg ( RCX, RAX );
+
+		// test for underflow
+		e->movddup_regmem ( RDX, &c_lUFTest );
+		e->pcmpgtdregreg ( RDX, RAX );
+		
+		// if underflow, then clear result (but keep sign ??)
+		e->movdqa_regreg ( 4, RDX );
+		e->pandnregreg ( 4, RAX );
+		
+		
+		// combine result with sign now
+		e->pslldregimm ( 4, 1 );
+		e->psrldregimm ( 4, 1 );
+		e->porregreg ( 4, RBX );
+
+		// not underflow if it is zero
+		// puts underflow in RAX
+		e->movdqa_regreg ( RAX, RCX );
+		e->pandnregreg( RAX, RDX );
+		
+		
+		
+		// clear sign flag if signed zero ?? unless underflow ??
+		// but test for underflow before testing for zero
+		// so and not zero, then and underflow
+		e->movdqa_regreg ( RDX, RCX );
+		e->pandnregreg ( RDX, RBX );
+		//e->pandregreg ( RDX, RAX );
+		
+		// pull sign flags
+		// RDX = sign flag
+		e->movmskpsregreg ( RCX, RDX );
+		
+		// zero flag is also set when underflow
+		// RAX = underflow flag, RCX = zero flag
+		e->porregreg ( RCX, RAX );
+		
+		// pull zero flags
+		e->movmskpsregreg ( RDX, RCX );
+		
+		// pull underflow flags
+		// RAX = underflow flag
+		e->movmskpsregreg ( 8, RAX );
+		
+		// set result
+		if ( i.xyzw != 0xf )
+		{
+			if ( pFd )
+			{
+				e->movdqa_regmem ( 5, pFd );
+			}
+			else
+			{
+				e->movdqa_regmem ( 5, & VU0::_VU0->vf [ i.Fd ].sw0 );
+			}
+		}
+		
+		e->pshufdregregimm ( 4, 4, 0x1b );	//FdComponentp );
+		
+		if ( i.xyzw != 0xf )
+		{
+			e->pblendwregregimm ( 4, 5, ~( ( i.destx * 0x03 ) | ( i.desty * 0x0c ) | ( i.destz * 0x30 ) | ( i.destw * 0xc0 ) ) );
+		}
+		
+		if ( pFd )
+		{
+			e->movdqa_memreg ( pFd, 4 );
+		}
+		else
+		{
+			if ( i.Fd )
+			{
+				e->movdqa_memreg ( & VU0::_VU0->vf [ i.Fd ].sw0, 4 );
+			}
+		}
+
+		
+		// clear flags for vu units that do not operate
+		if ( i.xyzw != 0xf )
+		{
+			e->AndReg32ImmX ( RAX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RCX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( RDX, ( i.Value >> 21 ) & 0xf );
+			e->AndReg32ImmX ( 8, ( i.Value >> 21 ) & 0xf );
+		
+			// this is for madd/msub
+			e->AndReg32ImmX ( 11, ( i.Value >> 21 ) & 0xf );
+		}
+		
+		// set status flags
+		// RAX=overflow, RCX=sign, RDX=zero, 8=underflow
+		
+		// set overflow status flag
+		e->XorRegReg32 ( 9, 9 );
+		e->MovRegImm32 ( 10, 0x208 );
+		e->OrRegReg32 ( RAX, RAX );
+		e->CmovNERegReg32 ( 9, 10 );
+		
+		// set sign status flag
+		e->MovRegImm32 ( 10, 0x82 );
+		e->OrRegReg32 ( RCX, RCX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		// set zero status flag
+		e->MovRegImm32 ( 10, 0x41 );
+		e->OrRegReg32 ( RDX, RDX );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+
+		// set underflow status flag
+		e->MovRegImm32 ( 10, 0x104 );
+		e->OrRegReg32 ( 8, 8 );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		
+		// set multiply underflow sticky status flag
+		e->MovRegImm32 ( 10, 0x100 );
+		e->OrRegReg32 ( 11, 11 );
+		e->CmovERegReg32 ( 10, 9 );
+		e->OrRegReg32 ( 9, 10 );
+		
+		
+		// combine MAC flags
+		e->ShlRegImm32 ( RCX, 4 );
+		e->ShlRegImm32 ( 8, 8 );
+		e->ShlRegImm32 ( RAX, 12 );
+		
+		e->OrRegReg32 ( RAX, RCX );
+		e->OrRegReg32 ( RAX, RDX );
+		e->OrRegReg32 ( RAX, 8 );
+		
+		// set status flags (Reg 9)
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0xf );
+		e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, 9 );
+		
+		// set MAC flags (RAX)
+		e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, RAX );
+	}
+	
+	return ret;
+}
+
+
+
+
+static long R5900::Recompiler::Generate_VMAX ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( !i.Fd )
+		{
+			// can't write to register zero
+			return 1;
+		}
+		else
+		{
+			//e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].uw0 ) + Component );
+			//e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].uw0 ) + Component, RAX );
+			
+			//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+			//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+			// compare as integer and return original value?
+			//fResult = ( ( lfs > lft ) ? fs : ft );
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					e->XorRegReg32 ( RAX, RAX );
+				}
+				else
+				{
+					e->MovRegImm32 ( RAX, 0x3f800000 );
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			}
+			
+			e->Cdq ();
+			e->MovRegReg32 ( 9, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				if ( !i.Ft )
+				{
+					if ( FtComponent < 3 )
+					{
+						e->XorRegReg32 ( RAX, RAX );
+					}
+					else
+					{
+						e->MovRegImm32 ( RAX, 0x3f800000 );
+					}
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+			}
+			
+			e->Cdq ();
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->CmpRegReg32 ( RCX, RDX );
+			e->CmovGRegReg32 ( 8, 9 );
+			ret = e->MovMemReg32 ( ( & VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 8 );
+		}
+		
+	}
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMIN ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( !i.Fd )
+		{
+			// can't write to register zero
+			return 1;
+		}
+		else
+		{
+			//e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].uw0 ) + Component );
+			//e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].uw0 ) + Component, RAX );
+			
+			//lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
+			//lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+			// compare as integer and return original value?
+			//fResult = ( ( lfs > lft ) ? fs : ft );
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					e->XorRegReg32 ( RAX, RAX );
+				}
+				else
+				{
+					e->MovRegImm32 ( RAX, 0x3f800000 );
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			}
+			
+			e->Cdq ();
+			e->MovRegReg32 ( 9, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->MovRegReg32 ( RCX, RDX );
+			
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				if ( !i.Ft )
+				{
+					if ( FtComponent < 3 )
+					{
+						e->XorRegReg32 ( RAX, RAX );
+					}
+					else
+					{
+						e->MovRegImm32 ( RAX, 0x3f800000 );
+					}
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+			}
+			
+			e->Cdq ();
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->XorRegReg32 ( RDX, RAX );
+			e->CmpRegReg32 ( RCX, RDX );
+			e->CmovLRegReg32 ( 8, 9 );
+			ret = e->MovMemReg32 ( ( & VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 8 );
+		}
+		
+	}
+	
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VFTOI0 ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					//e->XorRegReg32 ( RAX, RAX );
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				}
+				else
+				{
+					//e->MovRegImm32 ( RAX, 1 );
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 1 );
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Fs ].sw0 );
+				
+				//e->MovRegReg32 ( RCX, RAX );
+				//e->AndReg32ImmX ( RAX, 0x7f800000 );
+				//e->CmovNERegReg32 ( RAX, RCX );
+				
+				// move the registers now to floating point unit
+				e->movd_to_sse ( RAX, RAX );
+				
+				// convert single precision to signed 
+				e->cvttss2si ( RCX, RAX );
+				
+				
+				e->Cdq ();
+				e->AndReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RDX, RAX );
+				
+				// compare exponent of magnitude and maximize if needed
+				e->CmpReg32ImmX ( RAX, 0x4e800000 );
+				e->MovReg32ImmX ( RAX, 0x7fffffff );
+				e->CmovLERegReg32 ( RAX, RCX );
+				e->ShlRegImm32 ( RDX, 31 );
+				e->OrRegReg32 ( RAX, RDX );
+				
+				// set result
+				ret = e->MovMemReg32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VFTOIX ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent, u32 IX )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				}
+				else
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 1 << IX );
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				//e->MovRegReg32 ( RCX, RAX );
+				//e->AndReg32ImmX ( RAX, 0x7f800000 );
+				//e->CmovNERegReg32 ( RAX, RCX );
+				
+				e->MovRegReg32 ( RCX, RAX );
+				e->AddReg32ImmX ( RCX, IX << 23 );
+				
+				// move the registers now to floating point unit
+				e->movd_to_sse ( RAX, RCX );
+				
+				// convert single precision to signed 
+				e->cvttss2si ( RCX, RAX );
+				
+				
+				e->Cdq ();
+				e->AndReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RDX, RAX );
+				//e->CmovERegReg32 ( RCX, RAX );
+				
+				// compare exponent of magnitude and maximize if needed
+				e->CmpReg32ImmX ( RAX, 0x4e800000 - ( IX << 23 ) );
+				e->MovReg32ImmX ( RAX, 0x7fffffff );
+				e->CmovLERegReg32 ( RAX, RCX );
+				e->ShlRegImm32 ( RDX, 31 );
+				e->OrRegReg32 ( RAX, RDX );
+				
+				// set result
+				ret = e->MovMemReg32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VITOFX ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent, u32 FX )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				}
+				else
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0x4e7e0000 );
+				}
+			}
+			else
+			{
+				// flush ps2 float to zero
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				// convert single precision to signed 
+				e->cvtsi2sd ( RAX, RAX );
+				e->movq_from_sse ( RAX, RAX );
+				
+				
+				e->MovReg64ImmX ( RCX, ( 896 << 23 ) + ( FX << 23 ) );
+				e->Cqo();
+				e->ShrRegImm64 ( RAX, 29 );
+				e->CmovERegReg64 ( RCX, RDX );
+				e->SubRegReg64 ( RAX, RCX );
+				
+				
+				//e->CmovSRegReg32 ( RAX, RDX );
+				e->ShlRegImm32 ( RDX, 31 );
+				e->OrRegReg32 ( RAX, RDX );
+				
+				// set result
+				ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VMOVE ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				}
+				else
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0x3f800000 );
+				}
+			}
+			else if ( i.Ft != i.Fs )
+			{
+				// flush ps2 float to zero
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				// set result
+				ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VMR32_Load ( R5900::Instruction::Format i, u32 Address, u32 FsComponent )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FsComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				//if ( FsComponent < 3 )
+				//{
+				//	e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				//}
+				//else
+				//{
+				//	e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0x3f800000 );
+				//}
+			}
+			else
+			{
+				switch ( FsComponent )
+				{
+					case 0:
+						e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						break;
+				
+					case 1:
+						e->MovRegMem32 ( RCX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						break;
+					case 2:
+						e->MovRegMem32 ( RDX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						break;
+					case 3:
+						e->MovRegMem32 ( 8, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						break;
+				}
+				
+				// set result
+				//ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VMR32_Store ( R5900::Instruction::Format i, u32 Address, u32 FtComponent )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.Fs )
+			{
+				if ( FtComponent != 2 )
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+				}
+				else
+				{
+					e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0x3f800000 );
+				}
+			}
+			else
+			{
+				switch ( FtComponent )
+				{
+					case 0:
+						//e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+						break;
+					case 1:
+						//e->MovRegMem32 ( RCX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RCX );
+						break;
+					case 2:
+						//e->MovRegMem32 ( RDX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RDX );
+						break;
+					case 3:
+						//e->MovRegMem32 ( 8, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + ( ( FsComponent + 1 ) & 3 ) );
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 8 );
+						break;
+				}
+				
+				// set result
+				//ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VMFIR ( R5900::Instruction::Format i, u32 Address, u32 FtComponent )
+{
+	long ret;
+	
+	ret = 1;
+
+	if ( i.Value & ( 1 << ( ( FtComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( i.Ft )
+		{
+			// flush ps2 float to zero
+			if ( !i.is )
+			{
+				e->MovMemImm32 ( ( & VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, 0 );
+			}
+			else
+			{
+				// flush ps2 float to zero
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vi [ i.is ].s ) );
+				
+				// sign-extend from 16-bit to 32-bit
+				e->Cwde();
+				
+				// set result
+				ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent, RAX );
+			}
+			
+		}
+	}
+
+	return ret;
+}
+
+
+static long R5900::Recompiler::Generate_VADD ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+
+
+	// only clear non-sticky bits in status flag the first go around
+	// also clear MAC flag (set to zero for components that are not calculated)
+	if ( !FdComponent )
+	{
+		// clear bits 14 and 15 in the flag register first
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		// clear MAC flags
+		//ret = e->MovMemImm32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 0 );
+		
+		// R10 will be MAC flag
+		e->XorRegReg32 ( 10, 10 );
+		
+		// R11 will be zero register
+		e->XorRegReg32 ( 11, 11 );
+	}
+
+
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+		// clear bits 14 and 15 in the flag register first
+		//e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		if ( ( !i.Fs ) && ( FsComponent < 3 ) )
+		{
+			// Fs is zero register
+			
+			if ( ( !i.Ft ) && ( !pFt ) )
+			{
+				if ( FtComponent < 3 )
+				{
+					// set zero flag
+					ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+					
+					if ( i.Fd )
+					{
+						// set 0x00000000 as result
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 11 );
+					}
+				}
+				else
+				{
+					if ( i.Fd )
+					{
+						// set 0x3f800000 as result
+						ret = e->MovMemImm32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 0x3f800000 );
+					}
+				}
+			}
+			else
+			{
+				if ( pFt )
+				{
+					e->MovRegMem32 ( RAX, pFt );
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->OrRegReg32 ( RAX, RAX );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else if ( ( !i.Ft ) && ( !pFt ) && ( FtComponent < 3 ) )
+		{
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					// set zero flag
+					ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+					
+					if ( i.Fd )
+					{
+						// set 0x00000000 as result
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 11 );
+					}
+				}
+				else
+				{
+					if ( i.Fd )
+					{
+						// set 0x3f800000 as result
+						ret = e->MovMemImm32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 0x3f800000 );
+					}
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->OrRegReg32 ( RAX, RAX );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else
+		{
+			
+			// flush ps2 float to zero
+			
+			// pshufl+pshufh
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+			}
+			
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			//e->CmovNERegReg32 ( RAX, 10 );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			
+			// set sign MAC flag
+			
+			// put MAC flag in R8
+			
+			// sign flag
+			e->MovReg32ImmX ( 8, 0x0010 << ( FdComponent ^ 3 ) );
+			
+			// clear sign flags if not sign
+			e->CmovNSRegReg32 ( 8, 11 );
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// set MAC flag for underflow and zero in R10
+			
+			// zero MAC flag
+			e->MovReg32ImmX ( 9, 0x0001 << ( FdComponent ^ 3 ) );
+			
+			// if zero, then put in zero flag
+			e->CmovERegReg32 ( 8, 9 );
+			
+			// underflow+zero MAC flag
+			e->MovReg32ImmX ( 9, 0x0101 << ( FdComponent ^ 3 ) );
+			
+			
+			// if zero or underflow, then clear result
+			
+			// underflow status flag is 0x4 and sticky flag is 0x100 = 0x104
+			//e->MovReg32ImmX ( RCX, 0x104 );
+			
+			// zero status flag is 0x1 and sticky flag is 0x40 = 0x41
+			//e->MovReg32ImmX ( 8, 0x41 );
+			
+			// check for zero
+			//e->OrRegReg32 ( RAX, RAX );
+			
+			// if zero, then not underflow
+			//e->CmovERegReg32 ( RCX, RAX );
+			//e->CmovERegReg32 ( 9, RAX );
+			
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			//e->CmovAERegReg32 ( RCX, 11 );
+			
+			// if underflow, then set result to zero
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// if above or equal, then not underflow or zero
+			//e->CmovAERegReg32 ( 8, 11 );
+			e->CmovAERegReg32 ( 9, 11 );
+			//e->CmovAERegReg32 ( 10, 11 );
+			
+			// combine underflow and zero MAC flags
+			e->OrRegReg32 ( 8, 9 );
+			
+			
+			// check for overflow
+			
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmpRegReg32 ( RAX, RCX );
+			
+			// if unsigned above, then overflow
+			e->CmovARegReg32 ( RAX, RCX );
+			//e->CmovARegReg32 ( RCX, 9 );
+			
+			// set MAC flag for overflow (if overflow, then definitely not zero or underflow)
+			e->MovReg32ImmX ( 9, 0x1000 << ( FdComponent ^ 3 ) );
+			e->CmovBERegReg32 ( 9, 11 );
+			
+			// combine MAC flags
+			e->OrRegReg32 ( 8, 9 );
+			
+			// set MAC flags
+			//e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 8 );
+			e->OrRegReg32 ( 10, 8 );
+			
+			// set sign
+			//e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			if ( pFd )
+			{
+				ret = e->MovMemReg32 ( pFd, RAX );
+			}
+			else
+			{
+				// don't write to the zero register
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+			
+		}
+		
+	}
+
+
+	if ( FdComponent == 3 )
+	{
+		// set MAC flags
+		e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 10 );
+		
+		// MAC flag is in R10
+		
+		// zero flag
+		e->MovReg32ImmX ( RAX, 0x41 );
+		e->TestReg32ImmX ( 10, 0x000f );
+		e->CmovERegReg32 ( RAX, 11 );
+		
+		// sign flag
+		e->MovReg32ImmX ( RCX, 0x82 );
+		e->TestReg32ImmX ( 10, 0x00f0 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+
+		// underflow flag
+		e->MovReg32ImmX ( RCX, 0x104 );
+		e->TestReg32ImmX ( 10, 0x0f00 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// overflow flag
+		e->MovReg32ImmX ( RCX, 0x208 );
+		e->TestReg32ImmX ( 10, 0xf000 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// set status flag
+		ret = e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RAX );
+	}
+
+
+	
+	return ret;
+}
+
+
+
+static long R5900::Recompiler::Generate_VSUB ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// only clear non-sticky bits in status flag the first go around
+	// also clear MAC flag (set to zero for components that are not calculated)
+	if ( !FdComponent )
+	{
+		// clear bits 14 and 15 in the flag register first
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		// clear MAC flags
+		//ret = e->MovMemImm32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 0 );
+		
+		// R10 will be MAC flag
+		e->XorRegReg32 ( 10, 10 );
+		
+		// R11 will be zero register
+		e->XorRegReg32 ( 11, 11 );
+	}
+
+
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+		// clear bits 14 and 15 in the flag register first
+		//e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		if ( ( !i.Fs ) && ( FsComponent < 3 ) )
+		{
+			// Fs is zero register
+			
+			if ( ( !i.Ft ) && ( !pFt ) )
+			{
+				if ( FtComponent < 3 )
+				{
+					// set zero flag
+					ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+					
+					if ( i.Fd )
+					{
+						// set 0x00000000 as result
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 11 );
+					}
+				}
+				else
+				{
+					// set sign flag
+					ret = e->OrReg32ImmX ( 10, 0x0010 << ( FdComponent ^ 3 ) );
+					
+					if ( i.Fd )
+					{
+						// set 0x3f800000 as result
+						ret = e->MovMemImm32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 0xbf800000 );
+					}
+				}
+			}
+			else
+			{
+				if ( pFt )
+				{
+					e->MovRegMem32 ( RAX, pFt );
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->XorReg32ImmX ( RAX, 0x80000000 );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				e->CmovERegReg32 ( RAX, 11 );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else if ( ( !i.Ft ) && ( !pFt ) && ( FtComponent < 3 ) )
+		{
+			if ( !i.Fs )
+			{
+				if ( FsComponent < 3 )
+				{
+					// set zero flag
+					ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+					
+					if ( i.Fd )
+					{
+						// set 0x00000000 as result
+						ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 11 );
+					}
+				}
+				else
+				{
+					if ( i.Fd )
+					{
+						// set 0x3f800000 as result
+						ret = e->MovMemImm32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, 0x3f800000 );
+					}
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->OrRegReg32 ( RAX, RAX );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else
+		{
+			
+			// flush ps2 float to zero
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+			}
+			
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+			
+
+			e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			//e->CmovNERegReg32 ( RAX, 10 );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->subsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			
+			// set sign MAC flag
+			
+			// put MAC flag in R8
+			
+			// sign flag
+			e->MovReg32ImmX ( 8, 0x0010 << ( FdComponent ^ 3 ) );
+			
+			// clear sign flags if not sign
+			e->CmovNSRegReg32 ( 8, 11 );
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// set MAC flag for underflow and zero in R10
+			
+			// zero MAC flag
+			e->MovReg32ImmX ( 9, 0x0001 << ( FdComponent ^ 3 ) );
+			
+			// if zero, then put in zero flag
+			e->CmovERegReg32 ( 8, 9 );
+			
+			// underflow+zero MAC flag
+			e->MovReg32ImmX ( 9, 0x0101 << ( FdComponent ^ 3 ) );
+			
+			
+			// if zero or underflow, then clear result
+			
+			// underflow status flag is 0x4 and sticky flag is 0x100 = 0x104
+			//e->MovReg32ImmX ( RCX, 0x104 );
+			
+			// zero status flag is 0x1 and sticky flag is 0x40 = 0x41
+			//e->MovReg32ImmX ( 8, 0x41 );
+			
+			// check for zero
+			//e->OrRegReg32 ( RAX, RAX );
+			
+			// if zero, then not underflow
+			//e->CmovERegReg32 ( RCX, RAX );
+			//e->CmovERegReg32 ( 9, RAX );
+			
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			//e->CmovAERegReg32 ( RCX, 11 );
+			
+			// if underflow, then set result to zero
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// if above or equal, then not underflow or zero
+			//e->CmovAERegReg32 ( 8, 11 );
+			e->CmovAERegReg32 ( 9, 11 );
+			//e->CmovAERegReg32 ( 10, 11 );
+			
+			// combine underflow and zero MAC flags
+			e->OrRegReg32 ( 8, 9 );
+			
+			
+			// check for overflow
+			
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmpRegReg32 ( RAX, RCX );
+			
+			// if unsigned above, then overflow
+			e->CmovARegReg32 ( RAX, RCX );
+			//e->CmovARegReg32 ( RCX, 9 );
+			
+			// set MAC flag for overflow (if overflow, then definitely not zero or underflow)
+			e->MovReg32ImmX ( 9, 0x1000 << ( FdComponent ^ 3 ) );
+			e->CmovBERegReg32 ( 9, 11 );
+			
+			// combine MAC flags
+			e->OrRegReg32 ( 8, 9 );
+			
+			// set MAC flags
+			//e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 8 );
+			e->OrRegReg32 ( 10, 8 );
+			
+			// set sign
+			//e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+			if ( pFd )
+			{
+				ret = e->MovMemReg32 ( pFd, RAX );
+			}
+			else
+			{
+				// don't write to the zero register
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+			
+		}
+	}
+
+
+	if ( FdComponent == 3 )
+	{
+		// set MAC flags
+		e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 10 );
+		
+		// MAC flag is in R10
+		
+		// zero flag
+		e->MovReg32ImmX ( RAX, 0x41 );
+		e->TestReg32ImmX ( 10, 0x000f );
+		e->CmovERegReg32 ( RAX, 11 );
+		
+		// sign flag
+		e->MovReg32ImmX ( RCX, 0x82 );
+		e->TestReg32ImmX ( 10, 0x00f0 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+
+		// underflow flag
+		e->MovReg32ImmX ( RCX, 0x104 );
+		e->TestReg32ImmX ( 10, 0x0f00 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// overflow flag
+		e->MovReg32ImmX ( RCX, 0x208 );
+		e->TestReg32ImmX ( 10, 0xf000 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// set status flag
+		ret = e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RAX );
+	}
+	
+	return ret;
+}
+
+
+
+
+static long R5900::Recompiler::Generate_VMUL ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// only clear non-sticky bits in status flag the first go around
+	// also clear MAC flag (set to zero for components that are not calculated)
+	if ( !FdComponent )
+	{
+		// clear bits 14 and 15 in the flag register first
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		// clear MAC flags
+		//ret = e->MovMemImm32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 0 );
+		
+		// R10 will be MAC flag
+		e->XorRegReg32 ( 10, 10 );
+		
+		// R11 will be zero register
+		e->XorRegReg32 ( 11, 11 );
+	}
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+		if ( !i.Fs )
+		{
+			// Fs is zero register
+			
+			if ( FsComponent < 3 )
+			{
+				// get Ft
+				if ( pFt )
+				{
+					e->MovRegMem32 ( RAX, pFt );
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+				
+				// set zero flag
+				ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+				
+				// get sign of result
+				e->AndReg32ImmX ( RAX, 0x80000000 );
+					
+				if ( i.Fd )
+				{
+					// set 0x00000000 as result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+			else
+			{
+				if ( pFt )
+				{
+					e->MovRegMem32 ( RAX, pFt );
+				}
+				else
+				{
+					e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+				}
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->OrRegReg32 ( RAX, RAX );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				e->MovRegReg32 ( RDX, RAX );
+				e->CmovERegReg32 ( RAX, 11 );
+				
+				// preserve sign of zero ??
+				e->AndReg32ImmX ( RDX, 0x80000000 );
+				e->OrRegReg32 ( RAX, RDX );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else if ( ( !i.Ft ) && ( !pFt ) )
+		{
+			// Ft is zero register
+			
+			if ( FtComponent < 3 )
+			{
+				// get Fs
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				// set zero flag
+				ret = e->OrReg32ImmX ( 10, 0x0001 << ( FdComponent ^ 3 ) );
+				
+				// get sign of result
+				e->AndReg32ImmX ( RAX, 0x80000000 );
+					
+				if ( i.Fd )
+				{
+					// set 0x00000000 as result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+				
+				e->MovReg32ImmX ( RCX, 0x0010 << ( FdComponent ^ 3 ) );
+				e->MovReg32ImmX ( RDX, 0x0001 << ( FdComponent ^ 3 ) );
+				e->OrRegReg32 ( RAX, RAX );
+				e->CmovNSRegReg32 ( RCX, 11 );
+				
+				e->TestReg32ImmX ( RAX, 0x7f800000 );
+				e->CmovERegReg32 ( RCX, RDX );
+				e->MovRegReg32 ( RDX, RAX );
+				e->CmovERegReg32 ( RAX, 11 );
+				
+				// preserve sign of zero ??
+				e->AndReg32ImmX ( RDX, 0x80000000 );
+				e->OrRegReg32 ( RAX, RDX );
+				
+				// set MAC flag
+				e->OrRegReg32 ( 10, RCX );
+				
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+		else
+		{
+			// flush ps2 float to zero
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+			}
+			//e->XorRegReg32 ( 11, 11 );
+			e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			e->XorRegReg32 ( RDX, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->LeaRegRegReg64 ( RAX, RAX, RCX );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll1, RAX );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// debug
+			//e->MovMemReg64 ( &ll2, RAX );
+
+			
+			// set sign
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+
+			// set sign MAC flag
+			
+			// put MAC flag in R8
+			
+			// sign flag
+			e->MovReg32ImmX ( 8, 0x0010 << ( FdComponent ^ 3 ) );
+			
+			// clear sign flags if not sign
+			e->CmovNSRegReg32 ( 8, 11 );
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+			
+			
+			// also set zero flag if zero (which here, would also clear the sign flag ??)
+			e->MovRegReg32 ( 9, 0x0001 << ( FdComponent ^ 3 ) );
+			e->CmovERegReg32 ( 8, 9 );
+
+			// save mantissa
+			e->MovRegReg64 ( 9, RAX );
+			e->AndReg32ImmX ( 9, 0x007fffff );
+			
+			
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->LeaRegRegReg32 ( RAX, RAX, 9 );
+			
+			// underflow+zero MAC flag
+			e->MovReg32ImmX ( 9, 0x0101 << ( FdComponent ^ 3 ) );
+			e->CmovGRegReg32 ( 9, 11 );
+			
+			// set result to zero on underflow
+			e->CmovLERegReg32 ( RAX, 11 );
+			//e->CmovGRegReg32 ( 9, 11 );
+			//e->CmovLERegReg32 ( 10, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+			
+			
+			// combine sign/zero/underflow MAC flags
+			e->OrRegReg32 ( 8, 9 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmpRegReg32 ( RAX, RCX );
+			e->CmovARegReg32 ( RAX, RCX );
+			e->LeaRegRegReg32 ( RAX, RAX, RDX );
+			//e->MovReg32ImmX ( RDX, 0x208 );		//0x8010 );
+			//e->CmovBERegReg32 ( RDX, 8 );
+
+
+			// set overflow MAC flag
+			e->MovReg32ImmX ( 9, 0x1000 << ( FdComponent ^ 3 ) );
+			e->CmovBERegReg32 ( 9, 11 );
+			
+			// combine all MAC flags
+			e->OrRegReg32 ( 8, 9 );
+
+
+			// set MAC flags
+			//ret = e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 8 );
+			e->OrRegReg32 ( 10, 8 );
+			
+			// set status flags
+			//e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RDX );
+			
+			// set result
+			if ( pFd )
+			{
+				ret = e->MovMemReg32 ( pFd, RAX );
+			}
+			else
+			{
+				// don't write to the zero register
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+		}
+	}
+	
+	
+	if ( FdComponent == 3 )
+	{
+		// set MAC flags
+		e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 10 );
+		
+		// MAC flag is in R10
+		
+		// zero flag
+		e->MovReg32ImmX ( RAX, 0x41 );
+		e->TestReg32ImmX ( 10, 0x000f );
+		e->CmovERegReg32 ( RAX, 11 );
+		
+		// sign flag
+		e->MovReg32ImmX ( RCX, 0x82 );
+		e->TestReg32ImmX ( 10, 0x00f0 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+
+		// underflow flag
+		e->MovReg32ImmX ( RCX, 0x104 );
+		e->TestReg32ImmX ( 10, 0x0f00 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// overflow flag
+		e->MovReg32ImmX ( RCX, 0x208 );
+		e->TestReg32ImmX ( 10, 0xf000 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// set status flag
+		ret = e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RAX );
+	}
+	
+	return ret;
+}
+
+
+
+
+static long R5900::Recompiler::Generate_VMADD ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd, u32 *pFt )
+{
+	long ret;
+	
+	ret = 1;
+	
+	// only clear non-sticky bits in status flag the first go around
+	// also clear MAC flag (set to zero for components that are not calculated)
+	if ( !FdComponent )
+	{
+		// clear bits 14 and 15 in the flag register first
+		e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+		
+		// clear MAC flags
+		//ret = e->MovMemImm32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 0 );
+		
+		// R10 will be MAC flag
+		e->XorRegReg32 ( 10, 10 );
+		
+		// R11 will be zero register
+		e->XorRegReg32 ( 11, 11 );
+	}
+	
+	// check if that component is set to output
+	if ( i.Value & ( 1 << ( ( FdComponent ^ 3 ) + 21 ) ) )
+	{
+			// flush ps2 float to zero
+			if ( pFt )
+			{
+				e->MovRegMem32 ( RAX, pFt );
+			}
+			else
+			{
+				e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Ft ].sw0 ) + FtComponent );
+			}
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &r->CPR1 [ i.Ft ].u );
+			//e->XorRegReg32 ( 11, 11 );
+			e->MovRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RCX, RAX );
+
+			
+			e->MovRegMem32 ( RAX, ( &VU0::_VU0->vf [ i.Fs ].sw0 ) + FsComponent );
+			e->XorRegReg32 ( 9, RAX );
+			//e->Cdq ();
+			//e->MovRegImm64 ( RAX, 896 << 23 );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->MovRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg64 ( RAX, RDX );
+			//e->ShrRegImm32 ( 8, 31 );
+			//e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, RDX );
+			e->movq_to_sse ( RAX, RAX );
+			
+			
+			// get sign
+			e->AndReg32ImmX ( 9, 0x80000000 );
+			
+			// multiply
+			e->mulsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			//e->ShlRegImm64 ( RAX, 1 );
+			e->ShrRegImm64 ( RAX, 29 );
+			e->CmovERegReg64 ( RCX, RAX );
+
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RDX, 0x0008 );
+
+			// save mantissa
+			e->MovRegReg64 ( 10, RAX );
+			e->AndReg32ImmX ( 10, 0x007fffff );
+
+			
+			e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->SubRegReg64 ( RAX, RCX );
+			e->CmovLERegReg32 ( RAX, 11 );
+			e->CmovLERegReg32 ( 10, 11 );
+			e->CmovGERegReg32 ( RDX, 11 );
+			//e->CmovBRegReg32 ( RAX, 11 );
+
+			
+			// get ACC
+			e->MovRegMem32 ( 8, ( &VU0::_VU0->dACC[ 0 ].l ) + FdComponent );
+			
+			
+			// running out of registers.. combine sign and mantissa
+			e->OrRegReg32 ( 9, 10 );
+
+			
+			
+			
+			// if multiply underflow, then go ahead and set result to ACC here
+			e->OrRegReg32 ( RDX, RDX );
+			e->CmovNERegReg32 ( 9, 8 );
+			e->CmovNERegReg32 ( RAX, 11 );
+			
+			
+			
+			
+			// get multi-use constant for later
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			
+			// test for ACC overflow
+			e->MovRegReg32 ( 10, 8 );
+			e->AndRegReg32 ( 10, RCX );
+			e->CmpRegReg32 ( 10, RCX );
+			
+			
+			// if ACC overflow, then set result to acc and set overflow
+			//e->CmovERegReg32 ( RAX, RCX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->MovReg32ImmX ( 10, 0x8010 );
+			e->CmovNERegReg32 ( 10, 11 );
+			e->OrRegReg32 ( RDX, 10 );
+			
+			
+			// test for multiply overflow
+			//e->CmpRegReg32 ( RAX, RCX );
+			e->OrRegReg32 ( RAX, RAX );
+			
+			// if multiply overflow, then set result to +/-max and set flags
+			e->CmovSRegReg32 ( RAX, RCX );
+			e->MovReg32ImmX ( RCX, 0x8010 );
+			e->CmovNSRegReg32 ( RCX, 11 );
+			
+			
+			// set sign/mantissa
+			e->OrRegReg32 ( RAX, 9 );
+			
+			// or in the flag from the last overflow check
+			e->OrRegReg32 ( RCX, RDX );
+			
+			
+			// done
+			e->Jmp_NE ( 0, 1 );
+			//e->Jmp8_NE ( 0, 1 );
+			
+			
+			
+			
+			// *** perform the ADD operation *** //
+			
+			
+			// flush ps2 float to zero
+			//e->MovRegMem32 ( RAX, &b );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovRegReg32 ( 9, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RCX, 29 );
+			e->OrRegReg64 ( RCX, RDX );
+
+			
+			//e->MovRegMem32 ( RAX, &a );
+			e->MovRegReg32 ( RAX, 8 );
+			e->Cdq();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->MovRegReg32 ( 8, RAX );
+			e->AndReg32ImmX ( 8, 0x7f800000 );
+			//e->MovRegReg32 ( 8, RAX );
+			e->CmovERegReg32 ( RAX, 8 );
+			e->ShlRegImm64 ( RDX, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->OrRegReg64 ( RAX, RDX );
+			
+			// check if shift is more than 24, then zero
+			//e->XorRegReg32 ( 11, 11 );
+			e->SubRegReg32 ( 8, 9 );
+			e->CmpRegImm32 ( 8, 24 << 23 );
+			
+			// if greater than +24, then R9 has higher magnitude, so zero RAX
+			e->CmovGERegReg64 ( RCX, 11 );
+			
+			// if less than -24, then R11 has higher magnitude, so zero R8
+			e->CmpReg32ImmX ( 8, -24 << 23 );
+			e->CmovLERegReg64 ( RAX, 11 );
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			e->movq_to_sse ( RCX, RCX );
+			
+			
+			// add
+			e->addsd ( RAX, RCX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// save sign
+			e->Cqo();
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// if zero or underflow, then clear result
+			e->MovReg32ImmX ( RCX, 0x4008 );
+			e->OrRegReg32 ( RAX, RAX );
+			e->CmovERegReg32 ( RCX, RAX );
+			e->CmpReg32ImmX ( RAX, 0x00800000 );
+			e->CmovAERegReg32 ( RCX, 11 );
+			e->CmovBRegReg32 ( RAX, 11 );
+			
+			// check for overflow
+			e->MovReg32ImmX ( 8, 0x7fffffff );
+			e->MovReg32ImmX ( 9, 0x8010 );
+			e->CmpRegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RAX, 8 );
+			e->CmovARegReg32 ( RCX, 9 );
+			
+			// set sign
+			e->ShlRegImm32 ( RDX, 31 );
+			e->OrRegReg32 ( RAX, RDX );
+
+			
+			// finish here
+			e->SetJmpTarget ( 1 );
+			//e->SetJmpTarget8 ( 1 );
+
+			
+			// set flags
+			e->OrMemReg32 ( &r->CPC1 [ 31 ], RCX );
+			
+			
+			// set result
+			//ret = e->MovMemReg32 ( &r->CPR1 [ i.Fd ].u, RAX );
+			
+			// set result
+			if ( pFd )
+			{
+				ret = e->MovMemReg32 ( pFd, RAX );
+			}
+			else
+			{
+				// don't write to the zero register
+				if ( i.Fd )
+				{
+					// set result
+					ret = e->MovMemReg32 ( ( &VU0::_VU0->vf [ i.Fd ].sw0 ) + FdComponent, RAX );
+				}
+			}
+			
+	}
+	
+	
+	if ( FdComponent == 3 )
+	{
+		// set MAC flags
+		e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_MACFLAG ].u, 10 );
+		
+		// MAC flag is in R10
+		
+		// zero flag
+		e->MovReg32ImmX ( RAX, 0x41 );
+		e->TestReg32ImmX ( 10, 0x000f );
+		e->CmovERegReg32 ( RAX, 11 );
+		
+		// sign flag
+		e->MovReg32ImmX ( RCX, 0x82 );
+		e->TestReg32ImmX ( 10, 0x00f0 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+
+		// underflow flag
+		e->MovReg32ImmX ( RCX, 0x104 );
+		e->TestReg32ImmX ( 10, 0x0f00 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// overflow flag
+		e->MovReg32ImmX ( RCX, 0x208 );
+		e->TestReg32ImmX ( 10, 0xf000 );
+		e->CmovERegReg32 ( RCX, 11 );
+		e->OrRegReg32 ( RAX, RCX );
+		
+		// set status flag
+		ret = e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RAX );
+	}
+	
+	return ret;
+}
+
+
+
 
 
 
@@ -22062,6 +28478,9 @@ static long R5900::Recompiler::VABS ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22073,6 +28492,19 @@ static long R5900::Recompiler::VABS ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+			
+#ifdef USE_NEW_VABS_CODE
+		case 1:
+			//ret = Generate_VABS ( i, Address, 0 );
+			//ret &= Generate_VABS ( i, Address, 1 );
+			//ret &= Generate_VABS ( i, Address, 2 );
+			//ret &= Generate_VABS ( i, Address, 3 );
+			
+			ret = Generate_VABSp ( i );
+			break;
+#endif
+			
 			
 		default:
 			return -1;
@@ -22108,6 +28540,9 @@ static long R5900::Recompiler::VADD ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22119,6 +28554,12 @@ static long R5900::Recompiler::VADD ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADD_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22151,6 +28592,9 @@ static long R5900::Recompiler::VADDi ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22162,6 +28606,12 @@ static long R5900::Recompiler::VADDi ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDi_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22194,6 +28644,9 @@ static long R5900::Recompiler::VADDq ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22205,6 +28658,12 @@ static long R5900::Recompiler::VADDq ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDq_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22237,6 +28696,9 @@ static long R5900::Recompiler::VADDBCX ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22248,6 +28710,12 @@ static long R5900::Recompiler::VADDBCX ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDX_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22280,6 +28748,9 @@ static long R5900::Recompiler::VADDBCY ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22291,6 +28762,12 @@ static long R5900::Recompiler::VADDBCY ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDY_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 1 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22323,6 +28800,9 @@ static long R5900::Recompiler::VADDBCZ ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22334,6 +28814,12 @@ static long R5900::Recompiler::VADDBCZ ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDZ_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 2 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22366,6 +28852,9 @@ static long R5900::Recompiler::VADDBCW ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22377,6 +28866,12 @@ static long R5900::Recompiler::VADDBCW ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDW_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 3 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22412,6 +28907,9 @@ static long R5900::Recompiler::VADDA ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22423,6 +28921,12 @@ static long R5900::Recompiler::VADDA ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDA_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, -1, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22455,6 +28959,9 @@ static long R5900::Recompiler::VADDAi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22466,6 +28973,12 @@ static long R5900::Recompiler::VADDAi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAi_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22498,6 +29011,9 @@ static long R5900::Recompiler::VADDAq ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22509,6 +29025,12 @@ static long R5900::Recompiler::VADDAq ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAq_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22541,6 +29063,9 @@ static long R5900::Recompiler::VADDABCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22552,6 +29077,12 @@ static long R5900::Recompiler::VADDABCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAX_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 0, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22584,6 +29115,9 @@ static long R5900::Recompiler::VADDABCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22595,6 +29129,12 @@ static long R5900::Recompiler::VADDABCY ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAY_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 1, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22627,6 +29167,9 @@ static long R5900::Recompiler::VADDABCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22638,6 +29181,12 @@ static long R5900::Recompiler::VADDABCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAZ_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 2, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22670,6 +29219,9 @@ static long R5900::Recompiler::VADDABCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22681,6 +29233,12 @@ static long R5900::Recompiler::VADDABCW ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VADDAW_CODE
+		case 1:
+			ret = Generate_VADDp ( 0, i, 3, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22719,6 +29277,9 @@ static long R5900::Recompiler::VSUB ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22730,6 +29291,12 @@ static long R5900::Recompiler::VSUB ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUB_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22762,6 +29329,9 @@ static long R5900::Recompiler::VSUBi ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22773,6 +29343,12 @@ static long R5900::Recompiler::VSUBi ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBi_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22805,6 +29381,9 @@ static long R5900::Recompiler::VSUBq ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22816,6 +29395,12 @@ static long R5900::Recompiler::VSUBq ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBq_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22848,6 +29433,9 @@ static long R5900::Recompiler::VSUBBCX ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22859,6 +29447,12 @@ static long R5900::Recompiler::VSUBBCX ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBX_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22891,6 +29485,9 @@ static long R5900::Recompiler::VSUBBCY ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22902,6 +29499,12 @@ static long R5900::Recompiler::VSUBBCY ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBY_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 1 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22934,6 +29537,9 @@ static long R5900::Recompiler::VSUBBCZ ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22945,6 +29551,12 @@ static long R5900::Recompiler::VSUBBCZ ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBZ_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 2 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -22977,6 +29589,9 @@ static long R5900::Recompiler::VSUBBCW ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -22988,6 +29603,12 @@ static long R5900::Recompiler::VSUBBCW ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBW_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 3 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23025,6 +29646,9 @@ static long R5900::Recompiler::VMADD ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23036,6 +29660,12 @@ static long R5900::Recompiler::VMADD ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_VMADD_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23068,6 +29698,9 @@ static long R5900::Recompiler::VMADDi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23079,6 +29712,12 @@ static long R5900::Recompiler::VMADDi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDi_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23111,6 +29750,9 @@ static long R5900::Recompiler::VMADDq ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23122,6 +29764,12 @@ static long R5900::Recompiler::VMADDq ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDq_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23154,6 +29802,9 @@ static long R5900::Recompiler::VMADDBCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23165,6 +29816,12 @@ static long R5900::Recompiler::VMADDBCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDX_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0x00 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23197,6 +29854,9 @@ static long R5900::Recompiler::VMADDBCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23209,6 +29869,12 @@ static long R5900::Recompiler::VMADDBCY ( R5900::Instruction::Format i, u32 Addr
 #endif
 			break;
 			
+#ifdef USE_NEW_VMADDY_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0x55 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -23240,6 +29906,9 @@ static long R5900::Recompiler::VMADDBCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23251,6 +29920,12 @@ static long R5900::Recompiler::VMADDBCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDZ_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0xaa );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23283,6 +29958,9 @@ static long R5900::Recompiler::VMADDBCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23294,6 +29972,12 @@ static long R5900::Recompiler::VMADDBCW ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDW_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0xff );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23331,6 +30015,9 @@ static long R5900::Recompiler::VMSUB ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23342,6 +30029,12 @@ static long R5900::Recompiler::VMSUB ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUB_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23374,6 +30067,9 @@ static long R5900::Recompiler::VMSUBi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23385,6 +30081,12 @@ static long R5900::Recompiler::VMSUBi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBi_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23417,6 +30119,9 @@ static long R5900::Recompiler::VMSUBq ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23428,6 +30133,12 @@ static long R5900::Recompiler::VMSUBq ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBq_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0, NULL, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23460,6 +30171,9 @@ static long R5900::Recompiler::VMSUBBCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23471,6 +30185,12 @@ static long R5900::Recompiler::VMSUBBCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBX_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0x00 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23503,6 +30223,9 @@ static long R5900::Recompiler::VMSUBBCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23514,6 +30237,12 @@ static long R5900::Recompiler::VMSUBBCY ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBY_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0x55 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23546,6 +30275,9 @@ static long R5900::Recompiler::VMSUBBCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23557,6 +30289,12 @@ static long R5900::Recompiler::VMSUBBCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBZ_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0xaa );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23589,6 +30327,9 @@ static long R5900::Recompiler::VMSUBBCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23600,6 +30341,12 @@ static long R5900::Recompiler::VMSUBBCW ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBW_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0xff );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23637,6 +30384,9 @@ static long R5900::Recompiler::VMAX ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23648,6 +30398,13 @@ static long R5900::Recompiler::VMAX ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i );
+			break;
+#endif
+			
 			
 		default:
 			return -1;
@@ -23680,6 +30437,9 @@ static long R5900::Recompiler::VMAXi ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23691,6 +30451,14 @@ static long R5900::Recompiler::VMAXi ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+			
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -23723,6 +30491,9 @@ static long R5900::Recompiler::VMAXBCX ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23734,6 +30505,14 @@ static long R5900::Recompiler::VMAXBCX ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i, &VU0::_VU0->vf [ i.Ft ].uw0 );
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -23766,6 +30545,9 @@ static long R5900::Recompiler::VMAXBCY ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23778,6 +30560,12 @@ static long R5900::Recompiler::VMAXBCY ( R5900::Instruction::Format i, u32 Addre
 #endif
 			break;
 			
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i, &VU0::_VU0->vf [ i.Ft ].uw1 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -23809,6 +30597,9 @@ static long R5900::Recompiler::VMAXBCZ ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23821,6 +30612,12 @@ static long R5900::Recompiler::VMAXBCZ ( R5900::Instruction::Format i, u32 Addre
 #endif
 			break;
 			
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i, &VU0::_VU0->vf [ i.Ft ].uw2 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -23852,6 +30649,9 @@ static long R5900::Recompiler::VMAXBCW ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23863,6 +30663,13 @@ static long R5900::Recompiler::VMAXBCW ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_VMAX_CODE
+		case 1:
+			ret = Generate_VMAXp ( i, &VU0::_VU0->vf [ i.Ft ].uw3 );
+			break;
+#endif
+			
 			
 		default:
 			return -1;
@@ -23900,6 +30707,9 @@ static long R5900::Recompiler::VMINI ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23911,6 +30721,13 @@ static long R5900::Recompiler::VMINI ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i );
+			break;
+#endif
+			
 			
 		default:
 			return -1;
@@ -23943,6 +30760,9 @@ static long R5900::Recompiler::VMINIi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23954,6 +30774,12 @@ static long R5900::Recompiler::VMINIi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -23986,6 +30812,9 @@ static long R5900::Recompiler::VMINIBCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -23997,6 +30826,12 @@ static long R5900::Recompiler::VMINIBCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i, &VU0::_VU0->vf [ i.Ft ].uw0 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24029,6 +30864,9 @@ static long R5900::Recompiler::VMINIBCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24040,6 +30878,12 @@ static long R5900::Recompiler::VMINIBCY ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i, &VU0::_VU0->vf [ i.Ft ].uw1 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24072,6 +30916,9 @@ static long R5900::Recompiler::VMINIBCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24083,6 +30930,12 @@ static long R5900::Recompiler::VMINIBCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i, &VU0::_VU0->vf [ i.Ft ].uw2 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24115,6 +30968,9 @@ static long R5900::Recompiler::VMINIBCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24127,6 +30983,12 @@ static long R5900::Recompiler::VMINIBCW ( R5900::Instruction::Format i, u32 Addr
 #endif
 			break;
 			
+#ifdef USE_NEW_VMIN_CODE
+		case 1:
+			ret = Generate_VMINp ( i, &VU0::_VU0->vf [ i.Ft ].uw3 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -24163,6 +31025,9 @@ static long R5900::Recompiler::VMUL ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24174,6 +31039,12 @@ static long R5900::Recompiler::VMUL ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMUL_CODE
+		case 1:
+			ret = Generate_VMULp ( i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24206,6 +31077,9 @@ static long R5900::Recompiler::VMULi ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24217,6 +31091,12 @@ static long R5900::Recompiler::VMULi ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULi_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0, NULL, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24249,6 +31129,9 @@ static long R5900::Recompiler::VMULq ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24260,6 +31143,12 @@ static long R5900::Recompiler::VMULq ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULq_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0, NULL, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24292,6 +31181,9 @@ static long R5900::Recompiler::VMULBCX ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24303,6 +31195,12 @@ static long R5900::Recompiler::VMULBCX ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULX_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x00 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24335,6 +31233,9 @@ static long R5900::Recompiler::VMULBCY ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24346,6 +31247,12 @@ static long R5900::Recompiler::VMULBCY ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULY_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x55 );	//1 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24378,6 +31285,9 @@ static long R5900::Recompiler::VMULBCZ ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24389,6 +31299,12 @@ static long R5900::Recompiler::VMULBCZ ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULZ_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0xaa );	//2 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24421,6 +31337,9 @@ static long R5900::Recompiler::VMULBCW ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24432,6 +31351,12 @@ static long R5900::Recompiler::VMULBCW ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULW_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0xff );	//3 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24469,6 +31394,9 @@ static long R5900::Recompiler::VOPMSUB ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24480,6 +31408,13 @@ static long R5900::Recompiler::VOPMSUB ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VOPMSUB_CODE
+		case 1:
+			//static long R5900::Recompiler::Generate_VMADDp ( u32 bSub, R5900::Instruction::Format i, u32 FtComponentp, void *pFd, u32 *pFt, u32 FsComponentp, u32 FdComponentp )
+			ret = Generate_VMADDp ( 1, i, 0x84, NULL, NULL, 0x60 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24512,6 +31447,9 @@ static long R5900::Recompiler::VIADD ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24524,6 +31462,46 @@ static long R5900::Recompiler::VIADD ( R5900::Instruction::Format i, u32 Address
 #endif
 			break;
 			
+#ifdef USE_NEW_VIADD_CODE
+		case 1:
+			if ( i.id & 0xf )
+			{
+				if ( ( !( i.is & 0xf ) ) && ( !( i.it & 0xf ) ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, 0 );
+				}
+				else if ( ( !( i.is & 0xf ) ) || ( !( i.it & 0xf ) ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ ( i.is & 0xf ) + ( i.it & 0xf ) ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.is & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->AddMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AddMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.is & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AddRegReg16 ( RAX, RAX );
+					
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AddRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+			}
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -24555,6 +31533,9 @@ static long R5900::Recompiler::VISUB ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24566,6 +31547,45 @@ static long R5900::Recompiler::VISUB ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VISUB_CODE
+		case 1:
+			if ( i.id & 0xf )
+			{
+				if ( ( !( i.is & 0xf ) ) && ( !( i.it & 0xf ) ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, 0 );
+				}
+				else if ( ( i.is & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, 0 );
+				}
+				else if ( !( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( !( i.is & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->NegReg16 ( RAX );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.is & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->SubMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->SubRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24598,6 +31618,9 @@ static long R5900::Recompiler::VIADDI ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24609,7 +31632,29 @@ static long R5900::Recompiler::VIADDI ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
-			
+	
+#ifdef USE_NEW_VIADDI_CODE
+		case 1:
+			if ( i.it & 0xf )
+			{
+				if ( !( i.is & 0xf ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u, ( (s16) i.Imm5 ) );
+				}
+				else if ( i.it == i.is )
+				{
+					e->AddMemImm16 ( (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u, ( (s16) i.Imm5 ) );
+				}
+				else
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AddRegImm16 ( RAX, ( (s16) i.Imm5 ) );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u, RAX );
+				}
+			}
+			break;
+#endif
+	
 		default:
 			return -1;
 			break;
@@ -24641,6 +31686,9 @@ static long R5900::Recompiler::VIAND ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24652,6 +31700,39 @@ static long R5900::Recompiler::VIAND ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VIAND_CODE
+		case 1:
+			if ( i.id & 0xf )
+			{
+				if ( ( !( i.is & 0xf ) ) || ( !( i.it & 0xf ) ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, 0 );
+				}
+				else if ( ( i.is & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.is & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->AndMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AndMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->AndRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24684,6 +31765,9 @@ static long R5900::Recompiler::VIOR ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24695,6 +31779,44 @@ static long R5900::Recompiler::VIOR ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VIOR_CODE
+		case 1:
+			if ( i.id & 0xf )
+			{
+				if ( ( !( i.is & 0xf ) ) && ( !( i.it & 0xf ) ) )
+				{
+					e->MovMemImm16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, 0 );
+				}
+				else if ( ( !( i.is & 0xf ) ) || ( !( i.it & 0xf ) ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ ( i.is & 0xf ) + ( i.it & 0xf ) ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.is & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.is & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->OrMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else if ( ( i.id & 0xf ) == ( i.it & 0xf ) )
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->OrMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+				else
+				{
+					e->MovRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.is & 0xf ].u );
+					e->OrRegMem16 ( RAX, (u16*) &VU0::_VU0->vi [ i.it & 0xf ].u );
+					e->MovMemReg16 ( (u16*) &VU0::_VU0->vi [ i.id & 0xf ].u, RAX );
+				}
+			}
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24730,6 +31852,9 @@ static long R5900::Recompiler::VCALLMS ( R5900::Instruction::Format i, u32 Addre
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -24773,6 +31898,9 @@ static long R5900::Recompiler::VCALLMSR ( R5900::Instruction::Format i, u32 Addr
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// should assume NextPC might get modified
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -24820,6 +31948,9 @@ static long R5900::Recompiler::VFTOI0 ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24831,6 +31962,12 @@ static long R5900::Recompiler::VFTOI0 ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VFTOI0_CODE
+		case 1:
+			Generate_VFTOIXp ( i, 0 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24863,6 +32000,9 @@ static long R5900::Recompiler::VFTOI4 ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24874,6 +32014,12 @@ static long R5900::Recompiler::VFTOI4 ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VFTOI4_CODE
+		case 1:
+			Generate_VFTOIXp ( i, 4 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24906,6 +32052,9 @@ static long R5900::Recompiler::VFTOI12 ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24917,7 +32066,13 @@ static long R5900::Recompiler::VFTOI12 ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
-			
+
+#ifdef USE_NEW_VFTOI12_CODE
+		case 1:
+			Generate_VFTOIXp ( i, 12 );
+			break;
+#endif
+
 		default:
 			return -1;
 			break;
@@ -24949,6 +32104,9 @@ static long R5900::Recompiler::VFTOI15 ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -24960,6 +32118,12 @@ static long R5900::Recompiler::VFTOI15 ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VFTOI15_CODE
+		case 1:
+			Generate_VFTOIXp ( i, 15 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -24995,6 +32159,9 @@ static long R5900::Recompiler::VITOF0 ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25006,6 +32173,12 @@ static long R5900::Recompiler::VITOF0 ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VITOF0_CODE
+		case 1:
+			Generate_VITOFXp ( i, 0 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25038,6 +32211,9 @@ static long R5900::Recompiler::VITOF4 ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25049,6 +32225,12 @@ static long R5900::Recompiler::VITOF4 ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VITOF4_CODE
+		case 1:
+			Generate_VITOFXp ( i, 4 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25081,6 +32263,9 @@ static long R5900::Recompiler::VITOF12 ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25092,6 +32277,12 @@ static long R5900::Recompiler::VITOF12 ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VITOF12_CODE
+		case 1:
+			Generate_VITOFXp ( i, 12 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25124,6 +32315,9 @@ static long R5900::Recompiler::VITOF15 ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25135,6 +32329,12 @@ static long R5900::Recompiler::VITOF15 ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VITOF15_CODE
+		case 1:
+			Generate_VITOFXp ( i, 15 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25171,6 +32371,9 @@ static long R5900::Recompiler::VMOVE ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25182,6 +32385,12 @@ static long R5900::Recompiler::VMOVE ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMOVE_CODE
+		case 1:
+			ret = Generate_VMOVEp ( i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25213,6 +32422,9 @@ static long R5900::Recompiler::VLQI ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -25257,6 +32469,9 @@ static long R5900::Recompiler::VDIV ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25268,6 +32483,91 @@ static long R5900::Recompiler::VDIV ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_VDIV_CODE
+		case 1:
+		
+			// clear bits 16 and 17 in the flag register first
+			e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );		// r->CPC1 [ 31 ], ~0x00030000 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Ft ].vuw [ i.ftf ] );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovReg32ImmX ( 8, 0x00000c30 );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			e->AddRegReg64 ( RCX, RAX );
+			//e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovNERegReg32 ( 8, 11 );
+			e->CmovNERegReg64 ( RAX, RCX );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->movq_to_sse ( RCX, RAX );
+			
+			
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Fs ].vuw [ i.fsf ] );
+			//e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			//e->XorRegReg32 ( 8, RAX );
+			e->XorRegReg32 ( RDX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			//e->AddRegReg64 ( RCX, RAX );
+			//e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->MovReg32ImmX ( 9, 0x00000820 );
+			e->MovReg32ImmX ( 10, 0x00000410 );
+			e->CmovERegReg32 ( 9, 10 );
+			e->CmovERegReg32 ( RAX, 11 );
+			e->ShlRegImm64 ( RAX, 29 );
+			e->movq_to_sse ( RAX, RAX );
+
+			
+			// get sign in R8
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+			
+			// set flags
+			e->AndRegReg32 ( 8, 9 );
+			e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, 8 );
+			
+			// perform div
+			e->divsd ( RAX, RCX );
+
+
+			// get result
+			e->movq_from_sse ( RAX, RAX );
+
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			
+			// clear on underflow or zero
+			e->TestReg32ImmX ( RAX, 0xff800000 );
+			e->CmovERegReg32 ( RAX, 11 );
+			
+			
+			// set to max on overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			e->CmovSRegReg32 ( RAX, RCX );
+			
+			// or if any flags are set
+			e->OrRegReg32 ( 8, 8 );
+			e->CmovNERegReg32 ( RAX, RCX );
+			
+			// set sign
+			e->OrRegReg32 ( RAX, RDX );
+			
+
+			// store result
+			e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_Q ].u, RAX );		// &r->CPR1 [ i.Fd ].u, RAX );
+			
+			break;
+#endif
+			
+
 			
 		default:
 			return -1;
@@ -25300,6 +32600,9 @@ static long R5900::Recompiler::VMTIR ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25311,6 +32614,13 @@ static long R5900::Recompiler::VMTIR ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMTIR_CODE
+		case 1:
+			ret = Generate_VMTIRp ( i );
+			break;
+#endif
+			
 			
 		default:
 			return -1;
@@ -25342,6 +32652,9 @@ static long R5900::Recompiler::VRNEXT ( R5900::Instruction::Format i, u32 Addres
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -25386,6 +32699,9 @@ static long R5900::Recompiler::VMR32 ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25397,6 +32713,12 @@ static long R5900::Recompiler::VMR32 ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMR32_CODE
+		case 1:
+			ret = Generate_VMR32p ( i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25428,6 +32750,9 @@ static long R5900::Recompiler::VSQI ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -25472,6 +32797,9 @@ static long R5900::Recompiler::VSQRT ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25483,6 +32811,61 @@ static long R5900::Recompiler::VSQRT ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSQRT_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Ft ].vuw [ i.ftf ] );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			
+			// get flags
+			e->Cdq();
+			e->AndReg32ImmX ( RDX, 0x00410 );
+			
+			
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			e->LeaRegRegReg64 ( 8, RAX, RCX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovERegReg32 ( RDX, RAX );
+			e->CmovNERegReg64 ( RAX, 8 );
+			e->ShlRegImm64 ( RAX, 29 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, RDX );
+			
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			//e->movq_to_sse ( RCX, RDX );
+			
+			
+			// sqrt
+			e->sqrtsd ( RAX, RAX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// ??
+			e->AddReg64ImmX ( RAX, 0x10000000 );
+			
+			
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// if zero, then clear RCX
+			e->CmovERegReg64 ( RCX, RAX );
+			
+			// subtract exponent
+			e->SubRegReg64 ( RAX, RCX );
+			
+			
+			// set result
+			ret = e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_Q ].u, RAX );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25515,6 +32898,9 @@ static long R5900::Recompiler::VMFIR ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25526,6 +32912,12 @@ static long R5900::Recompiler::VMFIR ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMFIR_CODE
+		case 1:
+			ret = Generate_VMFIRp ( i );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25557,6 +32949,9 @@ static long R5900::Recompiler::VRGET ( R5900::Instruction::Format i, u32 Address
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -25606,6 +33001,9 @@ static long R5900::Recompiler::VSUBA ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25617,6 +33015,12 @@ static long R5900::Recompiler::VSUBA ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBA_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, -1, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25649,6 +33053,9 @@ static long R5900::Recompiler::VSUBAi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25660,6 +33067,12 @@ static long R5900::Recompiler::VSUBAi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAi_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25692,6 +33105,9 @@ static long R5900::Recompiler::VSUBAq ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25703,6 +33119,12 @@ static long R5900::Recompiler::VSUBAq ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAq_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25735,6 +33157,9 @@ static long R5900::Recompiler::VSUBABCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25746,6 +33171,12 @@ static long R5900::Recompiler::VSUBABCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAX_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 0, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25778,6 +33209,9 @@ static long R5900::Recompiler::VSUBABCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25789,6 +33223,12 @@ static long R5900::Recompiler::VSUBABCY ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAY_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 1, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25821,6 +33261,9 @@ static long R5900::Recompiler::VSUBABCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25832,6 +33275,12 @@ static long R5900::Recompiler::VSUBABCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAZ_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 2, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25864,6 +33313,9 @@ static long R5900::Recompiler::VSUBABCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25875,6 +33327,12 @@ static long R5900::Recompiler::VSUBABCW ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VSUBAW_CODE
+		case 1:
+			ret = Generate_VADDp ( 1, i, 3, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25911,6 +33369,9 @@ static long R5900::Recompiler::VMADDA ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25922,6 +33383,12 @@ static long R5900::Recompiler::VMADDA ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDA_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0x1b, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25954,6 +33421,9 @@ static long R5900::Recompiler::VMADDAi ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -25965,6 +33435,12 @@ static long R5900::Recompiler::VMADDAi ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAi_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -25997,6 +33473,9 @@ static long R5900::Recompiler::VMADDAq ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26008,6 +33487,12 @@ static long R5900::Recompiler::VMADDAq ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAq_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26040,6 +33525,9 @@ static long R5900::Recompiler::VMADDABCX ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26051,6 +33539,12 @@ static long R5900::Recompiler::VMADDABCX ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAX_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0x00, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26083,6 +33577,9 @@ static long R5900::Recompiler::VMADDABCY ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26094,6 +33591,12 @@ static long R5900::Recompiler::VMADDABCY ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAY_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0x55, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26126,6 +33629,9 @@ static long R5900::Recompiler::VMADDABCZ ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26137,6 +33643,12 @@ static long R5900::Recompiler::VMADDABCZ ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAZ_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0xaa, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26169,6 +33681,9 @@ static long R5900::Recompiler::VMADDABCW ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26180,6 +33695,12 @@ static long R5900::Recompiler::VMADDABCW ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMADDAW_CODE
+		case 1:
+			ret = Generate_VMADDp ( 0, i, 0xff, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26217,6 +33738,9 @@ static long R5900::Recompiler::VMSUBA ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26228,6 +33752,12 @@ static long R5900::Recompiler::VMSUBA ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBA_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0x1b, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26260,6 +33790,9 @@ static long R5900::Recompiler::VMSUBAi ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26271,6 +33804,12 @@ static long R5900::Recompiler::VMSUBAi ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAi_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26303,6 +33842,9 @@ static long R5900::Recompiler::VMSUBAq ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26314,6 +33856,12 @@ static long R5900::Recompiler::VMSUBAq ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAq_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26346,6 +33894,9 @@ static long R5900::Recompiler::VMSUBABCX ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26357,6 +33908,12 @@ static long R5900::Recompiler::VMSUBABCX ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAX_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0x00, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26389,6 +33946,9 @@ static long R5900::Recompiler::VMSUBABCY ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26400,6 +33960,12 @@ static long R5900::Recompiler::VMSUBABCY ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAY_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0x55, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26432,6 +33998,9 @@ static long R5900::Recompiler::VMSUBABCZ ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26443,6 +34012,12 @@ static long R5900::Recompiler::VMSUBABCZ ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAZ_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0xaa, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26475,6 +34050,9 @@ static long R5900::Recompiler::VMSUBABCW ( R5900::Instruction::Format i, u32 Add
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26486,6 +34064,12 @@ static long R5900::Recompiler::VMSUBABCW ( R5900::Instruction::Format i, u32 Add
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMSUBAW_CODE
+		case 1:
+			ret = Generate_VMADDp ( 1, i, 0xff, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26524,6 +34108,9 @@ static long R5900::Recompiler::VMULA ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26535,6 +34122,12 @@ static long R5900::Recompiler::VMULA ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULA_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x1b, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26567,6 +34160,9 @@ static long R5900::Recompiler::VMULAi ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26578,6 +34174,12 @@ static long R5900::Recompiler::VMULAi ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAi_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_I ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26610,6 +34212,9 @@ static long R5900::Recompiler::VMULAq ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26621,6 +34226,12 @@ static long R5900::Recompiler::VMULAq ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAq_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0, &VU0::_VU0->dACC[ 0 ].l, &VU0::_VU0->vi [ VU::REG_Q ].u );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26653,6 +34264,9 @@ static long R5900::Recompiler::VMULABCX ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26664,6 +34278,12 @@ static long R5900::Recompiler::VMULABCX ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAX_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x00, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26696,6 +34316,9 @@ static long R5900::Recompiler::VMULABCY ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26707,6 +34330,12 @@ static long R5900::Recompiler::VMULABCY ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAY_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x55, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26739,6 +34368,9 @@ static long R5900::Recompiler::VMULABCZ ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26750,6 +34382,12 @@ static long R5900::Recompiler::VMULABCZ ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAZ_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0xaa, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26782,6 +34420,9 @@ static long R5900::Recompiler::VMULABCW ( R5900::Instruction::Format i, u32 Addr
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26793,6 +34434,12 @@ static long R5900::Recompiler::VMULABCW ( R5900::Instruction::Format i, u32 Addr
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VMULAW_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0xff, &VU0::_VU0->dACC[ 0 ].l );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26829,6 +34476,9 @@ static long R5900::Recompiler::VOPMULA ( R5900::Instruction::Format i, u32 Addre
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26840,6 +34490,12 @@ static long R5900::Recompiler::VOPMULA ( R5900::Instruction::Format i, u32 Addre
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VOPMULA_CODE
+		case 1:
+			ret = Generate_VMULp ( i, 0x84, &VU0::_VU0->dACC[ 0 ].l, NULL, 0x60 );
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26871,6 +34527,9 @@ static long R5900::Recompiler::VLQD ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -26915,6 +34574,9 @@ static long R5900::Recompiler::VRSQRT ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26926,6 +34588,112 @@ static long R5900::Recompiler::VRSQRT ( R5900::Instruction::Format i, u32 Addres
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VRSQRT_CODE
+		case 1:
+			// clear bits 14 and 15 in the flag register first
+			e->AndMem32ImmX ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, ~0x00000030 );
+			
+			// flush ps2 float to zero
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Ft ].vuw [ i.ftf ] );
+			e->XorRegReg32 ( 11, 11 );
+			e->MovReg64ImmX ( RCX, 896ULL << 23 );
+			
+			// get flags
+			e->Cdq();
+			e->AndReg32ImmX ( RDX, 0x00410 );
+			
+			
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( 8, RAX, RCX );
+			e->AddRegReg64 ( RCX, RAX );
+			e->AndReg32ImmX ( RAX, 0x7f800000 );
+			e->MovReg32ImmX ( 8, 0x00820 );
+			e->CmovNERegReg32 ( 8, RDX );
+			e->CmovNERegReg64 ( RAX, RCX );
+			e->ShlRegImm64 ( RAX, 29 );
+			
+			
+			// set flags
+			e->OrMemReg32 ( &VU0::_VU0->vi [ VU::REG_STATUSFLAG ].u, 8 );
+			
+			
+			// move the registers now to floating point unit
+			e->movq_to_sse ( RAX, RAX );
+			//e->movq_to_sse ( RCX, RDX );
+			
+			
+			// sqrt
+			e->sqrtsd ( RAX, RAX );
+			e->movq_from_sse ( RAX, RAX );
+			
+			// ??
+			e->AddReg64ImmX ( RAX, 0x10000000 );
+			e->AndReg64ImmX ( RAX, ~0x1fffffff );
+			
+
+			e->movq_to_sse ( RCX, RAX );
+
+
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vf [ i.Fs ].vuw [ i.fsf ] );
+			//e->MovRegReg32 ( RCX, RAX );
+			e->Cdq ();
+			e->AndReg32ImmX ( RAX, 0x7fffffff );
+			//e->LeaRegRegReg64 ( RDX, RAX, RCX );
+			e->TestReg32ImmX ( RAX, 0x7f800000 );
+			e->CmovERegReg64 ( RAX, 11 );
+			//e->ShrRegImm32 ( 10, 31 );
+			//e->ShlRegImm64 ( 10, 63 );
+			e->ShlRegImm64 ( RAX, 29 );
+			//e->OrRegReg64 ( RAX, 10 );
+			e->movq_to_sse ( RAX, RAX );
+
+			
+			// divide
+			e->divsd ( RAX, RCX );
+			
+			
+			// get result
+			e->movq_from_sse ( RAX, RAX );
+			
+			
+			// shift back down without sign
+			e->ShrRegImm64 ( RAX, 29 );
+			
+			// subtract exponent
+			//e->XorRegReg32 ( 10, 10 );
+			//e->MovRegReg32 ( RDX, RAX );
+			//e->AndReg64ImmX ( RAX, ~0x007fffff );
+			//e->SubRegReg64 ( RAX, RCX );
+			e->TestReg32ImmX ( RAX, 0xff800000 );
+			
+			// clear on underflow or zero
+			//e->CmovLERegReg32 ( RAX, 10 );
+			//e->CmovLERegReg32 ( RDX, 10 );
+			e->CmovERegReg32 ( RAX, 11 );
+			
+			
+			// set to max on overflow
+			e->MovReg32ImmX ( RCX, 0x7fffffff );
+			//e->OrRegReg32 ( RDX, RDX );
+			e->CmovSRegReg32 ( RAX, RCX );
+			
+			
+			// or if any flags are set indicating denominator is zero
+			e->AndReg32ImmX ( 8, 0x00020 );
+			e->CmovNERegReg32 ( RAX, RCX );
+
+			
+			// set sign
+			e->AndReg32ImmX ( RDX, 0x80000000 );
+			e->OrRegReg32 ( RAX, RDX );
+			
+
+			// store result
+			e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_Q ].u, RAX );		// &r->CPR1 [ i.Fd ].u, RAX );
+			
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -26958,6 +34726,9 @@ static long R5900::Recompiler::VILWR ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -26969,6 +34740,11 @@ static long R5900::Recompiler::VILWR ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+#ifdef USE_NEW_VILWR_CODE
+		case 1:
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -27000,6 +34776,9 @@ static long R5900::Recompiler::VRINIT ( R5900::Instruction::Format i, u32 Addres
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -27044,6 +34823,9 @@ static long R5900::Recompiler::VCLIP ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -27055,6 +34837,99 @@ static long R5900::Recompiler::VCLIP ( R5900::Instruction::Format i, u32 Address
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+
+
+#ifdef USE_NEW_VCLIP_CODE
+		case 1:
+			// load clip flag
+			e->MovRegMem32 ( RAX, &VU0::_VU0->vi [ VU::REG_CLIPFLAG ].u );
+			
+			// flush ps2 float to zero
+			e->movdqa_regmem ( RBX, &VU0::_VU0->vf [ i.Ft ].sw0 );
+			
+			if ( !i.Fs )
+			{
+				e->pxorregreg ( RAX, RAX );
+			}
+			else if ( i.Fs == i.Ft )
+			{
+				e->movdqa_regreg ( RAX, RBX );
+			}
+			else
+			{
+				e->movdqa_regmem ( RAX, &VU0::_VU0->vf [ i.Fs ].sw0 );
+			}
+			
+			// get w from ft
+			e->pshufdregregimm ( RBX, RBX, 0xff );
+			
+			//e->psrldregimm ( RCX, 1 );
+			
+			// get +w into RBX
+			e->pslldregimm ( RBX, 1 );
+			e->psrldregimm ( RBX, 1 );
+			
+			// get -w into RCX
+			e->pcmpeqbregreg ( RCX, RCX );
+			e->movdqa_regreg ( RDX, RCX );
+			e->pxorregreg ( RCX, RBX );
+			e->psubdregreg ( RCX, RDX );
+			
+			// get x,y from fs into RDX
+			e->pshufdregregimm ( RDX, RAX, ( 1 << 6 ) | ( 1 << 4 ) | ( 0 << 2 ) | ( 0 << 0 ) );
+			e->movdqa_regreg ( 4, RDX );
+			e->psradregimm ( 4, 31 );
+			e->pslldregimm ( RDX, 1 );
+			e->psrldregimm ( RDX, 1 );
+			e->pxorregreg ( RDX, 4 );
+			e->psubdregreg ( RDX, 4 );
+			
+			// get greater than +w into R4 and less than -w into R5
+			e->movdqa_regreg ( 4, RDX );
+			e->pcmpgtdregreg ( 4, RBX );
+			e->movdqa_regreg ( 5, RCX );
+			e->pcmpgtdregreg ( 5, RDX );
+			
+			// get x and y flags into R4
+			e->pblendwregregimm ( 4, 5, 0xcc );
+			
+			
+			// get z from fs into RAX
+			e->pshufdregregimm ( RAX, RAX, ( 2 << 6 ) | ( 2 << 4 ) | ( 2 << 2 ) | ( 2 << 0 ) );
+			e->movdqa_regreg ( 5, RAX );
+			e->psradregimm ( 5, 31 );
+			e->pslldregimm ( RAX, 1 );
+			e->psrldregimm ( RAX, 1 );
+			e->pxorregreg ( RAX, 5 );
+			e->psubdregreg ( RAX, 5 );
+			
+			// get greater than into RAX and less than into RCX
+			e->pcmpgtdregreg ( RCX, RAX );
+			e->pcmpgtdregreg ( RAX, RBX );
+			
+			// get z flags into RAX
+			e->pblendwregregimm ( RAX, RCX, 0xcc );
+			
+			// pull flags
+			e->movmskpsregreg ( RCX, 4 );
+			e->movmskpsregreg ( RDX, RAX );
+			
+			// combine flags
+			e->ShlRegImm32 ( RDX, 4 );
+			e->OrRegReg32 ( RCX, RDX );
+			e->AndReg32ImmX ( RCX, 0x3f );
+			
+			// combine into rest of the clipping flags
+			e->ShlRegImm32 ( RAX, 6 );
+			e->OrRegReg32 ( RAX, RCX );
+			e->AndReg32ImmX ( RAX, 0x00ffffff );
+			
+			// write back to clipping flag
+			e->MovMemReg32 ( &VU0::_VU0->vi [ VU::REG_CLIPFLAG ].u, RAX );
+			
+			break;
+#endif
+
 			
 		default:
 			return -1;
@@ -27087,6 +34962,9 @@ static long R5900::Recompiler::VNOP ( R5900::Instruction::Format i, u32 Address 
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -27098,6 +34976,11 @@ static long R5900::Recompiler::VNOP ( R5900::Instruction::Format i, u32 Address 
 			ret = e->AddReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
 			break;
+			
+#ifdef USE_NEW_VNOP_CODE
+		case 1:
+			break;
+#endif
 			
 		default:
 			return -1;
@@ -27129,6 +35012,9 @@ static long R5900::Recompiler::VSQD ( R5900::Instruction::Format i, u32 Address 
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
@@ -27173,6 +35059,9 @@ static long R5900::Recompiler::VWAITQ ( R5900::Instruction::Format i, u32 Addres
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -27216,6 +35105,9 @@ static long R5900::Recompiler::VISWR ( R5900::Instruction::Format i, u32 Address
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
 			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
+			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );
 #endif
@@ -27258,6 +35150,9 @@ static long R5900::Recompiler::VRXOR ( R5900::Instruction::Format i, u32 Address
 			// for now, stop encoding after this instruction
 			bStopEncodingAfter = true;
 			bStopEncodingBefore = true;
+			
+			// if the vu0 unit is not ready, then instruction stalls until it becomes available (for now)
+			Local_NextPCModified = true;
 			
 #ifdef RESERVE_STACK_FRAME_FOR_CALL
 			e->SubReg64ImmX ( RSP, c_lSEH_StackSize );

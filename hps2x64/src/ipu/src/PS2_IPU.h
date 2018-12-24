@@ -447,6 +447,7 @@ namespace Playstation2
 		u64 BusyUntil_Cycle;
 
 		static inline u32 EndianSwap32 ( u32 Value ) { return ( Value << 24 ) | ( Value >> 24 ) | ( ( Value << 8 ) & 0xff0000 ) | ( ( Value >> 8 ) & 0xff00 ); }
+		static inline u64 EndianSwap64 ( u64 Value ) { return ( Value << 56 ) | ( Value >> 56 ) | ( ( Value << 40 ) & 0x00ff000000000000ull ) | ( ( Value >> 40 ) & 0xff00ull ) | ( ( Value << 24 ) & 0xff0000000000ull ) | ( ( Value >> 24 ) & 0xff0000ull ) | ( ( Value << 8 ) & 0xff00000000ull ) | ( ( Value >> 8 ) & 0xff000000ull ); }
 		
 		void Clear_InputFifo ();
 		void Set_Busy ();
@@ -454,6 +455,7 @@ namespace Playstation2
 
 		
 		void Proceed ( u32 iBits );
+		u64 PeekBE ( u64 iBits, u32 uBitPosition );
 		u64 Peek ( u64 iBits, u32 uBitPosition );
 		u64 Get ( u32 iBits );
 		bool Load_IQTable_FromBitstream ( u8* table );

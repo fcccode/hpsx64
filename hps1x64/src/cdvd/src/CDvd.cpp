@@ -63,7 +63,7 @@ u64* CDVD::_NextSystemEvent;
 
 
 // if bit 7 is set in read speed, then read at max speed?
-#define ENABLE_INITIAL_MAX_SPEED
+//#define ENABLE_INITIAL_MAX_SPEED
 
 
 // interrupts with a complete interrupt when reading is done and the data ready interrupt
@@ -2246,6 +2246,7 @@ void CDVD::Process_NCommand ( u8 Command )
 			
 			SeekSectorNum = ( (u32*) ucNArgBuffer ) [ 0 ];
 			SectorReadCount = ( (u32*) ucNArgBuffer ) [ 1 ];
+			
 
 #ifdef INLINE_DEBUG_DISKREAD
 			debugRead << "\r\nCDREAD: SectorReadCount=" << dec << SectorReadCount << " SeekSectorNum=" << SeekSectorNum;
@@ -2272,41 +2273,50 @@ void CDVD::Process_NCommand ( u8 Command )
 			// maybe the 0x80 or'ed with the disk speed means to read data, and otherwise means to stream
 			switch ( DiskSpeedType & 0xf )
 			{
+				
+				case 0x1:
+					DiskSpeed = 1.0;
+					break;
+					
 				case 0x2:
 					// possibly means x24 ??
 					// means x12 ??
 					//DiskSpeed = 24;
-					DiskSpeed = 1.0;
+					DiskSpeed = 2.0;
+					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 2.0;
 					break;
 					
 				case 0x3:
 					// means x4
 					DiskSpeed = 4.0;
-					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 1.6;
+					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 4.0;
 					// or possibly means x12 ?? or 8 ??
 					//DiskSpeed = 12;
 					break;
 					
 				case 0x4:
 					// probably means x4 ??
-					DiskSpeed = 8.0;
+					DiskSpeed = 12.0;
 					//DiskSpeed = 4.0;
-					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 2.0;
+					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 4.0;
 					//DiskSpeed = 24.0;
 					break;
 					
+				
 				case 0x5:
 					// means x24
 					// this must be x2 ??
-					DiskSpeed = 12.0;
-					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 3.0;
+					DiskSpeed = 24.0;
+					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 4.0;
 					//DiskSpeed = 2;
 					break;
+				
 					
 				default:
 					// unknown
 					cout << "\nhps2x64: CDVD: ***ALERT***: Unknown disk speed set=" << hex << DiskSpeed << "\n";
 					DiskSpeed = 24;
+					if ( CurrentDiskType == CDVD_TYPE_PS2DVD ) DiskSpeed = 4.0;
 					break;
 			}
 
@@ -2406,6 +2416,9 @@ void CDVD::Process_NCommand ( u8 Command )
 #endif
 
 			// seek to sector
+			if ( sSeekDelta )
+			{
+cout << "\n->SEEK->";
 			CD::_CD->cd_image.SeekSector ( _CDVD->SeekSectorNum + DiskImage::CDImage::c_SectorsInFirstTwoSeconds );
 			
 #ifdef INLINE_DEBUG_DISKREAD
@@ -2413,6 +2426,7 @@ void CDVD::Process_NCommand ( u8 Command )
 #endif
 
 			CD::_CD->cd_image.StartReading ();
+			}
 			
 #ifdef INLINE_DEBUG_DISKREAD
 			debugRead << " After switch5";
@@ -2446,6 +2460,7 @@ void CDVD::Process_NCommand ( u8 Command )
 			Temp_ReadTime = ullDiskReadCycles;
 			Set_NextEvent ( Temp_SeekTime );
 #else
+			//if ( ((u64)sSeekDelta) <= c_lNoSeekDelta )
 			if ( uSeekDelta <= c_lNoSeekDelta )
 			{
 #ifdef DISKREAD_FIXED_SEEK
@@ -2453,7 +2468,9 @@ void CDVD::Process_NCommand ( u8 Command )
 				Status = CDVD_STATUS_READ;
 				//Temp_SeekTime = (u64) dDiskReadCycleTime;
 				Temp_SeekTime = 8;
+				
 				Temp_ReadTime = ullDiskReadCycles;
+				
 				Set_NextEvent ( Temp_SeekTime );
 #else
 
@@ -2494,6 +2511,7 @@ void CDVD::Process_NCommand ( u8 Command )
 
 #endif
 			}
+			//else if ( ((u64)sSeekDelta) <= c_lFastCDSeekDelta )
 			else if ( uSeekDelta <= c_lFastCDSeekDelta )
 			{
 				Status = CDVD_STATUS_SEEK;
@@ -2630,6 +2648,7 @@ void CDVD::Process_NCommand ( u8 Command )
 			SeekSectorNum = ( (u32*) _CDVD->ucNArgBuffer ) [ 0 ];
 			SectorReadCount = ( (u32*) _CDVD->ucNArgBuffer ) [ 1 ];
 
+			
 			// check for zero sector read
 			if ( !SectorReadCount )
 			{
@@ -2654,24 +2673,28 @@ void CDVD::Process_NCommand ( u8 Command )
 			// 0x2 for dvd should be x2??
 			switch ( DiskSpeedType & 0xf )
 			{
+				case 0x1:
+					DiskSpeed = 1.0;
+					break;
+					
+				
 				case 0x2:
 					// maybe x4 for dvd ??
 					//... but this appears to actually be x1??
-					DiskSpeed = 1.0;
+					DiskSpeed = 2.0;
 					break;
 					
 				case 0x3:
 					// means x4
 					//DiskSpeed = 4;
 					// I assume this would be x3 ??
-					DiskSpeed = 1.6;
-					//DiskSpeed = 3;
+					DiskSpeed = 4.0;
 					break;
 					
 				case 0x4:
 					// probably means x2 ??
 					//DiskSpeed = 4.0;
-					DiskSpeed = 2.0;	//3;
+					DiskSpeed = 4.0;	//3;
 					break;
 					
 				case 0x5:
@@ -2679,13 +2702,14 @@ void CDVD::Process_NCommand ( u8 Command )
 					//DiskSpeed = 24;
 					// hmmm.. on dvd this would probably be x1 ??
 					//DiskSpeed = 1;
-					DiskSpeed = 3.0;
+					DiskSpeed = 4.0;
 					break;
+				
 					
 				default:
 					// unknown
 					cout << "\nhps2x64: CDVD: ***ALERT***: Unknown disk speed set=" << hex << DiskSpeed << "\n";
-					DiskSpeed = 4;
+					DiskSpeed = 4.0;
 					break;
 			}
 
@@ -2737,9 +2761,13 @@ void CDVD::Process_NCommand ( u8 Command )
 			// reset the index on ps1 side
 			CD::_CD->DataBuffer_Index = 0;
 			
+			if ( sSeekDelta )
+			{
+cout << "\n->SEEK->";
 			// seek to sector
 			CD::_CD->cd_image.SeekSector ( _CDVD->SeekSectorNum + DiskImage::CDImage::c_SectorsInFirstTwoSeconds );
 			CD::_CD->cd_image.StartReading ();
+			}
 			
 			// set the read command as cd read
 			_CDVD->ReadCommand = 0x6;
@@ -2762,6 +2790,7 @@ void CDVD::Process_NCommand ( u8 Command )
 			Temp_ReadTime = ullDiskReadCycles;
 			Set_NextEvent ( Temp_SeekTime );
 #else
+			//if ( ((u64)sSeekDelta) <= c_lDVDNoSeekDelta )
 			if ( uSeekDelta <= c_lDVDNoSeekDelta )
 			{
 				// apparently cd/dvd has anywhere from an 8-16 sector buffer ??
@@ -2812,6 +2841,7 @@ void CDVD::Process_NCommand ( u8 Command )
 #endif
 
 			}
+			//else if ( ((u64)sSeekDelta) <= c_lFastDVDSeekDelta )
 			else if ( uSeekDelta <= c_lFastDVDSeekDelta )
 			{
 				// fast seek

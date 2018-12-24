@@ -651,12 +651,8 @@ void Cpu::Start ()
 	
 	rs->SetOptimizationLevel ( 1 );
 	
-	/*
-	// set static variables
-	Rc_CodePtr = rs->InstanceEncoder->x64CodeArea;
-	Rc_CodeBlock_Shift = rs->InstanceEncoder->lCodeBlockSize_PowerOfTwo;
-	Rc_CodeBlock_Mask = rs->NumBlocks_Mask;
-	*/
+	// enable recompiler by default
+	bEnableRecompiler = true;
 
 }
 

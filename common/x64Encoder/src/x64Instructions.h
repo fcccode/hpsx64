@@ -552,6 +552,27 @@
 #define X64OP1_CMOVB		0x0f
 #define X64OP2_CMOVB		0x42
 
+// cmovb - unsigned move if below or equal (cf=1 or zf=1)
+// CMOVBE r16, r/m16
+// CMOVBE r32, r/m32
+// CMOVBE r64, r/m64
+#define X64OP1_CMOVBE		0x0f
+#define X64OP2_CMOVBE		0x46
+
+// cmova - unsigned move if above (cf=0 zf=0)
+// CMOVA r16, r/m16
+// CMOVA r32, r/m32
+// CMOVA r64, r/m64
+#define X64OP1_CMOVA		0x0f
+#define X64OP2_CMOVA		0x47
+
+// cmovae - unsigned move if above or equal (cf=0)
+// CMOVAE r16, r/m16
+// CMOVAE r32, r/m32
+// CMOVAE r64, r/m64
+#define X64OP1_CMOVAE		0x0f
+#define X64OP2_CMOVAE		0x43
+
 // * signed conditional move * //
 
 // cmovl - signed move if less
@@ -1055,6 +1076,107 @@
 
 // **** SSE/AVX Instructions **** //
 
+// ****** SSE ***** //
+
+
+// Move doubleword to SSE from register/memory
+// 66 REX.W 0F 6E /r
+// MOVD xmm, r/m32
+#define X64OP1_MOVD_FROMMEM	0x0f
+#define X64OP2_MOVD_FROMMEM	0x6e
+
+
+// Move doubleword from SSE to register/memory
+// 66 0F 7E /r
+// MOVD r/m32, xmm
+#define X64OP1_MOVD_TOMEM	0x0f
+#define X64OP2_MOVD_TOMEM	0x7e
+
+// Move quadword to SSE from register/memory
+// 66 0F 6E /r
+// MOVQ xmm, r/m64
+#define X64OP1_MOVQ_FROMMEM	0x0f
+#define X64OP2_MOVQ_FROMMEM	0x6e
+
+
+// Move quadword from SSE to register/memory
+// 66 REX.W 0F 7E /r
+// MOVQ r/m64, xmm
+#define X64OP1_MOVQ_TOMEM	0x0f
+#define X64OP2_MOVQ_TOMEM	0x7e
+
+
+// Add scalar double precision floating point values
+// F2 0F 58 /r
+// ADDSD xmm1, xmm2/m64
+#define X64OP1_ADDSD		0x0f
+#define X64OP2_ADDSD		0x58
+
+
+// Subtract scalar double precision floating point values
+// F2 0F 5C /r
+// SUBSD xmm1, xmm2/m64
+#define X64OP1_SUBSD		0x0f
+#define X64OP2_SUBSD		0x5C
+
+
+// Multiply scalar double precision floating point values
+// F2 0F 59 /r
+// MULSD xmm1, xmm2/m64
+#define X64OP1_MULSD		0x0f
+#define X64OP2_MULSD		0x59
+
+
+// Divide scalar double precision floating point values
+// F2 0F 5E /r
+// DIVSD xmm1, xmm2/m64
+#define X64OP1_DIVSD		0x0f
+#define X64OP2_DIVSD		0x5E
+
+
+// Square root scalar double precision floating point value
+// F2 0F 51 /r
+// SQRTSD xmm1, xmm2/m64
+#define X64OP1_SQRTSD		0x0f
+#define X64OP2_SQRTSD		0x51
+
+
+// convert with truncation scalar single precision floating point value to general purpose register signed doubleword
+// F3 0F 2C /r
+// CVTTSS2SI r32, xmm1/m32
+#define X64OP1_CVTTSS2SI	0x0f
+#define X64OP2_CVTTSS2SI	0x2c
+
+// convert with truncation packed single precision floating point value to packed general purpose register signed doubleword
+// F3 0F 5B /r
+// CVTTPS2DQ r32, xmm1/m32
+#define X64OP1_CVTTPS2DQ	0x0f
+#define X64OP2_CVTTPS2DQ	0x5b
+
+
+// convert doubleword integer to scalar double precision floating point value
+// F2 0F 2A /r
+// CVTSI2SD xmm1, r32/m32
+#define X64OP1_CVTSI2SD		0x0f
+#define X64OP2_CVTSI2SD		0x2a
+
+// convert packed doubleword integers to packed double precision floating point values
+// F3 0F E6 /r
+// CVTSI2SD xmm1, r32/m32
+#define X64OP1_CVTDQ2PD		0x0f
+#define X64OP2_CVTDQ2PD		0xe6
+
+// replicate lower double floating point value
+// F2 0F 12 /r
+// MOVDDUP xmm1, xmm2/m64
+#define X64OP1_MOVDDUP		0x0f
+#define X64OP2_MOVDDUP		0x12
+
+
+
+
+// ****** AVX ***** //
+
 // *** floating point instructions *** //
 
 // VBLENDVPS - blend 32-bit values with most significant bit as selector
@@ -1443,6 +1565,19 @@
 #define PP_SQRTSD				VEX_PREFIXF2
 #define MMMMM_SQRTSD			VEX_PREFIX0F
 
+// subtract packed double-precision floats
+// 66 0F 5C /r
+// SUBPD xmm1, xmm2/m128
+#define X64OP1_SUBPD		0x0f
+#define X64OP2_SUBPD		0x5c
+
+// subtract packed single-precision floats
+// 0F 5C /r
+// SUBPS xmm1, xmm2/m128
+#define X64OP1_SUBPS		0x0f
+#define X64OP2_SUBPS		0x5c
+
+
 // VSUBPS - subtract packed single-precision float values
 // VSUBPS xmm1,xmm2, xmm3/m128
 // VEX.NDS.128.0F.WIG 5C /r
@@ -1610,6 +1745,9 @@
 
 // ** movdqa instruction ** //
 
+#define PP_VMOVDQA				VEX_PREFIX66
+#define MMMMM_VMOVDQA			VEX_PREFIX0F
+
 // MOVDQA—Move Aligned Double Quadword
 // VMOVDQA xmm1, xmm2/m128
 // VEX.128.66.0F.WIG 6F /r
@@ -1618,6 +1756,41 @@
 // VMOVDQA xmm2/m128, xmm1
 // VEX.128.66.0F.WIG 7F /r
 #define AVXOP_MOVDQA_TOMEM		0x7f
+
+
+
+
+// PMOVZX—Move Aligned Double Quadword
+
+#define PP_VPMOVZX				VEX_PREFIX66
+#define MMMMM_VPMOVZX			VEX_PREFIX0F38
+
+// VPMOVZXBW xmm1, xmm2/m128
+// VEX.128.66.0F38.WIG 6F /r
+#define AVXOP_PMOVZXBW		0x30
+
+// VPMOVZXBD xmm2/m128, xmm1
+// VEX.128.66.0F38.WIG 7F /r
+#define AVXOP_PMOVZXBD		0x31
+
+// VPMOVZXBQ xmm2/m128, xmm1
+// VEX.128.66.0F38.WIG 7F /r
+#define AVXOP_PMOVZXBQ		0x32
+
+// VPMOVZXWD xmm2/m128, xmm1
+// VEX.128.66.0F38.WIG 7F /r
+#define AVXOP_PMOVZXWD		0x33
+
+// VPMOVZXWQ xmm2/m128, xmm1
+// VEX.128.66.0F38.WIG 7F /r
+#define AVXOP_PMOVZXWQ		0x34
+
+// VPMOVZXDQ xmm2/m128, xmm1
+// VEX.128.66.0F38.WIG 7F /r
+#define AVXOP_PMOVZXDQ		0x35
+
+
+
 
 // VMOVHLPS - combine high quadwords of xmm registers, 3rd operand on bottom
 // VMOVHLPS xmm1, xmm2, xmm3
@@ -1628,6 +1801,17 @@
 // VMOVLHPS xmm1, xmm2, xmm3
 // VEX.NDS.128.0F.WIG 16 /r
 #define AVXOP_MOVLHPS			0x16
+
+
+// ** pabs instruction ** //
+
+#define PP_VPABS				VEX_PREFIX66
+#define MMMMM_VPABS				VEX_PREFIX0F38
+
+// VPABSB - packed absolute value of 8-bit values
+// VPABSB xmm1, xmm2/m128
+// VEX.128.66.0F38.WIG 1C /r
+#define AVXOP_PABSB				0x1c
 
 // VPABSW - packed absolute value of 16-bit values
 // VPABSW xmm1, xmm2/m128

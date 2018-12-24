@@ -50,7 +50,7 @@ using namespace R5900::Instruction;
 //#define INLINE_DEBUG_RUN
 //#define INLINE_DEBUG_RUNEVENTS
 #define INLINE_DEBUG_DEVICE
-#define INLINE_DEBUG_NEXTEVENT
+//#define INLINE_DEBUG_NEXTEVENT
 //#define INLINE_DEBUG_MENU
 //#define INLINE_DEBUG_BREAK_VALUECHANGE
 //#define INLINE_DEBUG_BREAK_VALUEMATCH
@@ -212,6 +212,8 @@ void Playstation2::System::Start ()
 	_CPU._NextSystemEvent = &NextEvent_Cycle;
 	_SIF._NextSystemEvent = &NextEvent_Cycle;
 	_IPU._NextSystemEvent = &NextEvent_Cycle;
+
+	VU::_NextSystemEvent = &NextEvent_Cycle;
 	
 	// set pointers for debugger
 	//_CPU.Breakpoints->RAM = _BUS.MainMemory.b8;
@@ -316,7 +318,7 @@ void Playstation2::System::Start ()
 	_IPU._NextEventIdx = & (NextEvent_Idx);
 	//_PIO._NextEventIdx = & (NextEvent_Idx);
 	//_BUS._NextEventIdx = & (NextEvent_Idx);
-	//VU::_NextEventIdx = & (NextEvent_Idx);
+	VU::_NextEventIdx = & (NextEvent_Idx);
 
 
 	
@@ -358,6 +360,13 @@ void Playstation2::System::Start ()
 	//_SIO.Set_EventCallback ( Register_CallbackFunction );
 	_SIF.Set_EventCallback ( Register_CallbackFunction );
 	_IPU.Set_EventCallback ( Register_CallbackFunction );
+
+	
+	_VU0.Set_EventCallback ( Register_CallbackFunction );
+	_VU1.Set_EventCallback ( Register_CallbackFunction );
+	
+	
+	_PS1SYSTEM.Set_EventCallback ( Register_CallbackFunction );
 	
 	
 	cout << "\nAfter starting PS2 system, PS1CD NextEvent=" << _PS1SYSTEM._CD.NextEvent_Cycle;
@@ -428,6 +437,14 @@ void Playstation2::System::GetNextEventCycle ( void )
 	if ( _GPU.NextEvent_Cycle < NextEvent_Cycle ) { NextEvent_Cycle = _GPU.NextEvent_Cycle; NextEvent_Idx = _GPU.NextEvent_Idx; }
 	if ( _SIF.NextEvent_Cycle < NextEvent_Cycle ) { NextEvent_Cycle = _SIF.NextEvent_Cycle; NextEvent_Idx = _SIF.NextEvent_Idx; }
 	if ( _IPU.NextEvent_Cycle < NextEvent_Cycle ) { NextEvent_Cycle = _IPU.NextEvent_Cycle; NextEvent_Idx = _IPU.NextEvent_Idx; }
+
+
+	if ( _VU0.VU0.CycleCount < NextEvent_Cycle ) { NextEvent_Cycle = _VU0.VU0.CycleCount; NextEvent_Idx = _VU0.VU0.NextEvent_Idx; }
+	if ( _VU1.VU1.CycleCount < NextEvent_Cycle ) { NextEvent_Cycle = _VU1.VU1.CycleCount; NextEvent_Idx = _VU1.VU1.NextEvent_Idx; }
+	
+	
+	if ( ( _PS1SYSTEM.NextEvent_Cycle << 2 ) < NextEvent_Cycle ) { NextEvent_Cycle = ( _PS1SYSTEM.NextEvent_Cycle << 2 ); NextEvent_Idx = _PS1SYSTEM.NextEvent_Idx2; }
+	if ( ( _PS1SYSTEM._CPU.CycleCount << 2 ) < NextEvent_Cycle ) { NextEvent_Cycle = ( _PS1SYSTEM._CPU.CycleCount << 2 ); NextEvent_Idx = _PS1SYSTEM.NextEvent_Idx2; }
 	
 	
 #ifdef INLINE_DEBUG_NEXTEVENT
@@ -440,7 +457,8 @@ void Playstation2::System::RunDevices ()
 {
 #ifdef INLINE_DEBUG_DEVICE
 	debug << "\r\nPlaystation2::System::RunDevices; CycleCount=" << dec << _CPU.CycleCount;
-	debug << "\r\nPS1CD NextEvent=" << dec << _PS1SYSTEM._CD.NextEvent_Cycle;
+	debug << " NextEvent_Idx=" << dec << NextEvent_Idx;
+	//debug << "\r\nPS1CD NextEvent=" << dec << _PS1SYSTEM._CD.NextEvent_Cycle;
 #endif
 
 /*
@@ -562,6 +580,8 @@ void Playstation2::System::RunEvents ()
 	{
 #ifdef INLINE_DEBUG_RUN
 	debug << " RunDevices";
+	debug << " NextEvent_Cycle=" << dec << NextEvent_Cycle;
+	debug << " _CPU.CycleCount=" << dec << _CPU.CycleCount;
 #endif
 
 		// save the cycle to run events until
@@ -645,6 +665,7 @@ void Playstation2::System::Run ()
 	_CPU.Run ();
 
 
+	/*
 #ifndef EE_ONLY_COMPILE
 	// run the ps1 also - runs at 1/4 the ps2 bus speed
 	//if ( ( ( *_DebugCycleCount ) >> 2 ) > ( *_PS1SYSTEM._DebugCycleCount ) ) _PS1SYSTEM.Run ( ( *_DebugCycleCount ) >> 2 );
@@ -667,7 +688,10 @@ void Playstation2::System::Run ()
 #endif
 
 #endif
+	*/
 
+
+	/*
 #ifdef INLINE_DEBUG
 	debug << "; VU0";
 #endif
@@ -682,6 +706,7 @@ void Playstation2::System::Run ()
 
 	//if ( ( *_DebugCycleCount ) > ( _VU1.VU1.CycleCount ) ) _VU1.VU1.Run ();
 	while ( ( *_DebugCycleCount ) > ( _VU1.VU1.CycleCount ) ) _VU1.VU1.Run ();
+	*/
 	
 	
 	// testing

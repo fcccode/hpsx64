@@ -37,7 +37,7 @@ using namespace std;
 #define USE_DOUBLE_MATH
 
 // use integer math when more simplistic
-#define USE_INTEGER_MATH
+//#define USE_INTEGER_MATH
 
 
 // this is for testing negation of the msub multiply result
@@ -56,20 +56,20 @@ using namespace std;
 
 
 // should signed zero set the signed flag too, or just the zero flag ??
-//#define DISABLE_SIGN_FLAG_WHEN_ZERO
+#define DISABLE_SIGN_FLAG_WHEN_ZERO
 
 
 // on multiply underflow store the accumulator or previous value for MADD/MSUB ??
-//#define ENABLE_PREVIOUS_VALUE_ON_MULTIPY_UNDERFLOW
+#define ENABLE_PREVIOUS_VALUE_ON_MULTIPY_UNDERFLOW
 
 
 // output of these defines should be LONG LONG
-#define CvtLongLongToDouble(ll) ( ( (ll) & 0x7fffffff ) ? ( ( ( (( ( (ll) >> 23 ) & 0xff ) + 896) ) << 52 ) | ( ( (ll) & 0x7fffff ) << 29 ) | ( ( (ll) & 0x80000000 ) << 32 ) ) : ( ll & 0x7fffffff ) )
+#define CvtLongLongToDouble(ll) ( ( (ll) & 0x7f800000 ) ? ( ( ( (( ( (ll) >> 23 ) & 0xff ) + 896) ) << 52 ) | ( ( (ll) & 0x7fffff ) << 29 ) | ( ( (ll) & 0x80000000ULL ) << 32 ) /* | ( 0x1fffffffULL ) */ ) : ( ( (ll) & 0x80000000 ) << 32 ) )
 #define CvtPS2FloatToDouble(f) ( CvtLongLongToDouble( ((long long&)f) ) )
 #define CvtLongToDouble(l) ( CvtLongLongToDouble( ((long long)l) ) )
 
 // output of these defines should be LONG
-#define CvtLongLongToPS2Float(ll) ( ( ll & 0x7fffffffffffffffLL ) ? ( ( ( ( ( (ll) >> 52 ) & 0x7ff ) - 896 ) << 23 ) | ( ( (ll) >> 29 ) & 0x7fffff ) | ( ( (ll) >> 32 ) & 0x80000000 ) ) : ( ll & 0x7fffffffffffffffLL ) )
+#define CvtLongLongToPS2Float(ll) ( ( ll & 0x7fffffffffffffffLL ) ? ( ( ( ( ( (ll) >> 52 ) & 0x7ff ) - 896 ) << 23 ) | ( ( (ll) >> 29 ) & 0x7fffff ) | ( ( (ll) >> 32 ) & 0x80000000 ) ) : ( ( (ll) >> 32 ) & 0x80000000 ) )
 #define CvtDoubleToPS2Float(d) ( CvtLongLongToPS2Float( ((unsigned long long&)d) ) )
 
 // these are absolute max values and represent a PS2 overflow
@@ -236,8 +236,8 @@ namespace PS2Float
 		llResult = (long long&) dResult;
 		
 		// set zero flags
-		//if ( Result == 0.0f )
-		if ( ! ( llResult & c_llMaxPosInt64 ) )
+		//if ( ! ( llResult & c_llMaxPosInt64 ) )
+		if ( ( llResult & c_llMaxPosInt64 ) < c_llPS2DoubleMin )
 		{
 			// set zero flags
 			*StatusFlag |= 0x41;
@@ -347,11 +347,13 @@ namespace PS2Float
 			*StatusFlag |= 0x41;
 			*MACFlag |= ( 1 << index );
 		}
-		
+#ifdef DISABLE_SIGN_FLAG_WHEN_ZERO
+		else
+#endif
 		// set sign flags
 		// note: only set this strictly when calculation result is negative, not on signed zero
 		//if ( Result < 0.0f )
-		else if ( lResult < 0 )
+		if ( lResult < 0 )
 		{
 
 			// set sign flags
@@ -524,20 +526,26 @@ namespace PS2Float
 		FloatLong Result;
 
 #ifdef USE_DOUBLE_MATH
-		double ds, dt, dResult;
+		//double ds, dt, dResult;
+		DoubleLong ds, dt, dResult;
 
-		ds = CvtPS2FloatToDbl ( fs );
-		dt = CvtPS2FloatToDbl ( ft );
-		
-		FlushPS2DoubleToZero ( ds );
-		FlushPS2DoubleToZero ( dt );
-		
-		dResult = ds + dt;
+//cout << "\nPS2_Float_Add";
 
-		SetFlagsOnResult_d ( dResult, index, StatusFlag, MACFlag );
+		ds.l = CvtPS2FloatToDouble ( fs );
+		dt.l = CvtPS2FloatToDouble ( ft );
 		
-		Result.f = CvtDblToPS2Float ( dResult );
+//cout << " fs=" << fs << " ft=" << ft << " ds=" << hex << ds.l << " dt=" << dt.l;
 		
+		//FlushPS2DoubleToZero ( ds );
+		//FlushPS2DoubleToZero ( dt );
+		
+		dResult.d = ds.d + dt.d;
+//cout << " ds.d=" << ds.d << " dt.d=" << dt.d << " dResult.d=" << dResult.d;
+
+		SetFlagsOnResult_d ( dResult.d, index, StatusFlag, MACFlag );
+		
+		Result.l = CvtDoubleToPS2Float ( dResult.d );
+//cout << " Result.l=" << Result.l << " Result.f=" << Result.f;
 #else
 
 		ClampValue2_f ( fs, ft );
@@ -565,19 +573,26 @@ namespace PS2Float
 		FloatLong Result;
 		
 #ifdef USE_DOUBLE_MATH
-		double ds, dt, dResult;
+		//double ds, dt, dResult;
+		DoubleLong ds, dt, dResult;
 
-		ds = CvtPS2FloatToDbl ( fs );
-		dt = CvtPS2FloatToDbl ( ft );
-		
-		FlushPS2DoubleToZero ( ds );
-		FlushPS2DoubleToZero ( dt );
-		
-		dResult = ds - dt;
+//cout << "\nPS2_Float_Sub";
 
-		SetFlagsOnResult_d ( dResult, index, StatusFlag, MACFlag );
+		ds.l = CvtPS2FloatToDouble ( fs );
+		dt.l = CvtPS2FloatToDouble ( ft );
 		
-		Result.f = CvtDblToPS2Float ( dResult );
+//cout << " fs=" << fs << " ft=" << ft << " ds=" << hex << ds.l << " dt=" << dt.l;
+		
+		//FlushPS2DoubleToZero ( ds );
+		//FlushPS2DoubleToZero ( dt );
+		
+		dResult.d = ds.d - dt.d;
+//cout << " ds.d=" << ds.d << " dt.d=" << dt.d << " dResult.d=" << dResult.d;
+
+		SetFlagsOnResult_d ( dResult.d, index, StatusFlag, MACFlag );
+		
+		Result.l = CvtDoubleToPS2Float ( dResult.d );
+//cout << " Result.l=" << Result.l << " Result.f=" << Result.f;
 		
 #else
 
@@ -609,7 +624,10 @@ namespace PS2Float
 		FloatLong flf;
 		
 #ifdef USE_DOUBLE_MATH
-		double ds, dt, dResult;
+		//double ds, dt, dResult;
+		DoubleLong ds, dt, dResult;
+
+//cout << "\nPS2_Float_Mul";
 
 #ifdef ENABLE_MUL_PRECISION_CHOP
 		flf.l = (((long&) ft) & 0xfffffffe);
@@ -617,17 +635,21 @@ namespace PS2Float
 		flf.f = ft;
 #endif
 		
-		ds = CvtPS2FloatToDbl ( fs );
-		dt = CvtPS2FloatToDbl ( flf.f );
+		ds.l = CvtPS2FloatToDouble ( fs );
+		dt.l = CvtPS2FloatToDouble ( flf.f );
 		
-		FlushPS2DoubleToZero ( ds );
-		FlushPS2DoubleToZero ( dt );
+//cout << " fs=" << fs << " ft=" << ft << " ds=" << hex << ds.l << " dt=" << dt.l;
 		
-		dResult = ds * dt;
+		//FlushPS2DoubleToZero ( ds );
+		//FlushPS2DoubleToZero ( dt );
+		
+		dResult.d = ds.d * dt.d;
+//cout << " ds.d=" << ds.d << " dt.d=" << dt.d << " dResult.d=" << dResult.d;
 
-		SetFlagsOnResult_d ( dResult, index, StatusFlag, MACFlag );
+		SetFlagsOnResult_d ( dResult.d, index, StatusFlag, MACFlag );
 		
-		Result.f = CvtDblToPS2Float ( dResult );
+		Result.l = CvtDoubleToPS2Float ( dResult.d );
+//cout << " Result.l=" << Result.l << " Result.f=" << Result.f;
 		
 #else
 
@@ -668,7 +690,8 @@ namespace PS2Float
 		FloatLong flf;
 
 #ifdef USE_DOUBLE_MATH
-		double ds, dt, dd;
+		//double ds, dt, dd;
+		DoubleLong ds, dt, dd;
 		DoubleLong dProd, dSum, dResult;
 		DoubleLong dlACC;
 
@@ -678,28 +701,28 @@ namespace PS2Float
 		flf.f = ft;
 #endif
 
-		ds = CvtPS2FloatToDbl ( fs );
-		dt = CvtPS2FloatToDbl ( flf.f );
+		ds.l = CvtPS2FloatToDouble ( fs );
+		dt.l = CvtPS2FloatToDouble ( flf.f );
 		
-		FlushPS2DoubleToZero ( ds );
-		FlushPS2DoubleToZero ( dt );
+		//FlushPS2DoubleToZero ( ds );
+		//FlushPS2DoubleToZero ( dt );
 		
 		// get accumulator
-		dlACC.d = CvtPS2FloatToDbl ( dACC );
+		dlACC.l = CvtPS2FloatToDouble ( dACC );
 		
 		// I think it does both the multiply and the sum...
-		dProd.d = ds * dt;
+		dProd.d = ds.d * dt.d;
 		dSum.d = dlACC.d + dProd.d;
 		
-		dd = CvtPS2FloatToDbl ( fd );
+		dd.l = CvtPS2FloatToDouble ( fd );
 		
 		// set preliminary result to the sum
 		dResult.d = dSum.d;
 		
-		SetFlagsOnResultDF_d ( dResult, dlACC, dProd, dSum, dd, index, StatusFlag, MACFlag );
+		SetFlagsOnResultDF_d ( dResult, dlACC, dProd, dSum, dd.d, index, StatusFlag, MACFlag );
 
 				
-		Result.f = CvtDblToPS2Float ( dResult.d );
+		Result.l = CvtDoubleToPS2Float ( dResult.d );
 		
 #else
 
@@ -793,8 +816,12 @@ namespace PS2Float
 		// flag check based on ACC ??
 		SetFlagsOnResult_f ( ACC.f, index, StatusFlag, MACFlag );
 		
+#ifdef ENABLE_PREVIOUS_VALUE_ON_MULTIPY_UNDERFLOW
 		// return previous value ??
 		return fd;
+#else
+		return ACC.f;
+#endif
 	}
 	
 	// if not multiply overflow on final check, then do the add and check flags
@@ -883,7 +910,8 @@ namespace PS2Float
 
 
 #ifdef USE_DOUBLE_MATH
-		double ds, dt, dd;
+		//double ds, dt, dd;
+		DoubleLong ds, dt, dd;
 		DoubleLong dProd, dSum, dResult;
 		DoubleLong dlACC;
 
@@ -893,27 +921,27 @@ namespace PS2Float
 		flf.f = ft;
 #endif
 
-		ds = CvtPS2FloatToDbl ( fs );
-		dt = CvtPS2FloatToDbl ( flf.f );
+		ds.l = CvtPS2FloatToDouble ( fs );
+		dt.l = CvtPS2FloatToDouble ( flf.f );
 		
-		FlushPS2DoubleToZero ( ds );
-		FlushPS2DoubleToZero ( dt );
+		//FlushPS2DoubleToZero ( ds );
+		//FlushPS2DoubleToZero ( dt );
 		
 		// get accumulator
-		dlACC.d = CvtPS2FloatToDbl ( dACC );
+		dlACC.l = CvtPS2FloatToDouble ( dACC );
 		
 		// I think it does both the multiply and the sum...
-		dProd.d = ds * dt;
+		dProd.d = ds.d * dt.d;
 		dSum.d = dlACC.d - dProd.d;
 		
-		dd = CvtPS2FloatToDbl ( fd );
+		dd.l = CvtPS2FloatToDouble ( fd );
 		
 		dResult.d = dSum.d;
 		
-		SetFlagsOnResultDF_d ( dResult, dlACC, dProd, dSum, dd, index, StatusFlag, MACFlag );
+		SetFlagsOnResultDF_d ( dResult, dlACC, dProd, dSum, dd.d, index, StatusFlag, MACFlag );
 
 				
-		Result.f = CvtDblToPS2Float ( dResult.d );
+		Result.l = CvtDoubleToPS2Float ( dResult.d );
 		
 #else
 		
@@ -1020,8 +1048,12 @@ namespace PS2Float
 		// flag check based on ACC ??
 		SetFlagsOnResult_f ( ACC.f, index, StatusFlag, MACFlag );
 		
+#ifdef ENABLE_PREVIOUS_VALUE_ON_MULTIPY_UNDERFLOW
 		// return previous value ??
 		return fd;
+#else
+		return ACC.f;
+#endif
 	}
 	
 	// if not multiply overflow on final check, then do the add and check flags
@@ -1153,10 +1185,17 @@ namespace PS2Float
 		
 		// if value is negative as integer, then take two's compliment of the absolute value?
 		// note: instead of taking two's compliment, should just take inverse
+		/*
 		//lfs = ( lfs >= 0 ) ? lfs : -( lfs & 0x7fffffff );
 		//lft = ( lft >= 0 ) ? lft : -( lft & 0x7fffffff );
 		lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
 		lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+		*/
+		
+		// take two's complement before comparing if negative
+		lfs = ( ( lfs >> 31 ) ^ ( lfs & 0x7fffffff ) ) + ( ( lfs >> 31 ) & 1 );
+		lft = ( ( lft >> 31 ) ^ ( lft & 0x7fffffff ) ) + ( ( lft >> 31 ) & 1 );
+
 		
 		// compare as integer and return original value?
 		fResult = ( ( lfs > lft ) ? fs : ft );
@@ -1194,10 +1233,16 @@ namespace PS2Float
 		
 		// if value is negative as integer, then take two's compliment of the absolute value?
 		// note: instead of taking two's compliment, should just take inverse
+		/*
 		//lfs = ( lfs >= 0 ) ? lfs : -( lfs & 0x7fffffff );
 		//lft = ( lft >= 0 ) ? lft : -( lft & 0x7fffffff );
 		lfs = ( lfs >= 0 ) ? lfs : ~( lfs & 0x7fffffff );
 		lft = ( lft >= 0 ) ? lft : ~( lft & 0x7fffffff );
+		*/
+		
+		// take two's complement before comparing if negative
+		lfs = ( ( lfs >> 31 ) ^ ( lfs & 0x7fffffff ) ) + ( ( lfs >> 31 ) & 1 );
+		lft = ( ( lft >> 31 ) ^ ( lft & 0x7fffffff ) ) + ( ( lft >> 31 ) & 1 );
 		
 		// compare as integer and return original value?
 		fResult = ( ( lfs < lft ) ? fs : ft );
@@ -1238,10 +1283,21 @@ namespace PS2Float
 		// convert to double
 		// note: after conversion, if +/- inf/nan, should stay same
 		//Dt.d = (double) ft;
-		Dt.d = CvtPS2FloatToDbl ( ft );
+		Dt.l = CvtPS2FloatToDouble ( ft );
+		
+		// clear affected non-sticky flags
+		// note: mind as well clear the sticky flag area too since this shouldn't set the actual flag
+		// *StatusFlag &= ~0x30;
+		*StatusFlag &= ~0xc30;
+		
+		// set flag on sqrt of negative value
+		if ( Dt.l < 0 )
+		{
+			*StatusFlag |= 0x410;
+		}
 		
 		// flush ps2 denormal to zero as double
-		FlushPS2DoubleToZero ( Dt.d );
+		//FlushPS2DoubleToZero ( Dt.d );
 		
 		//if ( isNaNorInf_d ( Dt.d ) )
 		//{
@@ -1255,14 +1311,15 @@ namespace PS2Float
 		Dd.d = sqrt ( Dt.d );
 		
 		// flush denormal to zero again
-		FlushPS2DoubleToZero ( Dd.d );
+		//FlushPS2DoubleToZero ( Dd.d );
 		
 		// convert back to float
 		// note: for now, this is cool, because...
 		// *** todo *** implement proper conversion (max PS2 value of +/- INF does not convert correctly)
 		//Result.f = (float) Dd.d;
-		Result.f = CvtDblToPS2Float ( Dd.d );
+		Result.l = CvtDoubleToPS2Float ( Dd.d );
 
+		return Result.f;
 #else
 
 		ClampValue_f ( ft );
@@ -1325,12 +1382,41 @@ namespace PS2Float
 		// note: after conversion, if +/- inf/nan, should stay same
 		//Ds.d = (double) fs;
 		//Dt.d = (double) ft;
-		Ds.d = CvtPS2FloatToDbl ( fs );
-		Dt.d = CvtPS2FloatToDbl ( ft );
+		Ds.l = CvtPS2FloatToDouble ( fs );
+		Dt.l = CvtPS2FloatToDouble ( ft );
+
+
+		// clear affected non-sticky flags
+		// note: mind as well clear the sticky flag area too since this shouldn't set the actual flag
+		// *StatusFlag &= ~0x30;
+		*StatusFlag &= ~0xc30;
+		
+		// write invalid flag (SQRT of negative number or 0/0)
+		//*invalid_negative = (long&) ft;
+		//temp1 = (long&) fs;
+		//temp2 = (long&) ft;
+		// *invalid_zero = temp1 | temp2;
+		// *** todo ***
+		// *invalid_zero = (long&) fs | (long&) ft;
+		if ( ( Dt.l < 0 ) || ! ( ( Ds.l | Dt.l ) & 0x7fffffffffffffffULL ) )
+		{
+			*StatusFlag |= 0x410;
+			
+			/*
+			if ( fs == 0.0f )
+			{
+				// make sure result is zero??
+				Result.l &= 0x80000000;
+			}
+			*/
+		}
+		
+		
+
 		
 		// flush ps2 denormal to zero as double
-		FlushPS2DoubleToZero ( Ds.d );
-		FlushPS2DoubleToZero ( Dt.d );
+		//FlushPS2DoubleToZero ( Ds.d );
+		//FlushPS2DoubleToZero ( Dt.d );
 		
 		//if ( isNaNorInf_d ( Ds.d ) )
 		//{
@@ -1356,7 +1442,26 @@ namespace PS2Float
 		// note: for now, this is cool, because...
 		// *** todo *** implement proper conversion (max PS2 value of +/- INF does not convert correctly)
 		//Result.f = (float) Dd.d;
-		Result.f = CvtDblToPS2Float ( Dd.d );
+		Result.l = CvtDoubleToPS2Float ( Dd.d );
+		
+		
+		// write zero division flag -> set to zero for SQRT
+		// write denominator
+		//*divide = (long&) ft;
+		if ( ( Ds.l & 0x7fffffffffffffffULL ) && !( Dt.l & 0x7fffffffffffffffULL ) )
+		{
+			*StatusFlag |= 0x820;
+			
+		}
+		
+		if ( !( Dt.l & 0x7fffffffffffffffULL ) )
+		{
+			// set result to +max/-max ??
+			Result.l = (long&) fs;
+			Result.l |= 0x7fffffff;
+		}
+		
+		return Result.f;
 #else
 
 		ClampValue2_f ( fs, ft );
@@ -1430,12 +1535,12 @@ namespace PS2Float
 		// note: after conversion, if +/- inf/nan, should stay same
 		//Ds.d = (double) fs;
 		//Dt.d = (double) ft;
-		Ds.d = CvtPS2FloatToDbl ( fs );
-		Dt.d = CvtPS2FloatToDbl ( ft );
+		Ds.l = CvtPS2FloatToDouble ( fs );
+		Dt.l = CvtPS2FloatToDouble ( ft );
 		
 		// flush ps2 denormal to zero as double
-		FlushPS2DoubleToZero ( Ds.d );
-		FlushPS2DoubleToZero ( Dt.d );
+		//FlushPS2DoubleToZero ( Ds.d );
+		//FlushPS2DoubleToZero ( Dt.d );
 		
 		//if ( isNaNorInf_d ( Ds.d ) )
 		//{
@@ -1458,7 +1563,40 @@ namespace PS2Float
 		// note: for now, this is cool, because...
 		// *** todo *** implement proper conversion (max PS2 value of +/- INF does not convert correctly)
 		//Result.f = (float) Dd.d;
-		Result.f = CvtDblToPS2Float ( Dd.d );
+		Result.l = CvtDoubleToPS2Float ( Dd.d );
+		
+		// clear affected non-sticky flags
+		// note: mind as well clear the sticky flag area too since this shouldn't set the actual flag
+		// *StatusFlag &= ~0x30;
+		*StatusFlag &= ~0xc30;
+		
+		// write zero division flag -> set to zero for SQRT
+		// write denominator
+		//if ( ft == 0.0f )
+		if ( ! ( Dt.l & 0x7fffffffffffffffULL ) )
+		{
+			// also set result to +max or -max
+			Result.l = ( Ds.l ^ Dt.l ) >> 32;
+			Result.l |= 0x7fffffff;
+			
+			//if ( fs != 0.0f )
+			if ( Ds.l & 0x7fffffffffffffffULL )
+			{
+				// set divide by zero flag //
+				*StatusFlag |= 0x820;
+				
+			}
+			else
+			{
+				// set invalid flag //
+				*StatusFlag |= 0x410;
+				
+				// set to zero ??
+				//Result.l &= 0x80000000;
+			}
+		}
+		
+		return Result.f;
 #else
 
 		ClampValue2_f ( fs, ft );

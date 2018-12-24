@@ -42,7 +42,8 @@ namespace Api
 		typedef int (*StartFunction) ( void* _Param );
 
 		// this creates the thread object and starts the thread
-		Thread ( StartFunction st, void* _Param );
+		Thread ( StartFunction st, void* _Param, bool WaitForStart = true );
+		~Thread ();
 
 		//void Create ( StartFunction st, void* Param );
 

@@ -1848,6 +1848,16 @@ void Timer::SetMode( u32 Data )
 #else
 	UpdateTimer ();
 #endif
+
+
+	if ( ( Data ^ MODE.Value ) & 0x3ff )
+	{
+		// from Nocash PSX Specifications
+		// writing to the mode register clears timer to zero
+		COUNT.Value = 0;
+		StartValue = 0;
+		StartCycle = *_DebugCycleCount;
+	}
 	
 	// bits 10 and 11 acknowledge interrupts
 	// handled elsewhere
@@ -1862,14 +1872,9 @@ void Timer::SetMode( u32 Data )
 	//MODE.Value |= ( 1 << 10 );
 	
 
-	// from Nocash PSX Specifications
-	// writing to the mode register clears timer to zero
-	//COUNT.Value = 0;
-	//StartValue = 0;
-	//StartCycle = *_DebugCycleCount;
 	
 	// reset irq counter
-	IRQ_Counter = 0;
+	//IRQ_Counter = 0;
 	
 	
 	// calibrate timer

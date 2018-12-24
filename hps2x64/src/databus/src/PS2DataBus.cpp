@@ -87,7 +87,7 @@ using namespace R5900::Instruction;
 //#define INLINE_DEBUG_WRITE_VUMEM
 
 //#define INLINE_DEBUG_DATABUS_READ
-#define INLINE_DEBUG_DATABUS_WRITE
+//#define INLINE_DEBUG_DATABUS_WRITE
 
 
 //#define INLINE_DEBUG_WRITE_RAMSIZE
@@ -288,10 +288,21 @@ void DataBus::Start ()
 	ConnectDevice_Read ( 0xa1c00000, Memory_Read );
 	*/
 	
+	// main memory ram //
+	
+	// cached
 	ConnectDevice_Read ( 0x00000000, 0x01c00000, Memory_Read );
+	
+	// uncached
 	ConnectDevice_Read ( 0x20000000, 0x21c00000, Memory_Read );
+	
+	// uncached accelerated
 	ConnectDevice_Read ( 0x30000000, 0x31c00000, Memory_Read );
+	
+	// probably cached
 	ConnectDevice_Read ( 0x80000000, 0x81c00000, Memory_Read );
+	
+	// probably uncached
 	ConnectDevice_Read ( 0xa0000000, 0xa1c00000, Memory_Read );
 	
 	ConnectDevice_Read_t<0xff> ( 0x00000000, 0x01c00000, Memory_Read_t<0xff> );
@@ -417,9 +428,17 @@ void DataBus::Start ()
 	ConnectDevice_Read ( 0x9fc00000, BIOS_Read );
 	ConnectDevice_Read ( 0xbfc00000, BIOS_Read );
 	*/
+	
+	
+	// bios //
 
+	// uncached
 	ConnectDevice_Read ( 0x1fc00000, 0x1fc00000, BIOS_Read );
+	
+	// cached
 	ConnectDevice_Read ( 0x9fc00000, 0x9fc00000, BIOS_Read );
+	
+	// uncached
 	ConnectDevice_Read ( 0xbfc00000, 0xbfc00000, BIOS_Read );
 
 	ConnectDevice_Read_t<0xff> ( 0x1fc00000, 0x1fc00000, BIOS_Read_t<0xff> );
@@ -910,6 +929,9 @@ static void DataBus::VuMem_Write ( u32 Address, u64 Data, u64 Mask )
 		
 		Address &= MicroMem0_Mask;
 		
+		// a write to the instruction area will invalidate the whole thing for now for VU
+		VU::_VU [ 0 ]->bCodeModified [ 0 ] = 1;
+		
 		if ( !Mask )
 		{
 #ifdef INLINE_DEBUG_WRITE_VUMEM
@@ -959,6 +981,9 @@ static void DataBus::VuMem_Write ( u32 Address, u64 Data, u64 Mask )
 		
 		Address -= 0x10008000;
 		Address &= MicroMem1_Mask;
+
+		// a write to the instruction area will invalidate the whole thing for now for VU
+		VU::_VU [ 1 ]->bCodeModified [ 1 ] = 1;
 		
 		if ( !Mask )
 		{
@@ -2087,7 +2112,7 @@ static void DataBus::Device_Write ( u32 Address, u64 Data, u64 Mask )
 }
 
 
-u64 DataBus::Read ( u32 Address, u64 Mask )
+static u64 DataBus::Read ( u32 Address, u64 Mask )
 {
 #ifdef INLINE_DEBUG_DATABUS_READ
 	debug << "\r\nDataBus::Read; Address=" << hex << Address << " Mask=" << Mask;
@@ -2102,7 +2127,7 @@ u64 DataBus::Read ( u32 Address, u64 Mask )
 }
 
 // *note* currently for PS1, some of these arguments are reversed
-void DataBus::Write ( u32 Address, u64 Data, u64 Mask )
+static void DataBus::Write ( u32 Address, u64 Data, u64 Mask )
 {
 #ifdef INLINE_DEBUG_DATABUS_WRITE
 	debug << "\r\nDataBus::Write; Address=" << hex << Address << " Data=" << Data << " Mask=" << Mask;

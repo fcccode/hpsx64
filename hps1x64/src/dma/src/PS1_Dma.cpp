@@ -104,13 +104,17 @@ using namespace Playstation1;
 
 
 
+#define USE_NEW_PS1_DMA_RUN
+
+
+
 #ifdef _DEBUG_VERSION_
 
 // enable debugging
 
 #define INLINE_DEBUG_ENABLE
 
-
+/*
 #define INLINE_DEBUG_WRITE 
 #define INLINE_DEBUG_COMPLETE
 #define INLINE_DEBUG_READ
@@ -203,7 +207,7 @@ using namespace Playstation1;
 
 //#define INLINE_DEBUG_RUN_DMA11_OUTPUT
 //#define INLINE_DEBUG_RUN_DMA12_OUTPUT
-
+*/
 
 #endif
 
@@ -296,7 +300,7 @@ const u64 Dma::c_ullAccessTime [ c_iNumberOfChannels ] = {
 1,	// dma#1 - MDECout
 1,	// dma#2 - GPU
 #ifdef PS2_COMPILE
-4,	// dma#3 - CDVD (but on PS2 this is probably shorter?)
+1,	// 4,	// dma#3 - CDVD (but on PS2 this is probably shorter?)
 #else
 24,	// dma#3 - CD
 #endif
@@ -329,8 +333,8 @@ const u64 Dma::c_ullReleaseTime [ c_iNumberOfChannels ] = {
 #ifdef PS2_COMPILE
 16,	// dma#7 - SPU2
 1,	// dma#8 - DEV9
-1,	// dma#9 - SIF0 (IOP->EE)
-999999999999LL,	// dma#10 - SIF1 (EE->IOP)
+-1ULL, //1,	// dma#9 - SIF0 (IOP->EE)
+-1ULL,	// dma#10 - SIF1 (EE->IOP)
 1,	// dma#11 - SIO2in
 1,	// dma#12 - SIO2out
 #endif
@@ -1478,6 +1482,7 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 	}
 	
 	// step 0: determine if channel is enabled
+	/*
 	if ( !pRegData [ iChannel ]->CHCR.TR )
 	{
 #ifdef INLINE_DEBUG_TRANSFER
@@ -1487,7 +1492,35 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 		// channel is not set to transfer anything
 		return;
 	}
+	*/
 	
+	// make sure channel is enabled
+	if ( ! isEnabled ( iChannel ) )
+	{
+#ifdef INLINE_DEBUG_TRANSFER
+	debug << " !E";
+#endif
+
+		// reset events
+		SetNextEventCh_Cycle ( -1ULL, iChannel );
+
+		// channel is not set to transfer anything
+		return;
+	}
+
+	// make sure channel is active
+	if ( ! isActive ( iChannel ) )
+	{
+#ifdef INLINE_DEBUG_TRANSFER
+	debug << " !A";
+#endif
+
+		// reset events
+		SetNextEventCh_Cycle ( -1ULL, iChannel );
+		
+		// channel is not set to transfer anything
+		return;
+	}
 	
 	// step 2: determine if device is ready for the transfer (and when it will be ready if not)
 	// if device is not ready for the transfer, then mark channel as "not currently transferring"
@@ -1510,8 +1543,13 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 				break;
 				
 			default:
+				// reset events
+				SetNextEventCh_Cycle ( -1ULL, iChannel );
+				
+#ifndef USE_NEW_PS1_DMA_RUN
 #ifdef ENABLE_ARBITRATE_ON_NOTREADY
 				Arbitrate ( iChannel );
+#endif
 #endif
 
 				break;
@@ -1521,10 +1559,11 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 	}
 
 #ifdef INLINE_DEBUG_TRANSFER
-	debug << " READY";
+	debug << " READY=" << dec << ullReady;
 #endif
 	
 	
+#ifndef USE_NEW_PS1_DMA_RUN
 	// if this is a forced transfer, then skip the priority check
 	if ( !FORCE_TRANSFER )
 	{
@@ -1578,23 +1617,12 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 #endif
 		
 	} // end if ( !FORCE_TRANSFER )
-	
+#endif
 
 #ifdef INLINE_DEBUG_TRANSFER
 	debug << " NewActiveChannel=" << dec << ActiveChannel;
 #endif
 
-	// step 1: check if dma channel has a setup time
-	// had to first make sure it was active channel and can now check for this
-	if ( *_DebugCycleCount < DmaCh [ iChannel ].ullStartCycle )
-	{
-		// not yet time to start the transfer (dma setup time?) //
-		
-		// return to complete the transfer after the setup time
-		SetNextEventCh_Cycle ( DmaCh [ iChannel ].ullStartCycle, iChannel );
-		
-		return;
-	}
 	
 	// determine if device is ready immediately for active channel or will be ready at some known point in the future
 	if ( ullReady > 1 )
@@ -1606,6 +1634,22 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 		// device is not ready immediately, but will be ready at the specified cycle
 		// set DMA to continue at that cycle#
 		SetNextEventCh_Cycle ( ullReady, iChannel );
+		
+		return;
+	}
+	
+	// step 1: check if dma channel has a setup time
+	// had to first make sure it was active channel and can now check for this
+	if ( *_DebugCycleCount < DmaCh [ iChannel ].ullStartCycle )
+	{
+#ifdef INLINE_DEBUG_TRANSFER
+	debug << " DEVICE-START-CYCLE#" << dec << DmaCh [ iChannel ].ullStartCycle;
+#endif
+
+		// not yet time to start the transfer (dma setup time?) //
+		
+		// return to complete the transfer after the setup time
+		SetNextEventCh_Cycle ( DmaCh [ iChannel ].ullStartCycle, iChannel );
 		
 		return;
 	}
@@ -2215,8 +2259,10 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 				break;
 		}
 		
+#ifndef USE_NEW_PS1_DMA_RUN
 		// check for any other active channels and get them started
 		Arbitrate ( iChannel );
+#endif
 		
 		// must return here because the active channel might have changed
 		return;
@@ -2281,9 +2327,11 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 	debug << " DEVICE-NO-LONGER-READY";
 #endif
 
+#ifndef USE_NEW_PS1_DMA_RUN
 		// since device is no longer ready, that changes the active channel
 		// check for any other active channels and get them started
 		Arbitrate ( iChannel );
+#endif
 
 		return;
 	}
@@ -2297,8 +2345,15 @@ void Dma::Transfer ( int iChannel, bool FORCE_TRANSFER )
 	debug << " RELEASE-TIME=" << dec << ullReleaseTime;
 #endif
 
-		// set the variables to release the bus to CPU
-		ullReturnCycle = R3000A::Cpu::_CPU->CycleCount + ullReleaseTime;
+		if ( ullReleaseTime != -1ULL )
+		{
+			// set the variables to release the bus to CPU
+			ullReturnCycle = R3000A::Cpu::_CPU->CycleCount + ullReleaseTime;
+		}
+		else
+		{
+			ullReturnCycle = -1ULL;
+		}
 		
 #ifdef INLINE_DEBUG_TRANSFER_BOTTOM
 	debug << " RETURN-AT#" << dec << ullReturnCycle;
@@ -2433,7 +2488,7 @@ void Dma::Run ()
 	// list out the events for channels
 	for ( int i = 0; i < c_iNumberOfChannels; i++ )
 	{
-		debug << " " << hex << i << "=" << dec << NextEventCh_Cycle [ i ];
+		debug << " " << hex << i << "=" << dec << ((s64) NextEventCh_Cycle [ i ] ) << ( ( isEnabled(i) ) ? " E" : " NE" ) << ( ( isActive(i) ) ? " A" : " NA" );
 	}
 #endif
 
@@ -2453,6 +2508,94 @@ void Dma::Run ()
 	}
 #endif
 */
+
+
+#ifdef USE_NEW_PS1_DMA_RUN
+
+	int iChNumber;
+	u64 ullChCycle;
+	
+
+	//while ( NextEvent_Cycle <= R3000A::Cpu::_CPU->CycleCount )
+	do
+	{
+		iChNumber = -1;
+		ullChCycle = -1ULL;
+		
+
+		// need to find dma channel that needs to run and is enabled and active
+		for ( int i = 0; i < c_iNumberOfChannels; i++ )
+		{
+			if ( NextEventCh_Cycle [ i ] != -1ULL )
+			{
+				if ( isEnabled ( i ) )
+				{
+					if ( isActive ( i ) )
+					{
+						// check if cycle count comes before
+						// if at same priority level, then later channel has higher priority?
+						if ( NextEventCh_Cycle [ i ] <= ullChCycle )
+						{
+							if ( NextEventCh_Cycle [ i ] <= *_DebugCycleCount )
+							{
+								iChNumber = i;
+								ullChCycle = NextEventCh_Cycle [ i ];
+							}
+						}
+					}
+				}
+			}
+		}
+		
+#ifdef INLINE_DEBUG_RUN
+	debug << "\r\n->Dma::Run::Loop";
+	debug << " Ch#=" << dec << iChNumber;
+	debug << " ChNextEventCycle#" << ullChCycle;
+	debug << " SysCycleCount=" << *_DebugCycleCount;
+	debug << " CpuCycleCount=" << R3000A::Cpu::_CPU->CycleCount;
+	debug << " NextEvent_Cycle=" << NextEvent_Cycle;
+	for ( int i = 0; i < c_iNumberOfChannels; i++ )
+	{
+		debug << " " << hex << i << "=" << dec << ((s64) NextEventCh_Cycle [ i ] ) << ( ( isEnabled(i) ) ? " E" : " NE" ) << ( ( isActive(i) ) ? " A" : " NA" );
+	}
+#endif
+
+		if ( iChNumber != -1 )
+		{
+//#ifdef INLINE_DEBUG_RUN
+//	debug << "\r\n->Dma::Run::Loop2";
+//	debug << " Ch#=" << dec << iChNumber;
+//	debug << " ChNextEventCycle#" << ullChCycle;
+//	debug << " CpuCycleCount=" << R3000A::Cpu::_CPU->CycleCount;
+//#endif
+
+			// handling the event here, so clear the current event for the channel
+			SetNextEventCh_Cycle ( -1ULL, iChNumber );
+			
+			// channel is next in line to be run?
+			Transfer ( iChNumber );
+		
+			// check which channel is next to run
+			Update_NextEventCycle ();
+		}
+		
+	} while ( iChNumber != -1 );
+
+#ifdef INLINE_DEBUG_RUN
+	debug << "\r\n->Dma::Run";
+	debug << " NextEvent=" << dec << NextEvent_Cycle;
+	debug << " SysCycleCount=" << *_DebugCycleCount;
+	debug << " CpuCycleCount=" << R3000A::Cpu::_CPU->CycleCount;
+	debug << " ActiveChannel=" << ActiveChannel;
+	// list out the events for channels
+	for ( int i = 0; i < c_iNumberOfChannels; i++ )
+	{
+		debug << " " << hex << i << "=" << dec << ((s64) NextEventCh_Cycle [ i ] ) << ( ( isEnabled(i) ) ? " E" : " NE" ) << ( ( isActive(i) ) ? " A" : " NA" );
+	}
+#endif
+
+#else
+
 
 #ifdef PS2_COMPILE
 
@@ -2536,6 +2679,8 @@ void Dma::Run ()
 	debug << " NEXT-EVENT-CYCLE=" << dec << NextEvent_Cycle;
 #endif
 	}
+	
+#endif
 
 }
 
@@ -4188,6 +4333,8 @@ void Dma::DMA_Finished ( int index, bool SuppressDMARestart, bool SuppressEventU
 	// transfer for channel is no longer in progress
 	Channels_InProgress &= ~( 1 << index );
 	
+	// channel is done, so no more events
+	SetNextEventCh_Cycle ( -1ULL, index );
 	
 #ifdef PS2_COMPILE
 	if ( !SuppressDMAStop )

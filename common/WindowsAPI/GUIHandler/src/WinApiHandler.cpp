@@ -140,6 +140,25 @@ void WindowClass::Register ( HINSTANCE hInstance, LPCTSTR lpszClassName, LPCTSTR
 }
 
 
+void WindowClass::DoSingleEvent ()
+{
+	MSG Msg;
+	
+	// need to block for messages
+	// actually will just peek at the message
+	if ( PeekMessage ( &Msg, NULL, 0, 0, PM_REMOVE | PM_NOYIELD ) > 0 )
+	{
+		///////////////////////////////
+		// message was returned
+		
+		TranslateMessage(&Msg);
+		DispatchMessage(&Msg);
+		
+
+	}
+}
+
+
 void WindowClass::DoEventsNoWait ()
 {
 	MSG Msg;
@@ -1794,7 +1813,7 @@ BOOL WindowClass::Window::CreateGLWindow(char* title, int width, int height, boo
 	else
 	{
 		dwExStyle=WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;			// Window Extended Style
-		dwStyle=WS_OVERLAPPEDWINDOW;							// Windows Style
+		dwStyle=WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX;							// Windows Style
 	}
 
 	//AdjustWindowRectEx(&WindowRect, dwStyle, FALSE, dwExStyle);		// Adjust Window To True Requested Size

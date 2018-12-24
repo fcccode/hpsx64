@@ -118,6 +118,7 @@ namespace Playstation1
 		
 		// index of next event
 		u32 NextEvent_Idx;
+		u32 NextEvent_Idx2;
 		
 		// says what cycle the next non-CPU event is scheduled to run at
 		// needs to be calculated for the next time whenever non-cpu events get run
@@ -245,10 +246,15 @@ namespace Playstation1
 		// returns the index of the call back function (can't use pointers)
 		static u32 Register_CallbackFunction ( funcVoid CallbackFunction )
 		{
+cout << "\nCalling System::Register_CallbackFunction where EventFunc_Count=" << dec << EventFunc_Count;
+
 			EventFunc [ EventFunc_Count++ ] = CallbackFunction;
 			return EventFunc_Count - 1;
 		}
 		
+
+		static void sRun () { _SYSTEM->Run (); }
+		static void Set_EventCallback ( funcVoid1 UpdateEvent_CB ) { _SYSTEM->NextEvent_Idx2 = UpdateEvent_CB ( sRun ); }
 		
 		
 		// opens debug window and prepares for writing

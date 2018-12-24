@@ -42,6 +42,16 @@ Debug::Log Execute::debug;
 //#define ENABLE_INTDELAYSLOT_ILWR
 
 
+#define PERFORM_CLIP_AS_INTEGER
+
+
+
+//#define ENABLE_NEW_CLIP_BUFFER
+//#define ENABLE_NEW_FLAG_BUFFER
+#define ENABLE_SNAPSHOTS
+
+
+
 // enable debugging
 
 #ifdef _DEBUG_VERSION_
@@ -53,11 +63,14 @@ Debug::Log Execute::debug;
 
 //#define INLINE_DEBUG_STALLS
 
-/*
-#define INLINE_DEBUG_VU
+//#define INLINE_DEBUG_MTIR
+//#define INLINE_DEBUG_MADDW
+
+
+//#define INLINE_DEBUG_VU
 //#define INLINE_DEBUG_UNIMPLEMENTED
 //#define INLINE_DEBUG_EXT
-*/
+
 
 #endif
 
@@ -116,8 +129,19 @@ static void Execute::ABS ( VU *v, Instruction::Format i )
 #endif
 
 #ifdef ENABLE_STALLS
+
 	// set the source register(s)
 	v->Set_SrcReg ( i.Value, i.Fs );
+	
+#ifdef ENABLE_NEW_BITMAP_FLAGS
+	Get_BFBuffer ();
+	if ( v->TestStall () ){ Get_BFBuffer ();
+	if ( v->TestStall () ){ Get_BFBuffer ();
+	if ( v->TestStall () ) Get_BFBuffer (); }}
+	
+	v->Set_SrcReg ( i.Value, i.Ft );
+	v->Set_BFBuffer ( SrcRegs_Bitmap );
+#else
 	
 	// make sure the source registers are available
 	if ( v->TestStall () )
@@ -133,6 +157,7 @@ static void Execute::ABS ( VU *v, Instruction::Format i )
 	// set the destination register(s)
 	// note: can only set this once the pipeline is not stalled since it modifies the pipeline stage bitmap
 	v->Set_DestReg_Upper ( i.Value, i.Ft );
+#endif
 #endif
 
 	if ( i.destx )
@@ -154,6 +179,9 @@ static void Execute::ABS ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].uw3 = v->vf [ i.Fs ].uw3 & ~0x80000000;
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -546,7 +574,8 @@ static void Execute::MADDBCW ( VU *v, Instruction::Format i )
 	
 #if defined INLINE_DEBUG_MADDW || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
-	debug << " MAC=" << v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].MACFlag << " STATF=" << v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].StatusFlag;
+	//debug << " MAC=" << v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].MACFlag << " STATF=" << v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].StatusFlag;
+	debug << " MAC=" << v->vi [ VU::REG_MACFLAG ].uLo << " STATF=" << v->vi [ VU::REG_STATUSFLAG ].uLo;
 #endif
 }
 
@@ -841,6 +870,9 @@ static void Execute::MAX ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, v->vf [ i.Ft ].fw );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAX || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -894,6 +926,9 @@ static void Execute::MAXi ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, v->vi [ 21 ].f );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAXI || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -952,6 +987,9 @@ static void Execute::MAXBCX ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, fx );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAXX || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1009,6 +1047,9 @@ static void Execute::MAXBCY ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, fy );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAXY || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1066,6 +1107,9 @@ static void Execute::MAXBCZ ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, fz );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAXZ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1123,6 +1167,9 @@ static void Execute::MAXBCW ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Max ( v->vf [ i.Fs ].fw, fw );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MAXW || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1180,6 +1227,9 @@ static void Execute::MINI ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, v->vf [ i.Ft ].fw );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINI || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1233,6 +1283,9 @@ static void Execute::MINIi ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, v->vi [ 21 ].f );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINII || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1290,6 +1343,9 @@ static void Execute::MINIBCX ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, fx );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINIX || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1347,6 +1403,9 @@ static void Execute::MINIBCY ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, fy );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINIY || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1404,6 +1463,9 @@ static void Execute::MINIBCZ ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, fz );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINIZ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1461,6 +1523,9 @@ static void Execute::MINIBCW ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Fd ].fw = PS2_Float_Min ( v->vf [ i.Fs ].fw, fw );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Fd;
 	
 #if defined INLINE_DEBUG_MINIW || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Fd=" << " vfx=" << hex << v->vf [ i.Fd ].fx << " vfy=" << v->vf [ i.Fd ].fy << " vfz=" << v->vf [ i.Fd ].fz << " vfw=" << v->vf [ i.Fd ].fw;
@@ -1522,6 +1587,9 @@ static void Execute::ITOF0 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].fw = (float) v->vf [ i.Fs ].sw3;
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -1576,6 +1644,9 @@ static void Execute::FTOI0 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].sw3 = PS2_Float_ToInteger ( v->vf [ i.Fs ].fw );
 	}
+	
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -1632,6 +1703,9 @@ static void Execute::ITOF4 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].fw = ( (float) v->vf [ i.Fs ].sw3 ) * c_fMultiplier;
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 	
@@ -1688,6 +1762,9 @@ static void Execute::FTOI4 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].sw3 = PS2_Float_ToInteger ( v->vf [ i.Fs ].fw * c_fMultiplier );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -1744,6 +1821,9 @@ static void Execute::ITOF12 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].fw = ( (float) v->vf [ i.Fs ].sw3 ) * c_fMultiplier;
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 	
@@ -1800,6 +1880,9 @@ static void Execute::FTOI12 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].sw3 = PS2_Float_ToInteger ( v->vf [ i.Fs ].fw * c_fMultiplier );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -1856,6 +1939,9 @@ static void Execute::ITOF15 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].fw = ( (float) v->vf [ i.Fs ].sw3 ) * c_fMultiplier;
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 	
@@ -1912,6 +1998,9 @@ static void Execute::FTOI15 ( VU *v, Instruction::Format i )
 	{
 		v->vf [ i.Ft ].sw3 = PS2_Float_ToInteger ( v->vf [ i.Fs ].fw * c_fMultiplier );
 	}
+
+	// the accompanying lower instruction can't modify the same register
+	v->LastModifiedRegister = i.Ft;
 	
 	// flags affected: none
 
@@ -2533,8 +2622,15 @@ static void Execute::CLIP ( VU *v, Instruction::Format i )
 	debug << "Ft= x=" << hex << v->vf [ i.Ft ].fx << " y=" << v->vf [ i.Ft ].fy << " z=" << v->vf [ i.Ft ].fz << " w=" << v->vf [ i.Ft ].fw;
 #endif
 
+#ifdef PERFORM_CLIP_AS_INTEGER
+	long lx, ly, lz, lw, lw_plus, lw_minus;
+#else
 	FloatLong fw_plus, fw_minus, fw;
 	float fx, fy, fz;
+#endif
+
+
+
 	
 #ifdef ENABLE_STALLS
 	// set the source register(s)
@@ -2555,7 +2651,27 @@ static void Execute::CLIP ( VU *v, Instruction::Format i )
 	// note: can only set this once the pipeline is not stalled since it modifies the pipeline stage bitmap
 #endif
 
+
+#ifdef PERFORM_CLIP_AS_INTEGER
+	lx = v->vf [ i.Fs ].sx;
+	ly = v->vf [ i.Fs ].sy;
+	lz = v->vf [ i.Fs ].sz;
+	lw = v->vf [ i.Ft ].sw;
 	
+	lw_plus = ( lw & 0x7fffffff );
+	
+	lx = ( lx >> 31 ) ^ ( lx & 0x7fffffff );
+	ly = ( ly >> 31 ) ^ ( ly & 0x7fffffff );
+	lz = ( lz >> 31 ) ^ ( lz & 0x7fffffff );
+	
+	lw_minus = lw_plus ^ 0xffffffff;
+	
+	v->ClippingFlag.Value = 0;
+	if ( lx > lw_plus ) v->ClippingFlag.x_plus0 = 1; else if ( lx < lw_minus ) v->ClippingFlag.x_minus0 = 1;
+	if ( ly > lw_plus ) v->ClippingFlag.y_plus0 = 1; else if ( ly < lw_minus ) v->ClippingFlag.y_minus0 = 1;
+	if ( lz > lw_plus ) v->ClippingFlag.z_plus0 = 1; else if ( lz < lw_minus ) v->ClippingFlag.z_minus0 = 1;
+	
+#else
 	fx = v->vf [ i.Fs ].fx;
 	fy = v->vf [ i.Fs ].fy;
 	fz = v->vf [ i.Fs ].fz;
@@ -2583,13 +2699,35 @@ static void Execute::CLIP ( VU *v, Instruction::Format i )
 	if ( fx > fw_plus.f ) v->ClippingFlag.x_plus0 = 1; else if ( fx < fw_minus.f ) v->ClippingFlag.x_minus0 = 1;
 	if ( fy > fw_plus.f ) v->ClippingFlag.y_plus0 = 1; else if ( fy < fw_minus.f ) v->ClippingFlag.y_minus0 = 1;
 	if ( fz > fw_plus.f ) v->ClippingFlag.z_plus0 = 1; else if ( fz < fw_minus.f ) v->ClippingFlag.z_minus0 = 1;
+#endif
 	
 	// set 24 bits to the clipping flag
 	//v->vi [ 18 ].u = v->ClippingFlag.Value & 0xffffff;
+
+#ifdef ENABLE_SNAPSHOTS
+
+	if ( !v->Status.SetClip_Flag )
+	{
+		v->vi [ 18 ].u = ( ( v->vi [ 18 ].u << 6 ) | ( v->ClippingFlag.Value & 0x3f ) ) & 0xffffff;
+	}
+
+#else
 	
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	// check if LO instruction is FCSET or not
+	if ( VU::CurInstLO.Opcode != 17 )
+	{
+		v->Get_CFBuffer ( 0 );
+		v->Set_CFBuffer ( v->ClippingFlag.Value, 6 );
+	}
+#else
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsAffected = VU::RF_UPDATE_CLIP;
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].ClippingFlag = v->ClippingFlag.Value;
-	
+#endif
+
+#endif
+
+
 #if defined INLINE_DEBUG_CLIP || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " ClippingFlag=" << hex << v->ClippingFlag.Value;
 #endif
@@ -2917,8 +3055,16 @@ static void Execute::FCEQ ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	v->Update_CFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ 1 ].u = ! ( ( v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].ClipFlag ^ i.Imm24 ) & 0xffffff );
+#else
 	//v->vi [ 1 ].u = ( ( ( v->vi [ 18 ].u & 0xffffff ) == i.Imm24 ) ? 1 : 0 );
 	v->vi [ 1 ].u = ! ( ( v->vi [ 18 ].u ^ i.Imm24 ) & 0xffffff );
+#endif
 	
 #if defined INLINE_DEBUG_FCEQ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " vi1=" << v->vi [ 1 ].u;
@@ -2937,7 +3083,15 @@ static void Execute::FCAND ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	v->Update_CFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ 1 ].u = ( ( v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].ClipFlag & i.Imm24 ) ? 1 : 0 );
+#else
 	v->vi [ 1 ].u = ( ( v->vi [ 18 ].u & i.Imm24 ) ? 1 : 0 );
+#endif
 	
 #if defined INLINE_DEBUG_FCAND || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " vi1=" << v->vi [ 1 ].u;
@@ -2956,7 +3110,15 @@ static void Execute::FCOR ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	v->Update_CFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ 1 ].u = ( ( ( ( v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].ClipFlag & 0xffffff ) | i.Imm24 ) == 0xffffff ) ? 1 : 0 );
+#else
 	v->vi [ 1 ].u = ( ( ( ( v->vi [ 18 ].u & 0xffffff ) | i.Imm24 ) == 0xffffff ) ? 1 : 0 );
+#endif
 	
 #if defined INLINE_DEBUG_FCOR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " vi1=" << v->vi [ 1 ].u;
@@ -2975,7 +3137,15 @@ static void Execute::FCGET ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	v->Update_CFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it & 0xf ].uLo = v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].ClipFlag & 0xfff;
+#else
 	v->vi [ i.it ].uLo = v->vi [ 18 ].u & 0xfff;
+#endif
 	
 #if defined INLINE_DEBUG_FCGET || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -2989,11 +3159,25 @@ static void Execute::FCSET ( VU *v, Instruction::Format i )
 #endif
 
 	//v->vi [ 18 ].u = i.Imm24;
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ 18 ].u = i.Imm24;
 	
+	// also need to inform that we set the clip flag (in case the upper instruction is CLIP)
+	v->Status.SetClip_Flag = 1;
+#else
+
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	v->Get_CFBuffer ( 0 );
+	v->Set_CFBuffer ( i.Imm24, 24 );
+#else
 	//v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsAffected = VU::RF_SET_CLIP;
 	//v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].ClippingFlag = i.Imm24;
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsAffected_Lower = VU::RF_SET_CLIP;
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsSet_Lower = i.Imm24;
+#endif
+
+#endif
 }
 
 static void Execute::FMEQ ( VU *v, Instruction::Format i )
@@ -3026,8 +3210,16 @@ static void Execute::FMEQ ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_MFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it ].u = ! ( ( v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].MACFlag ^ v->vi [ i.is ].u ) & 0xffff );
+#else
 	//v->vi [ i.it ].u = ~( v->vi [ i.is ].u ^ v->vi [ 17 ].u );
 	v->vi [ i.it ].u = ! ( ( v->vi [ i.is ].u ^ v->vi [ 17 ].u ) & 0xffff );
+#endif
 	
 #if defined INLINE_DEBUG_FMEQ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -3064,7 +3256,15 @@ static void Execute::FMAND ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_MFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it & 0xf ].u = v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].MACFlag & v->vi [ i.is & 0xf ].u;
+#else
 	v->vi [ i.it ].u = v->vi [ i.is ].u & v->vi [ 17 ].u;
+#endif
 	
 #if defined INLINE_DEBUG_FMAND || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -3101,7 +3301,15 @@ static void Execute::FMOR ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_MFBuffer ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it ].u = v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].MACFlag | v->vi [ i.is ].u;
+#else
 	v->vi [ i.it ].u = v->vi [ i.is ].u | v->vi [ 17 ].u;
+#endif
 	
 #if defined INLINE_DEBUG_FMOR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -3120,9 +3328,23 @@ static void Execute::FSEQ ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_SFBuffer ();
+#endif
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// this affects the status flag also
+	v->CheckQ ();
+#endif
+
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it ].u = ! ( ( v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].StatusFlag ^ ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) ) & 0xfff );
+#else
 	//v->vi [ i.it ].u = ~( v->vi [ 16 ].u ^ ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff ) );
 	//v->vi [ i.it ].u = ( ( ( v->vi [ 16 ].u & 0xfff ) == ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff ) ) ? 1 : 0 );
 	v->vi [ i.it ].u = ! ( ( v->vi [ 16 ].u ^ ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) ) & 0xfff );
+#endif
 	
 #if defined INLINE_DEBUG_FSEQ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -3136,11 +3358,25 @@ static void Execute::FSSET ( VU *v, Instruction::Format i )
 #endif
 
 	//v->vi [ 16 ].u = ( v->vi [ 16 ].u & 0x3f ) | ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfc0 );
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ 16 ].u = ( v->vi [ 16 ].u & 0x3f ) | ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfc0 );
 	
+	// also need to inform that we set the clip flag (in case the upper instruction is CLIP)
+	v->Status.SetStatus_Flag = 1;
+#else
+	
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Get_SFBuffer ( 0 );
+	v->Set_SFBuffer ( VU::Temp_StatusFlag, 0x3f );
+#else
 	//v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsAffected = VU::RF_SET_STICKY;
 	//v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].StatusFlag = ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfc0 );
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsAffected_Lower = VU::RF_SET_STICKY;
 	v->FlagSave [ v->iFlagSave_Index & v->c_lFlag_Delay_Mask ].FlagsSet_Lower = ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfc0 );
+#endif
+
+#endif
 }
 
 static void Execute::FSAND ( VU *v, Instruction::Format i )
@@ -3155,7 +3391,20 @@ static void Execute::FSAND ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_SFBuffer ();
+#endif
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// this affects the status flag also
+	v->CheckQ ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it ].u = v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].StatusFlag & ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff );
+#else
 	v->vi [ i.it ].u = v->vi [ 16 ].u & ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff );
+#endif
 	
 #if defined INLINE_DEBUG_FSAND || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
@@ -3174,8 +3423,21 @@ static void Execute::FSOR ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
+#ifdef ENABLE_NEW_FLAG_BUFFER
+	v->Update_SFBuffer ();
+#endif
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// this affects the status flag also
+	v->CheckQ ();
+#endif
+
+#ifdef ENABLE_SNAPSHOTS
+	v->vi [ i.it ].u = v->FlagSave [ ( v->iFlagSave_Index + 1 ) & v->c_lFlag_Delay_Mask ].StatusFlag | ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff );
+#else
 	v->vi [ i.it ].u = v->vi [ 16 ].u | ( ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) & 0xfff );
-	
+#endif
+
 #if defined INLINE_DEBUG_FSOR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " Output:" << " it=" << v->vi [ i.it ].u;
 #endif
@@ -3196,7 +3458,7 @@ static void Execute::IADD ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3216,8 +3478,9 @@ static void Execute::IADD ( VU *v, Instruction::Format i )
 #ifdef ENABLE_INTDELAYSLOT
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
-	
-	v->Set_IntDelaySlot ( i.id, v->vi [ i.is ].uLo + v->vi [ i.it ].uLo );
+
+	v->Set_IntDelaySlot ( i.id & 0xf, v->vi [ i.is & 0xf ].uLo + v->vi [ i.it & 0xf ].uLo );
+
 #else
 	v->vi [ i.id ].u = v->vi [ i.is ].uLo + v->vi [ i.it ].uLo;
 #endif
@@ -3238,7 +3501,7 @@ static void Execute::IADDI ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3258,7 +3521,9 @@ static void Execute::IADDI ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.it, v->vi [ i.is ].uLo + ( (s32) i.Imm5 ) );
+	// *TODO* ?? adding with an s32 could put a 32-bit value in i.it ??
+	v->Set_IntDelaySlot ( i.it & 0xf, v->vi [ i.is & 0xf ].uLo + ( (s32) i.Imm5 ) );
+
 #else
 	v->vi [ i.it ].u = v->vi [ i.is ].uLo + ( (s32) i.Imm5 );
 #endif
@@ -3278,7 +3543,7 @@ static void Execute::IADDIU ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3298,7 +3563,8 @@ static void Execute::IADDIU ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.it, v->vi [ i.is ].uLo + ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) );
+	v->Set_IntDelaySlot ( i.it & 0xf, v->vi [ i.is & 0xf ].uLo + ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) );
+
 #else
 	v->vi [ i.it ].u = v->vi [ i.is ].uLo + ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) );
 #endif
@@ -3318,7 +3584,7 @@ static void Execute::ISUB ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3338,7 +3604,8 @@ static void Execute::ISUB ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.id, v->vi [ i.is ].uLo - v->vi [ i.it ].uLo );
+	v->Set_IntDelaySlot ( i.id & 0xf, v->vi [ i.is & 0xf ].uLo - v->vi [ i.it & 0xf ].uLo );
+
 #else
 	v->vi [ i.id ].u = v->vi [ i.is ].uLo - v->vi [ i.it ].uLo;
 #endif
@@ -3358,7 +3625,7 @@ static void Execute::ISUBIU ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3378,7 +3645,8 @@ static void Execute::ISUBIU ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.it, v->vi [ i.is ].uLo - ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) );
+	v->Set_IntDelaySlot ( i.it & 0xf, v->vi [ i.is & 0xf ].uLo - ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) ) );
+
 #else
 	v->vi [ i.it ].u = v->vi [ i.is ].uLo - ( ( i.Imm15_1 << 11 ) | ( i.Imm15_0 ) );
 #endif
@@ -3399,7 +3667,7 @@ static void Execute::IAND ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3419,7 +3687,8 @@ static void Execute::IAND ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.id, v->vi [ i.is ].uLo & v->vi [ i.it ].uLo );
+	v->Set_IntDelaySlot ( i.id & 0xf, v->vi [ i.is & 0xf ].uLo & v->vi [ i.it & 0xf ].uLo );
+
 #else
 	v->vi [ i.id ].u = v->vi [ i.is ].uLo & v->vi [ i.it ].uLo;
 #endif
@@ -3439,7 +3708,7 @@ static void Execute::IOR ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3459,7 +3728,8 @@ static void Execute::IOR ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.id, v->vi [ i.is ].uLo | v->vi [ i.it ].uLo );
+	v->Set_IntDelaySlot ( i.id & 0xf, v->vi [ i.is & 0xf ].uLo | v->vi [ i.it & 0xf ].uLo );
+
 #else
 	v->vi [ i.id ].u = v->vi [ i.is ].uLo | v->vi [ i.it ].uLo;
 #endif
@@ -3489,7 +3759,7 @@ static void Execute::ISWR ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3509,14 +3779,14 @@ static void Execute::ISWR ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	StoreAddress = v->vi [ i.is ].uLo << 2;
+	StoreAddress = v->vi [ i.is & 0xf ].uLo << 2;
 	
 	pVuMem32 = v->GetMemPtr ( StoreAddress );
 	
-	if ( i.destx ) pVuMem32 [ 0 ] = v->vi [ i.it ].uLo;
-	if ( i.desty ) pVuMem32 [ 1 ] = v->vi [ i.it ].uLo;
-	if ( i.destz ) pVuMem32 [ 2 ] = v->vi [ i.it ].uLo;
-	if ( i.destw ) pVuMem32 [ 3 ] = v->vi [ i.it ].uLo;
+	if ( i.destx ) pVuMem32 [ 0 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.desty ) pVuMem32 [ 1 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.destz ) pVuMem32 [ 2 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.destw ) pVuMem32 [ 3 ] = v->vi [ i.it & 0xf ].uLo;
 	
 #if defined INLINE_DEBUG_ISWR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " SA=" << v->vi [ i.is ].uLo;
@@ -3540,7 +3810,7 @@ static void Execute::ISW ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcRegs ( i.is + 32, i.it + 32 );
+	v->Set_Int_SrcRegs ( ( i.is & 0xf ) + 32, ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3560,14 +3830,14 @@ static void Execute::ISW ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	StoreAddress = ( v->vi [ i.is ].sLo + i.Imm11 ) << 2;
+	StoreAddress = ( v->vi [ i.is & 0xf ].sLo + i.Imm11 ) << 2;
 	
 	pVuMem32 = v->GetMemPtr ( StoreAddress );
 	
-	if ( i.destx ) pVuMem32 [ 0 ] = v->vi [ i.it ].uLo;
-	if ( i.desty ) pVuMem32 [ 1 ] = v->vi [ i.it ].uLo;
-	if ( i.destz ) pVuMem32 [ 2 ] = v->vi [ i.it ].uLo;
-	if ( i.destw ) pVuMem32 [ 3 ] = v->vi [ i.it ].uLo;
+	if ( i.destx ) pVuMem32 [ 0 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.desty ) pVuMem32 [ 1 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.destz ) pVuMem32 [ 2 ] = v->vi [ i.it & 0xf ].uLo;
+	if ( i.destw ) pVuMem32 [ 3 ] = v->vi [ i.it & 0xf ].uLo;
 	
 #if defined INLINE_DEBUG_ISW || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " SA=" << ( v->vi [ i.is ].sLo + i.Imm11 );
@@ -3608,7 +3878,7 @@ static void Execute::SQ ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS_INT
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.it + 32 );
+	v->Set_Int_SrcReg ( ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3630,7 +3900,7 @@ static void Execute::SQ ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	StoreAddress = ( v->vi [ i.it ].sLo + i.Imm11 ) << 2;
+	StoreAddress = ( v->vi [ i.it & 0xf ].sLo + i.Imm11 ) << 2;
 	
 	pVuMem32 = v->GetMemPtr ( StoreAddress );
 	
@@ -3676,7 +3946,7 @@ static void Execute::SQD ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS_INT
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.it + 32 );
+	v->Set_Int_SrcReg ( ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3698,8 +3968,9 @@ static void Execute::SQD ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.it, v->vi [ i.it ].uLo - 1 );
-	StoreAddress = ( v->vi [ i.it ].uLo - 1 ) << 2;
+	v->Set_IntDelaySlot ( i.it & 0xf, v->vi [ i.it & 0xf ].uLo - 1 );
+	StoreAddress = ( v->vi [ i.it & 0xf ].uLo - 1 ) << 2;
+
 #else
 	v->vi [ i.it ].uLo--;
 	
@@ -3751,7 +4022,7 @@ static void Execute::SQI ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS_INT
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.it + 32 );
+	v->Set_Int_SrcReg ( ( i.it & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3773,7 +4044,7 @@ static void Execute::SQI ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	StoreAddress = v->vi [ i.it ].uLo << 2;
+	StoreAddress = v->vi [ i.it & 0xf ].uLo << 2;
 	
 	pVuMem32 = v->GetMemPtr ( StoreAddress );
 	
@@ -3785,7 +4056,8 @@ static void Execute::SQI ( VU *v, Instruction::Format i )
 	// post-increment
 #ifdef ENABLE_INTDELAYSLOT
 	
-	v->Set_IntDelaySlot ( i.it, v->vi [ i.it ].uLo + 1 );
+	v->Set_IntDelaySlot ( i.it & 0xf, v->vi [ i.it & 0xf ].uLo + 1 );
+
 #else
 	v->vi [ i.it ].uLo++;
 #endif
@@ -3817,7 +4089,7 @@ static void Execute::ILWR ( VU *v, Instruction::Format i )
 	// TODO: check if the source register is ready for use or if a stall is needed
 	
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3831,7 +4103,7 @@ static void Execute::ILWR ( VU *v, Instruction::Format i )
 
 	// integer register load takes 4 cycles
 	// integer register is +32 in the bitmap
-	v->Set_DestReg_Lower ( i.it + 32 );
+	v->Set_DestReg_Lower ( ( i.it & 0xf ) + 32 );
 #endif
 
 #ifdef ENABLE_INTDELAYSLOT
@@ -3840,15 +4112,15 @@ static void Execute::ILWR ( VU *v, Instruction::Format i )
 #endif
 	
 
-	LoadAddress = v->vi [ i.is ].uLo << 2;
+	LoadAddress = v->vi [ i.is & 0xf ].uLo << 2;
 	
 	pVuMem32 = v->GetMemPtr ( LoadAddress );
 	
 #ifdef ENABLE_INTDELAYSLOT_ILWR
-	if ( i.destx ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 0 ] );
-	if ( i.desty ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 1 ] );
-	if ( i.destz ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 2 ] );
-	if ( i.destw ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 3 ] );
+	if ( i.destx ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 0 ] );
+	if ( i.desty ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 1 ] );
+	if ( i.destz ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 2 ] );
+	if ( i.destw ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 3 ] );
 #else
 	if ( i.destx ) v->vi [ i.it ].uLo = pVuMem32 [ 0 ];
 	if ( i.desty ) v->vi [ i.it ].uLo = pVuMem32 [ 1 ];
@@ -3882,7 +4154,7 @@ static void Execute::ILW ( VU *v, Instruction::Format i )
 	// TODO: check if the source register is ready for use or if a stall is needed
 	
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -3896,7 +4168,7 @@ static void Execute::ILW ( VU *v, Instruction::Format i )
 
 	// integer register load takes 4 cycles
 	// integer register is +32 in the bitmap
-	v->Set_DestReg_Lower ( i.it + 32 );
+	v->Set_DestReg_Lower ( ( i.it & 0xf ) + 32 );
 #endif
 
 #ifdef ENABLE_INTDELAYSLOT
@@ -3904,15 +4176,15 @@ static void Execute::ILW ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 	
-	LoadAddress = ( v->vi [ i.is ].sLo + i.Imm11 ) << 2;
+	LoadAddress = ( v->vi [ i.is & 0xf ].sLo + i.Imm11 ) << 2;
 	
 	pVuMem32 = v->GetMemPtr ( LoadAddress );
 	
 #ifdef ENABLE_INTDELAYSLOT_ILW
-	if ( i.destx ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 0 ] );
-	if ( i.desty ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 1 ] );
-	if ( i.destz ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 2 ] );
-	if ( i.destw ) v->Set_IntDelaySlot ( i.it, pVuMem32 [ 3 ] );
+	if ( i.destx ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 0 ] );
+	if ( i.desty ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 1 ] );
+	if ( i.destz ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 2 ] );
+	if ( i.destw ) v->Set_IntDelaySlot ( i.it & 0xf, pVuMem32 [ 3 ] );
 #else
 	if ( i.destx ) v->vi [ i.it ].uLo = pVuMem32 [ 0 ];
 	if ( i.desty ) v->vi [ i.it ].uLo = pVuMem32 [ 1 ];
@@ -3940,7 +4212,7 @@ static void Execute::Execute_LoadDelaySlot ( VU *v, Instruction::Format i )
 
 	// only perform transfer if the upper instruction does not write to same register as lower instruction
 	// also must check the field, because it only cancels if it writes to the same field as upper instruction?? - no, incorrect
-	//if ( ( !( i.Value & iHi.Value & ( 0xf << 21 ) ) ) || ( i.Ft != iHi.Ft ) )
+	//if ( i.Ft != v->LastModifiedRegister )
 	if ( ! ( v->FlagSave [ v->iFlagSave_Index & VU::c_lFlag_Delay_Mask ].Int_Bitmap & ( 1 << i.Ft ) ) )
 	{
 		if ( i.destx ) v->vf [ i.Ft ].uw0 = v->LoadMoveDelayReg.uw0;
@@ -3992,7 +4264,7 @@ static void Execute::LQ ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -4012,7 +4284,7 @@ static void Execute::LQ ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	LoadAddress = ( v->vi [ i.is ].sLo + i.Imm11 ) << 2;
+	LoadAddress = ( v->vi [ i.is & 0xf ].sLo + i.Imm11 ) << 2;
 	
 #if defined INLINE_DEBUG_LQ || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " (POST-DELAY)";
@@ -4031,6 +4303,13 @@ static void Execute::LQ ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
+	
 #else
 	// TODO: this should only happen AFTER upper instruction is executed probably!!!
 	if ( i.destx ) v->vf [ i.Ft ].uw0 = pVuMem32 [ 0 ];
@@ -4062,7 +4341,7 @@ static void Execute::LQD ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -4082,8 +4361,8 @@ static void Execute::LQD ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.is, v->vi [ i.is ].uLo - 1 );
-	LoadAddress = ( v->vi [ i.is ].uLo - 1 ) << 2;
+	v->Set_IntDelaySlot ( i.is & 0xf, v->vi [ i.is & 0xf ].uLo - 1 );
+	LoadAddress = ( v->vi [ i.is & 0xf ].uLo - 1 ) << 2;
 #else
 	v->vi [ i.is ].uLo--;
 	
@@ -4100,6 +4379,12 @@ static void Execute::LQD ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	if ( i.destx ) v->vf [ i.Ft ].uw0 = pVuMem32 [ 0 ];
 	if ( i.desty ) v->vf [ i.Ft ].uw1 = pVuMem32 [ 1 ];
@@ -4129,7 +4414,7 @@ static void Execute::LQI ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -4149,7 +4434,7 @@ static void Execute::LQI ( VU *v, Instruction::Format i )
 	v->Execute_IntDelaySlot ();
 #endif
 
-	LoadAddress = v->vi [ i.is ].uLo << 2;
+	LoadAddress = v->vi [ i.is & 0xf ].uLo << 2;
 	
 	pVuMem32 = v->GetMemPtr ( LoadAddress );
 	
@@ -4161,6 +4446,12 @@ static void Execute::LQI ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	if ( i.destx ) v->vf [ i.Ft ].uw0 = pVuMem32 [ 0 ];
 	if ( i.desty ) v->vf [ i.Ft ].uw1 = pVuMem32 [ 1 ];
@@ -4171,7 +4462,7 @@ static void Execute::LQI ( VU *v, Instruction::Format i )
 	// post-increment
 #ifdef ENABLE_INTDELAYSLOT
 	
-	v->Set_IntDelaySlot ( i.is, v->vi [ i.is ].uLo + 1 );
+	v->Set_IntDelaySlot ( i.is & 0xf, v->vi [ i.is & 0xf ].uLo + 1 );
 #else
 	v->vi [ i.is ].uLo++;
 #endif
@@ -4230,6 +4521,9 @@ static void Execute::MFP ( VU *v, Instruction::Format i )
 	*/
 	
 #ifdef ENABLE_STALLS
+	// need to make sure P register is updated properly first
+	v->UpdateP ();
+	
 	if ( i.destx ) v->LoadMoveDelayReg.uw0 = v->vi [ VU::REG_P ].u;
 	if ( i.desty ) v->LoadMoveDelayReg.uw1 = v->vi [ VU::REG_P ].u;
 	if ( i.destz ) v->LoadMoveDelayReg.uw2 = v->vi [ VU::REG_P ].u;
@@ -4237,6 +4531,12 @@ static void Execute::MFP ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	// TODO: this should only store to the float registers AFTER upper instruction has been executed probably!!!
 	// but only if the instruction does not get cancelled by upper instruction
@@ -4292,6 +4592,12 @@ static void Execute::MOVE ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	// TODO: this needs to write the register into a temporary register and execute the instruction after upper instruction
 	// but only if the instruction does not get cancelled by upper instruction
@@ -4356,6 +4662,12 @@ static void Execute::MR32 ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	if ( i.destx ) v->vf [ i.Ft ].ux = v->vf [ i.Fs ].uy;
 	if ( i.desty ) v->vf [ i.Ft ].uy = v->vf [ i.Fs ].uz;
@@ -4382,7 +4694,7 @@ static void Execute::MFIR ( VU *v, Instruction::Format i )
 	// TODO: this should only store to the float registers AFTER upper instruction has been executed probably!!!
 	// but only if the instruction does not get cancelled by upper instruction
 
-/*
+
 #ifdef ENABLE_STALLS
 	// set the source integer register
 	v->Set_Int_SrcReg ( i.is + 32 );
@@ -4397,7 +4709,7 @@ static void Execute::MFIR ( VU *v, Instruction::Format i )
 		v->PipelineWait_INT ();
 	}
 #endif
-*/
+
 
 #ifdef ENABLE_INTDELAYSLOT
 	// execute int delay slot immediately
@@ -4413,6 +4725,12 @@ static void Execute::MFIR ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	// TODO: destination register should only be set AFTER upper instruction has executed
 	if ( i.destx ) v->vf [ i.Ft ].sw0 = (s32) v->vi [ i.is ].sLo;
@@ -4433,7 +4751,7 @@ static void Execute::MFIR ( VU *v, Instruction::Format i )
 
 static void Execute::MTIR ( VU *v, Instruction::Format i )
 {
-#if defined INLINE_DEBUG_MFIR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
+#if defined INLINE_DEBUG_MTIR || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << "\r\n" << hex << "VU#" << v->Number << " " << setw( 8 ) << v->PC << " " << dec << v->CycleCount << " " << Print::PrintInstructionLO ( i.Value ).c_str () << "; " << hex << i.Value;
 	debug << " Fs=" << hex << v->vf [ i.Fs ].vuw [ i.fsf ];
 #endif
@@ -4445,7 +4763,7 @@ static void Execute::MTIR ( VU *v, Instruction::Format i )
 	// execute int delay slot immediately
 	v->Execute_IntDelaySlot ();
 	
-	v->Set_IntDelaySlot ( i.it, (u16) v->vf [ i.Fs ].vuw [ i.fsf ] );
+	v->Set_IntDelaySlot ( i.it & 0xf, (u16) v->vf [ i.Fs ].vuw [ i.fsf ] );
 #else
 	// note: this should be ok, since this is a lower instruction and integer instructions are lower instructions
 	// note: this instruction happens immediately, with NO stall possible
@@ -4488,6 +4806,12 @@ static void Execute::RGET ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	// TODO: destination register should only be set AFTER upper instruction has executed
 	if ( i.destx ) v->vf [ i.Ft ].uw0 = v->vi [ VU::REG_R ].u;
@@ -4496,27 +4820,6 @@ static void Execute::RGET ( VU *v, Instruction::Format i )
 	if ( i.destw ) v->vf [ i.Ft ].uw3 = v->vi [ VU::REG_R ].u;
 #endif
 
-	/*
-	if ( i.destx )
-	{
-		v->vf [ i.Ft ].uw0 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.desty )
-	{
-		v->vf [ i.Ft ].uw1 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.destz )
-	{
-		v->vf [ i.Ft ].uw2 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.destw )
-	{
-		v->vf [ i.Ft ].uw3 = v->vi [ VU::REG_R ].u;
-	}
-	*/
 	
 	// flags affected: none
 
@@ -4554,6 +4857,12 @@ static void Execute::RNEXT ( VU *v, Instruction::Format i )
 	
 	// enable the quick delay slot
 	v->Status.EnableLoadMoveDelaySlot = 1;
+	
+	// put the instruction in the delay slot (for recompiler since it would not be there)
+	v->CurInstLOHI.Lo.Value = i.Value;
+	
+	// clear last modified register to detect if it should be cancelled
+	v->LastModifiedRegister = 0;
 #else
 	// TODO: destination register should only be set AFTER upper instruction has executed
 	if ( i.destx ) v->vf [ i.Ft ].uw0 = v->vi [ VU::REG_R ].u;
@@ -4562,27 +4871,6 @@ static void Execute::RNEXT ( VU *v, Instruction::Format i )
 	if ( i.destw ) v->vf [ i.Ft ].uw3 = v->vi [ VU::REG_R ].u;
 #endif
 
-	/*
-	if ( i.destx )
-	{
-		v->vf [ i.Ft ].uw0 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.desty )
-	{
-		v->vf [ i.Ft ].uw1 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.destz )
-	{
-		v->vf [ i.Ft ].uw2 = v->vi [ VU::REG_R ].u;
-	}
-	
-	if ( i.destw )
-	{
-		v->vf [ i.Ft ].uw3 = v->vi [ VU::REG_R ].u;
-	}
-	*/
 	
 #if defined INLINE_DEBUG_RNEXT || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_FPU	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << " Output: Ft=" << " vfx=" << hex << v->vf [ i.Ft ].fx << " vfy=" << v->vf [ i.Ft ].fy << " vfz=" << v->vf [ i.Ft ].fz << " vfw=" << v->vf [ i.Ft ].fw;
@@ -4646,7 +4934,7 @@ static void Execute::XGKICK ( VU *v, Instruction::Format i )
 #ifdef ENABLE_STALLS_INT
 
 	// set the source integer register
-	v->Set_Int_SrcReg ( i.is + 32 );
+	v->Set_Int_SrcReg ( ( i.is & 0xf ) + 32 );
 	
 	// make sure the source registers are available
 	if ( v->TestStall_INT () )
@@ -4686,7 +4974,7 @@ static void Execute::XGKICK ( VU *v, Instruction::Format i )
 	// need to execute xgkick instruction, but it doesn't execute completely immediately and vu keeps going
 	// so for now will delay execution for an instruction or two
 	v->Status.XgKickDelay_Valid = 0x2;
-	v->XgKick_Address = v->vi [ i.is ].uLo;
+	v->XgKick_Address = v->vi [ i.is & 0xf ].uLo;
 }
 
 
@@ -4704,7 +4992,7 @@ static void Execute::XTOP ( VU *v, Instruction::Format i )
 
 	// it = TOP
 	// this instruction is VU1 only
-	v->vi [ i.it ].uLo = v->VifRegs.TOP & 0x3ff;
+	v->vi [ i.it & 0xf ].uLo = v->VifRegs.TOP & 0x3ff;
 
 #if defined INLINE_DEBUG_XTOP || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << hex << " it(hex)=" << v->vi [ i.it ].uLo;
@@ -4726,12 +5014,12 @@ static void Execute::XITOP ( VU *v, Instruction::Format i )
 	if ( !v->Number )
 	{
 		// VU0 //
-		v->vi [ i.it ].uLo = v->VifRegs.ITOP & 0xff;
+		v->vi [ i.it & 0xf ].uLo = v->VifRegs.ITOP & 0xff;
 	}
 	else
 	{
 		// VU1 //
-		v->vi [ i.it ].uLo = v->VifRegs.ITOP & 0x3ff;
+		v->vi [ i.it & 0xf ].uLo = v->VifRegs.ITOP & 0x3ff;
 	}
 	
 #if defined INLINE_DEBUG_XITOP || defined INLINE_DEBUG_VU || defined INLINE_DEBUG_INT	// || defined INLINE_DEBUG_UNIMPLEMENTED
@@ -4754,8 +5042,14 @@ static void Execute::WAITP ( VU *v, Instruction::Format i )
 	// TODO: still need to update cycle count
 	
 #ifdef ENABLE_STALLS
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// if unit is in use, wait until it is free
+	v->WaitP ();
+#else
 	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( v->CycleCount < ( v->PBusyUntil_Cycle - 1 ) )
 	{
 		// div/rsqrt/sqrt unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -4765,6 +5059,9 @@ static void Execute::WAITP ( VU *v, Instruction::Format i )
 		// wait until efu unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
+#endif
+
 #else
 	v->SetP ();
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -4781,16 +5078,28 @@ static void Execute::WAITQ ( VU *v, Instruction::Format i )
 	// TODO: still need to update cycle count
 	
 #ifdef ENABLE_STALLS
-	if ( ( (s64)v->CycleCount ) < ( (s64)v->QBusyUntil_Cycle ) )
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// if div/unit is in use, wait until it is free
+	v->WaitQ ();
+#else
+	// check if Q has already been set properly
+	if ( v->QBusyUntil_Cycle != -1LL )
 	{
-		// div/rsqrt/sqrt unit is already busy //
+		if ( v->CycleCount < v->QBusyUntil_Cycle )
+		{
+			// div/rsqrt/sqrt unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
 	debug << " STALL ";
 #endif
-		
-		// wait until div unit is done with what it is doing
-		v->PipelineWaitQ ();
+			
+			// wait until div unit is done with what it is doing
+			v->PipelineWaitQ ();
+		}
 	}
+	
+#endif
+
 #else
 	v->SetQ ();
 	//v->vi [ VU::REG_Q ].f = v->NextQ.f;
@@ -4835,9 +5144,16 @@ static void Execute::DIV ( VU *v, Instruction::Format i )
 		// FMAC pipeline stall //
 		v->PipelineWait_FMAC ();
 	}
-	
+
+
+#ifdef ENABLE_NEW_QP_HANDLING
+	// if div/unit is in use, wait until it is free
+	v->WaitQ ();
+#else
+	if ( v->QBusyUntil_Cycle != -1LL )
+	{
 	// if the div/rsqrt/sqrt unit is still running, then need to wait until it finishes first
-	if ( ( (s64)v->CycleCount ) < ( (s64)v->QBusyUntil_Cycle ) )
+	if ( v->CycleCount < v->QBusyUntil_Cycle )
 	{
 		// div/rsqrt/sqrt unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -4847,6 +5163,9 @@ static void Execute::DIV ( VU *v, Instruction::Format i )
 		// wait until div unit is done with what it is doing
 		v->PipelineWaitQ ();
 	}
+	}
+#endif
+
 #else
 	// todo: update cycle count if QBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_Q ].f = v->NextQ.f;
@@ -4895,6 +5214,12 @@ static void Execute::RSQRT ( VU *v, Instruction::Format i )
 		v->PipelineWait_FMAC ();
 	}
 	
+#ifdef ENABLE_NEW_QP_HANDLING
+	// if div/unit is in use, wait until it is free
+	v->WaitQ ();
+#else
+	if ( v->QBusyUntil_Cycle != -1LL )
+	{
 	// if the div/rsqrt/sqrt unit is still running, then need to wait until it finishes first
 	if ( ( (s64)v->CycleCount ) < ( (s64)v->QBusyUntil_Cycle ) )
 	{
@@ -4906,6 +5231,9 @@ static void Execute::RSQRT ( VU *v, Instruction::Format i )
 		// wait until div unit is done with what it is doing
 		v->PipelineWaitQ ();
 	}
+	}
+#endif
+
 #else
 	// todo: update cycle count if QBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_Q ].f = v->NextQ.f;
@@ -4951,6 +5279,12 @@ static void Execute::SQRT ( VU *v, Instruction::Format i )
 		v->PipelineWait_FMAC ();
 	}
 	
+#ifdef ENABLE_NEW_QP_HANDLING
+	// if div/unit is in use, wait until it is free
+	v->WaitQ ();
+#else
+	if ( v->QBusyUntil_Cycle != -1LL )
+	{
 	// if the div/rsqrt/sqrt unit is still running, then need to wait until it finishes first
 	if ( ( (s64) v->CycleCount ) < ( (s64) v->QBusyUntil_Cycle ) )
 	{
@@ -4962,6 +5296,9 @@ static void Execute::SQRT ( VU *v, Instruction::Format i )
 		// wait until div unit is done with what it is doing
 		v->PipelineWaitQ ();
 	}
+	}
+#endif
+
 #else
 	// todo: update cycle count if QBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_Q ].f = v->NextQ.f;
@@ -5018,8 +5355,8 @@ static void Execute::EATAN ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5029,6 +5366,8 @@ static void Execute::EATAN ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5092,8 +5431,8 @@ static void Execute::EATANxy ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5103,6 +5442,7 @@ static void Execute::EATANxy ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5167,8 +5507,8 @@ static void Execute::EATANxz ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5178,6 +5518,7 @@ static void Execute::EATANxz ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5240,8 +5581,8 @@ static void Execute::EEXP ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5251,6 +5592,7 @@ static void Execute::EEXP ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5316,8 +5658,8 @@ static void Execute::ESIN ( VU *v, Instruction::Format i )
 
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5327,6 +5669,7 @@ static void Execute::ESIN ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5378,8 +5721,8 @@ static void Execute::ERSQRT ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5389,6 +5732,7 @@ static void Execute::ERSQRT ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5427,8 +5771,8 @@ static void Execute::ERCPR ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5438,6 +5782,7 @@ static void Execute::ERCPR ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5478,8 +5823,8 @@ static void Execute::ESQRT ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5489,6 +5834,7 @@ static void Execute::ESQRT ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5523,8 +5869,8 @@ static void Execute::ESADD ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5534,6 +5880,7 @@ static void Execute::ESADD ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5559,8 +5906,8 @@ static void Execute::ERSADD ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5570,6 +5917,7 @@ static void Execute::ERSADD ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5596,8 +5944,8 @@ static void Execute::ESUM ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5607,6 +5955,7 @@ static void Execute::ESUM ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5632,8 +5981,8 @@ static void Execute::ELENG ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5643,6 +5992,7 @@ static void Execute::ELENG ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;
@@ -5668,8 +6018,8 @@ static void Execute::ERLENG ( VU *v, Instruction::Format i )
 	
 #ifdef ENABLE_STALLS
 	// if the EFU unit is still running, then need to wait until it finishes first
-	//if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle ) )
-	if ( v->PBusyUntil_Cycle )
+	//if ( v->PBusyUntil_Cycle )
+	if ( ( (s64)v->CycleCount ) < ( (s64)v->PBusyUntil_Cycle - 1 ) )
 	{
 		// EFU unit is already busy //
 #ifdef INLINE_DEBUG_STALLS
@@ -5679,6 +6029,7 @@ static void Execute::ERLENG ( VU *v, Instruction::Format i )
 		// wait until EFU unit is done with what it is doing
 		v->PipelineWaitP ();
 	}
+	v->SetP ();
 #else
 	// todo: update cycle count if PBusyUntil_Cycle is greater than CycleCount
 	//v->vi [ VU::REG_P ].f = v->NextP.f;

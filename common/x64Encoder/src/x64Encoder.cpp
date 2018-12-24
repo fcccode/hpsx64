@@ -562,6 +562,18 @@ inline bool x64Encoder::x64Encode16Bit ( void )
 	return true;
 }
 
+
+inline bool x64Encoder::x64EncodePrefix ( char Prefix )
+{
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+
+	x64CodeArea [ x64NextOffset++ ] = Prefix;
+	
+	return true;
+}
+
+
+
 bool x64Encoder::x64EncodeRexReg32 ( long DestReg_RM_Base, long SourceReg_Reg_Opcode )
 {
 	// check if any of the registers require rex opcode
@@ -743,6 +755,7 @@ bool x64Encoder::x64EncodeRegReg32 ( long x64InstOpcode, long x64DestReg_Reg_Opc
 {
 	// need to reverse source and dest since I used a certain form of regreg instructions
 	x64EncodeRexReg32 ( x64SourceReg_RM_Base, x64DestReg_Reg_Opcode );
+	//x64EncodeRexReg32 ( x64DestReg_Reg_Opcode, x64SourceReg_RM_Base );
 	
 	x64EncodeOpcode ( x64InstOpcode );
 
@@ -760,6 +773,7 @@ bool x64Encoder::x64EncodeRegReg64 ( long x64InstOpcode, long x64DestReg_Reg_Opc
 {
 	// need to reverse source and dest since I used a certain form of regreg instructions
 	x64EncodeRexReg64 ( x64SourceReg_RM_Base, x64DestReg_Reg_Opcode );
+	//x64EncodeRexReg64 ( x64DestReg_Reg_Opcode, x64SourceReg_RM_Base );
 
 	x64EncodeOpcode ( x64InstOpcode );
 
@@ -1279,31 +1293,42 @@ bool x64Encoder::x64EncodeRegRegV ( long L, long w, long pp, long mmmmm, long av
 	return true;
 }
 
-
-
-
-
-
-
-bool x64Encoder::x64EncodeRipOffset16 ( long x64InstOpcode, long x64DestReg, char* DataAddress )
-{
-	x64Encode16Bit ();
-	return x64EncodeRipOffset32 ( x64InstOpcode, x64DestReg, DataAddress );
-}
-
-
-bool x64Encoder::x64EncodeRipOffset32 ( long x64InstOpcode, long x64DestReg, char* DataAddress )
+bool x64Encoder::x64EncodeRipOffsetV ( long L, long w, long pp, long mmmmm, long avxInstOpcode, long REG_R, long vvvv, char* DataAddress )
 {
 	long Offset;
 	
-	x64EncodeRexReg32 ( x64DestReg, 0 );
-	
+	// will leave rex opcode off for now
+	/*
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	*/
 
-	x64EncodeOpcode ( x64InstOpcode );
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() < 3 ) return false;
+
+	// add in vex 3-byte prefix
+	x64CodeArea [ x64NextOffset++ ] = VEX_START_3BYTE;
+	//x64CodeArea [ x64NextOffset++ ] = VEX_3BYTE_MID( REG_R, 0, RM_B, mmmmm );
+	x64CodeArea [ x64NextOffset++ ] = VEX_3BYTE_MID( REG_R, 0, 0, mmmmm );
+	x64CodeArea [ x64NextOffset++ ] = VEX_3BYTE_END( w, vvvv, L, pp);
+
+	// encode the opcode
+	x64EncodeOpcode ( avxInstOpcode );
+
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
 	
+	// now we need to say what registers to use for instruction
+	//x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGREG( REG_R, RM_B );
 
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, REG_R, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 4 ] ) ) );
@@ -1313,11 +1338,65 @@ bool x64Encoder::x64EncodeRipOffset32 ( long x64InstOpcode, long x64DestReg, cha
 	return x64EncodeImmediate32 ( Offset );
 }
 
-bool x64Encoder::x64EncodeRipOffset64 ( long x64InstOpcode, long x64DestReg, char* DataAddress )
+
+
+
+
+
+
+bool x64Encoder::x64EncodeRipOffset16 ( long x64InstOpcode, long x64DestReg, char* DataAddress, bool bIsSourceReg )
+{
+	x64Encode16Bit ();
+	return x64EncodeRipOffset32 ( x64InstOpcode, x64DestReg, DataAddress, bIsSourceReg );
+}
+
+
+// added the "bToMem" argument because it turns out that this was only handling cases where register is the destination register
+bool x64Encoder::x64EncodeRipOffset32 ( long x64InstOpcode, long x64Reg, char* DataAddress, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg64 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
+
+	x64EncodeOpcode ( x64InstOpcode );
+	
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+
+	// add in modr/m
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
+	
+	// get offset to data
+	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 4 ] ) ) );
+	
+	//cout << hex << "\nOffset=" << Offset << "\n";
+	
+	return x64EncodeImmediate32 ( Offset );
+}
+
+
+
+
+bool x64Encoder::x64EncodeRipOffset64 ( long x64InstOpcode, long x64Reg, char* DataAddress, bool bIsSourceReg )
+{
+	long Offset;
+	
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg64 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg64 ( x64Reg, 0 );
+	}
 	
 	/*
 	// make sure there is enough room for this
@@ -1333,7 +1412,7 @@ bool x64Encoder::x64EncodeRipOffset64 ( long x64InstOpcode, long x64DestReg, cha
 	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
 
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 4 ] ) ) );
@@ -1342,15 +1421,26 @@ bool x64Encoder::x64EncodeRipOffset64 ( long x64InstOpcode, long x64DestReg, cha
 }
 
 
-bool x64Encoder::x64EncodeRipOffsetImm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 )
+bool x64Encoder::x64EncodeRipOffsetImm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg32 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 5 ] ) ) );
@@ -1373,16 +1463,28 @@ bool x64Encoder::x64EncodeRipOffsetImm8 ( long x64InstOpcode, long x64DestReg, c
 	*/
 }
 
-bool x64Encoder::x64EncodeRipOffsetImm16 ( long x64InstOpcode, long x64DestReg, char* DataAddress, short Imm16 )
+bool x64Encoder::x64EncodeRipOffsetImm16 ( long x64InstOpcode, long x64Reg, char* DataAddress, short Imm16, bool bIsSourceReg )
 {
 	long Offset;
 	
 	x64Encode16Bit ();
-	x64EncodeRexReg32 ( x64DestReg, 0 );
+	
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 6 ] ) ) );
@@ -1393,15 +1495,26 @@ bool x64Encoder::x64EncodeRipOffsetImm16 ( long x64InstOpcode, long x64DestReg, 
 	return x64EncodeImmediate16 ( Imm16 );
 }
 
-bool x64Encoder::x64EncodeRipOffsetImm32 ( long x64InstOpcode, long x64DestReg, char* DataAddress, long Imm32 )
+bool x64Encoder::x64EncodeRipOffsetImm32 ( long x64InstOpcode, long x64Reg, char* DataAddress, long Imm32, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg32 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 8 ] ) ) );
@@ -1412,15 +1525,26 @@ bool x64Encoder::x64EncodeRipOffsetImm32 ( long x64InstOpcode, long x64DestReg, 
 	return x64EncodeImmediate32 ( Imm32 );
 }
 
-bool x64Encoder::x64EncodeRipOffsetImm64 ( long x64InstOpcode, long x64DestReg, char* DataAddress, long Imm32 )
+bool x64Encoder::x64EncodeRipOffsetImm64 ( long x64InstOpcode, long x64Reg, char* DataAddress, long Imm32, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg64 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg64 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg64 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 8 ] ) ) );
@@ -1433,16 +1557,28 @@ bool x64Encoder::x64EncodeRipOffsetImm64 ( long x64InstOpcode, long x64DestReg, 
 
 
 // for instructions that take an IMM8 argument
-bool x64Encoder::x64EncodeRipOffset16Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 )
+bool x64Encoder::x64EncodeRipOffset16Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg )
 {
 	long Offset;
 	
 	x64Encode16Bit ();
-	x64EncodeRexReg32 ( x64DestReg, 0 );
+	
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 5 ] ) ) );
@@ -1452,15 +1588,26 @@ bool x64Encoder::x64EncodeRipOffset16Imm8 ( long x64InstOpcode, long x64DestReg,
 }
 
 
-bool x64Encoder::x64EncodeRipOffset32Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 )
+bool x64Encoder::x64EncodeRipOffset32Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg32 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg32 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg32 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 5 ] ) ) );
@@ -1469,15 +1616,26 @@ bool x64Encoder::x64EncodeRipOffset32Imm8 ( long x64InstOpcode, long x64DestReg,
 	return x64EncodeImmediate8 ( Imm8 );
 }
 
-bool x64Encoder::x64EncodeRipOffset64Imm8 ( long x64InstOpcode, long x64DestReg, char* DataAddress, char Imm8 )
+bool x64Encoder::x64EncodeRipOffset64Imm8 ( long x64InstOpcode, long x64Reg, char* DataAddress, char Imm8, bool bIsSourceReg )
 {
 	long Offset;
 	
-	x64EncodeRexReg64 ( x64DestReg, 0 );
+	if ( bIsSourceReg )
+	{
+		x64EncodeRexReg64 ( 0, x64Reg );
+	}
+	else
+	{
+		x64EncodeRexReg64 ( x64Reg, 0 );
+	}
+	
 	x64EncodeOpcode ( x64InstOpcode );
 
+	// make sure there is enough room for this
+	if ( x64CurrentCodeBlockSpaceRemaining() == 0 ) return false;
+	
 	// add in modr/m
-	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64DestReg, RMBASE_USINGRIP );
+	x64CodeArea [ x64NextOffset++ ] = MAKE_MODRMREGMEM( REGMEM_NOOFFSET, x64Reg, RMBASE_USINGRIP );
 	
 	// get offset to data
 	Offset = (long) ( DataAddress - ( & ( x64CodeArea [ x64NextOffset + 5 ] ) ) );
@@ -1772,42 +1930,42 @@ bool x64Encoder::MovRegFromMem64 ( long DestReg, long AddressReg, long IndexReg,
 // *** testing ***
 bool x64Encoder::MovRegToMem8 ( char* Address, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_MOV_TOMEM8, SrcReg, (char*)Address );
+	return x64EncodeRipOffset32 ( X64OP_MOV_TOMEM8, SrcReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegFromMem8 ( long DestReg, char* Address )
 {
-	return x64EncodeRipOffset32 ( X64OP_MOV_FROMMEM8, DestReg, (char*)Address );
+	return x64EncodeRipOffset32 ( X64OP_MOV_FROMMEM8, DestReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegToMem16 ( short* Address, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_MOV_TOMEM, SrcReg, (char*) Address );
+	return x64EncodeRipOffset16 ( X64OP_MOV_TOMEM, SrcReg, (char*) Address, true );
 }
 
 bool x64Encoder::MovRegFromMem16 ( long DestReg, short* Address )
 {
-	return x64EncodeRipOffset16 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address );
+	return x64EncodeRipOffset16 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegToMem32 ( long* Address, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_MOV_TOMEM, SrcReg, (char*)Address );
+	return x64EncodeRipOffset32 ( X64OP_MOV_TOMEM, SrcReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegFromMem32 ( long DestReg, long* Address )
 {
-	return x64EncodeRipOffset32 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address );
+	return x64EncodeRipOffset32 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegToMem64 ( long long* Address, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_MOV_TOMEM, SrcReg, (char*)Address );
+	return x64EncodeRipOffset64 ( X64OP_MOV_TOMEM, SrcReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovRegFromMem64 ( long DestReg, long long* Address )
 {
-	return x64EncodeRipOffset64 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address );
+	return x64EncodeRipOffset64 ( X64OP_MOV_FROMMEM, DestReg, (char*)Address, true );
 }
 
 bool x64Encoder::MovMemImm16 ( short* DestPtr, short Imm16 )
@@ -1939,17 +2097,17 @@ bool x64Encoder::AddRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::AddMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AddMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AddMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_ADD_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AddMemImm16 ( short* DestPtr, short Imm16 )
@@ -2307,17 +2465,17 @@ bool x64Encoder::AndRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::AndMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AndMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AndMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_AND_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::AndMemImm16 ( short* DestPtr, short Imm16 )
@@ -2765,6 +2923,21 @@ bool x64Encoder::CmovBRegReg16 ( long DestReg, long SrcReg )
 	return x64EncodeRegReg16 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, SrcReg );
 }
 
+bool x64Encoder::CmovBERegReg16 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg16 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovARegReg16 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg16 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovAERegReg16 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg16 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, SrcReg );
+}
+
 bool x64Encoder::CmovLRegReg16 ( long DestReg, long SrcReg )
 {
 	return x64EncodeRegReg16 ( MAKE2OPCODE( X64OP1_CMOVL, X64OP2_CMOVL ), DestReg, SrcReg );
@@ -2785,6 +2958,22 @@ bool x64Encoder::CmovBRegReg32 ( long DestReg, long SrcReg )
 	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, SrcReg );
 }
 
+bool x64Encoder::CmovBERegReg32 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovARegReg32 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovAERegReg32 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, SrcReg );
+}
+
+
 bool x64Encoder::CmovLRegReg32 ( long DestReg, long SrcReg )
 {
 	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CMOVL, X64OP2_CMOVL ), DestReg, SrcReg );
@@ -2804,6 +2993,22 @@ bool x64Encoder::CmovBRegReg64 ( long DestReg, long SrcReg )
 {
 	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, SrcReg );
 }
+
+bool x64Encoder::CmovBERegReg64 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovARegReg64 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, SrcReg );
+}
+
+bool x64Encoder::CmovAERegReg64 ( long DestReg, long SrcReg )
+{
+	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, SrcReg );
+}
+
 
 bool x64Encoder::CmovLRegReg64 ( long DestReg, long SrcReg )
 {
@@ -2858,6 +3063,21 @@ bool x64Encoder::CmovBRegMem16 ( long DestReg, short* SrcPtr )
 	return x64EncodeRipOffset16 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, (char*) SrcPtr );
 }
 
+bool x64Encoder::CmovBERegMem16 ( long DestReg, short* SrcPtr )
+{
+	return x64EncodeRipOffset16 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovARegMem16 ( long DestReg, short* SrcPtr )
+{
+	return x64EncodeRipOffset16 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovAERegMem16 ( long DestReg, short* SrcPtr )
+{
+	return x64EncodeRipOffset16 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, (char*) SrcPtr );
+}
+
 bool x64Encoder::CmovERegMem32 ( long DestReg, long* SrcPtr )
 {
 	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_CMOVE, X64OP2_CMOVE ), DestReg, (char*) SrcPtr );
@@ -2873,6 +3093,22 @@ bool x64Encoder::CmovBRegMem32 ( long DestReg, long* SrcPtr )
 	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, (char*) SrcPtr );
 }
 
+bool x64Encoder::CmovBERegMem32 ( long DestReg, long* SrcPtr )
+{
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovARegMem32 ( long DestReg, long* SrcPtr )
+{
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovAERegMem32 ( long DestReg, long* SrcPtr )
+{
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, (char*) SrcPtr );
+}
+
+
 bool x64Encoder::CmovERegMem64 ( long DestReg, long long* SrcPtr )
 {
 	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_CMOVE, X64OP2_CMOVE ), DestReg, (char*) SrcPtr );
@@ -2886,6 +3122,21 @@ bool x64Encoder::CmovNERegMem64 ( long DestReg, long long* SrcPtr )
 bool x64Encoder::CmovBRegMem64 ( long DestReg, long long* SrcPtr )
 {
 	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_CMOVB, X64OP2_CMOVB ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovBERegMem64 ( long DestReg, long long* SrcPtr )
+{
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_CMOVBE, X64OP2_CMOVBE ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovARegMem64 ( long DestReg, long long* SrcPtr )
+{
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_CMOVA, X64OP2_CMOVA ), DestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::CmovAERegMem64 ( long DestReg, long long* SrcPtr )
+{
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_CMOVAE, X64OP2_CMOVAE ), DestReg, (char*) SrcPtr );
 }
 
 
@@ -3099,17 +3350,17 @@ bool x64Encoder::CmpRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::CmpMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::CmpMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::CmpMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_CMP_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::CmpMemImm8 ( char* DestPtr, char Imm8 )
@@ -3803,22 +4054,22 @@ bool x64Encoder::OrRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::OrMemReg8 ( char* DestPtr, int SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_OR_TOMEM8, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_OR_TOMEM8, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::OrMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::OrMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::OrMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_OR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::OrMemImm16 ( short* DestPtr, short Imm16 )
@@ -4436,17 +4687,17 @@ bool x64Encoder::SubRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::SubMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::SubMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::SubMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_SUB_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::SubMemImm16 ( short* DestPtr, short Imm16 )
@@ -4956,17 +5207,17 @@ bool x64Encoder::XorRegMem64 ( long DestReg, long long* SrcPtr )
 
 bool x64Encoder::XorMemReg16 ( short* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset16 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset16 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::XorMemReg32 ( long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset32 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset32 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::XorMemReg64 ( long long* DestPtr, long SrcReg )
 {
-	return x64EncodeRipOffset64 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr );
+	return x64EncodeRipOffset64 ( X64OP_XOR_TOMEM, SrcReg, (char*) DestPtr, true );
 }
 
 bool x64Encoder::XorMemImm16 ( short* DestPtr, short Imm16 )
@@ -5194,8 +5445,9 @@ bool x64Encoder::pblendwregregimm ( long sseDestReg, long sseSrcReg, char Imm8 )
 
 bool x64Encoder::pblendwregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 )
 {
-	x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x3a, 0x0e ), sseDestReg, (char*) SrcPtr );
-	return x64EncodeImmediate8 ( Imm8 );
+	x64EncodePrefix ( 0x66 );
+	x64EncodeRipOffset32Imm8 ( MAKE3OPCODE( 0x0f, 0x3a, 0x0e ), sseDestReg, (char*) SrcPtr, Imm8 );
+	//return x64EncodeImmediate8 ( Imm8 );
 }
 
 bool x64Encoder::pblendvbregreg ( long sseDestReg, long sseSrcReg )
@@ -5231,19 +5483,27 @@ bool x64Encoder::movaps_from_mem128 ( long sseDestReg, void* SrcPtr )
 
 bool x64Encoder::movdqa_regreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x6f ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x6f ), sseDestReg, sseSrcReg );
 }
 
 
 bool x64Encoder::movdqa_memreg ( void* DestPtr, long sseSrcReg )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x7f ), sseSrcReg, (char*) DestPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x7f ), sseSrcReg, (char*) DestPtr );
 }
 
 bool x64Encoder::movdqa_regmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x6f ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x6f ), sseDestReg, (char*) SrcPtr );
 }
+
+
+
+
+
 
 bool x64Encoder::movdqa_to_mem128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
@@ -5270,10 +5530,62 @@ bool x64Encoder::movaps_from_mem128 ( long sseDestReg, long x64BaseReg, long x64
 	return x64EncodeRegMem32 ( MAKE2OPCODE ( 0x0f, AVXOP_MOVAPS_FROMMEM ), sseDestReg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::movdqa128 ( long sseDestReg, long sseSrcReg )
+
+
+bool x64Encoder::vmovdqa_regreg128 ( long sseDestReg, long sseSrcReg )
 {
 	return x64EncodeRegRegV ( VEX_128BIT, 0, VEX_PREFIX66, VEX_PREFIX0F, AVXOP_MOVDQA_FROMMEM, sseDestReg, 0, sseSrcReg );
 }
+
+bool x64Encoder::vmovdqa_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_FROMMEM, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vmovdqa_memreg128 ( void* DestPtr, long sseSrcReg )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseSrcReg, 0, (char*) DestPtr );
+}
+
+bool x64Encoder::vmovdqa_memreg128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+{
+	return x64EncodeRegMemV ( VEX_128BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseSrcReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
+}
+
+bool x64Encoder::vmovdqa_regmem128 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+{
+	return x64EncodeRegMemV ( VEX_128BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
+}
+
+
+bool x64Encoder::vmovdqa_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, VEX_PREFIX66, VEX_PREFIX0F, AVXOP_MOVDQA_FROMMEM, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vmovdqa_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_FROMMEM, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vmovdqa_memreg256 ( void* DestPtr, long sseSrcReg )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseSrcReg, 0, (char*) DestPtr );
+}
+
+bool x64Encoder::vmovdqa_memreg256 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+{
+	return x64EncodeRegMemV ( VEX_256BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseSrcReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
+}
+
+bool x64Encoder::vmovdqa_regmem256 ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+{
+	return x64EncodeRegMemV ( VEX_256BIT, 0, PP_VMOVDQA, MMMMM_VMOVDQA, AVXOP_MOVDQA_TOMEM, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
+}
+
+
+
+
 
 /*
 bool x64Encoder::movdqa_to_mem128 ( long sseSrcReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
@@ -5314,34 +5626,67 @@ bool x64Encoder::movss_from_mem128 ( long sseDestReg, long x64BaseReg, long x64I
 }
 
 
-bool x64Encoder::pabsw ( long sseDestReg, long sseSrcReg )
+
+
+
+bool x64Encoder::vpabsb_regreg128 ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegRegV ( VEX_128BIT, 0, VEX_PREFIX66, VEX_PREFIX0F38, AVXOP_PABSW, sseDestReg, 0, sseSrcReg );
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSB, sseDestReg, 0, sseSrcReg );
 }
 
-bool x64Encoder::pabsd ( long sseDestReg, long sseSrcReg )
+bool x64Encoder::vpabsw_regreg128 ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegRegV ( VEX_128BIT, 0, VEX_PREFIX66, VEX_PREFIX0F38, AVXOP_PABSD, sseDestReg, 0, sseSrcReg );
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSW, sseDestReg, 0, sseSrcReg );
 }
+
+bool x64Encoder::vpabsd_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSD, sseDestReg, 0, sseSrcReg );
+}
+
+
+bool x64Encoder::vpabsb_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSB, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpabsw_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSW, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpabsd_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPABS, MMMMM_VPABS, AVXOP_PABSD, sseDestReg, 0, (char*) SrcPtr );
+}
+
+
+
+
+
 
 bool x64Encoder::pabswregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x1d ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x1d ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pabswregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x1d ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x1d ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pabsdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x1e ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x1e ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pabsdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x1e ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x1e ), sseDestReg, (char*) SrcPtr );
 }
 
 	
@@ -5363,45 +5708,53 @@ bool x64Encoder::paddd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::paddbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfc ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xfc ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfc ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xfc ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::paddwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfd ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xfd ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfd ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xfd ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::padddregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfe ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xfe ), sseDestReg, sseSrcReg );
 }
 
 
 
 bool x64Encoder::padddregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xfe ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xfe ), sseDestReg, (char*) SrcPtr );
 }
 
 
 bool x64Encoder::paddqregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xd4 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xd4 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddqregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xd4 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xd4 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5428,43 +5781,51 @@ bool x64Encoder::paddsw ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::paddsbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xec ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xec ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddsbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xec ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xec ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::paddswregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xed ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xed ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddswregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xed ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xed ), sseDestReg, (char*) SrcPtr );
 }
 
 
 bool x64Encoder::paddusbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdc ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xdc ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::paddusbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdc ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xdc ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::padduswregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdd ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xdd ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::padduswregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdd ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xdd ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5477,12 +5838,14 @@ bool x64Encoder::pand ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pandregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdb ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xdb ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pandregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xdb ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xdb ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5490,6 +5853,19 @@ bool x64Encoder::pandn ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( VEX_128BIT, 0, VEX_PREFIX66, VEX_PREFIX0F, AVXOP_PANDN, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
+
+bool x64Encoder::pandnregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xdf ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::pandnregmem ( long sseDestReg, void* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xdf ), sseDestReg, (char*) SrcPtr );
+}
+
 
 bool x64Encoder::pcmpeqb ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
@@ -5508,32 +5884,38 @@ bool x64Encoder::pcmpeqd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pcmpeqbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x74 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x74 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpeqbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x74 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x74 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pcmpeqwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x75 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x75 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpeqwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x75 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x75 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pcmpeqdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x76 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x76 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpeqdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x76 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x76 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5554,32 +5936,38 @@ bool x64Encoder::pcmpgtd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pcmpgtbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x64 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x64 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpgtbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x64 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x64 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pcmpgtwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x65 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x65 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpgtwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x65 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x65 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pcmpgtdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x66 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x66 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pcmpgtdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x66 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x66 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5591,12 +5979,14 @@ bool x64Encoder::pmaxsw ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pmaxswregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xee ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xee ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmaxswregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xee ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xee ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5607,12 +5997,14 @@ bool x64Encoder::pmaxsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pmaxsdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x3d ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x3d ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmaxsdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x3d ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x3d ), sseDestReg, (char*) SrcPtr );
 }
 	
 	// pmin - get minimum of signed integers
@@ -5623,12 +6015,14 @@ bool x64Encoder::pminsw ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pminswregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xea ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xea ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pminswregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xea ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xea ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5639,12 +6033,14 @@ bool x64Encoder::pminsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pminsdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x39 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x39 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pminsdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x39 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x39 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5655,12 +6051,14 @@ bool x64Encoder::pmovsxdq ( long sseDestReg, long sseSrcReg )
 
 bool x64Encoder::pmovsxdqregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x25 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x25 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovsxdqregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x25 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x25 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5671,12 +6069,14 @@ bool x64Encoder::por ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::porregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xeb ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xeb ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::porregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xeb ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xeb ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5692,106 +6092,261 @@ bool x64Encoder::packuswb ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::packuswbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x67 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x67 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::packuswbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x67 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x67 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::packusdwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x2b ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x2b ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::packusdwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x2b ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x2b ), sseDestReg, (char*) SrcPtr );
 }
 
 
 bool x64Encoder::packsswbregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x63 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x63 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::packsswbregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x63 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x63 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::packssdwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x6b ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x6b ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::packssdwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x6b ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x6b ), sseDestReg, (char*) SrcPtr );
 }
+
+
+
+
+
+
+
+bool x64Encoder::vpmovzxbw_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBW, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxbd_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBD, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxbq_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBQ, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxwd_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWD, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxwq_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWQ, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxdq_regreg128 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXDQ, sseDestReg, 0, sseSrcReg );
+}
+
+
+bool x64Encoder::vpmovzxbw_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBW, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxbd_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBD, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxbq_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxwd_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWD, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxwq_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxdq_regmem128 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_128BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXDQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+
+
+
+bool x64Encoder::vpmovzxbw_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBW, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxbd_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBD, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxbq_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBQ, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxwd_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWD, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxwq_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWQ, sseDestReg, 0, sseSrcReg );
+}
+
+bool x64Encoder::vpmovzxdq_regreg256 ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegRegV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXDQ, sseDestReg, 0, sseSrcReg );
+}
+
+
+bool x64Encoder::vpmovzxbw_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBW, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxbd_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBD, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxbq_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXBQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxwd_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWD, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxwq_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXWQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+bool x64Encoder::vpmovzxdq_regmem256 ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffsetV ( VEX_256BIT, 0, PP_VPMOVZX, MMMMM_VPMOVZX, AVXOP_PMOVZXDQ, sseDestReg, 0, (char*) SrcPtr );
+}
+
+
+
+
 
 
 
 
 bool x64Encoder::pmovzxbwregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x30 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x30 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxbwregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x30 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x30 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pmovzxbdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x31 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x31 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxbdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x31 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x31 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pmovzxbqregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x32 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x32 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxbqregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x32 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x32 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pmovzxwdregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x33 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x33 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxwdregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x33 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x33 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pmovzxwqregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x34 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x34 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxwqregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x34 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x34 ), sseDestReg, (char*) SrcPtr );
 }
 
 bool x64Encoder::pmovzxdqregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x35 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x35 ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pmovzxdqregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE4OPCODE( 0x66, 0x0f, 0x38, 0x35 ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x35 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -5829,14 +6384,16 @@ bool x64Encoder::pshufbregmem ( long sseDestReg, void* SrcPtr )
 
 bool x64Encoder::pshufdregregimm ( long sseDestReg, long sseSrcReg, char Imm8 )
 {
-	x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0x70 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, sseSrcReg );
 	return x64EncodeImmediate8 ( Imm8 );
 }
 
 bool x64Encoder::pshufdregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 )
 {
-	x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr );
-	return x64EncodeImmediate8 ( Imm8 );
+	x64EncodePrefix ( 0x66 );
+	x64EncodeRipOffset32Imm8 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr, Imm8 );
+	//return x64EncodeImmediate8 ( Imm8 );
 }
 
 
@@ -5850,14 +6407,16 @@ bool x64Encoder::pshufhw ( long sseDestReg, long sseSrcReg, char Imm8 )
 
 bool x64Encoder::pshufhwregregimm ( long sseDestReg, long sseSrcReg, char Imm8 )
 {
-	x64EncodeRegReg32 ( MAKE3OPCODE( 0xf3, 0x0f, 0x70 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0xf3 );
+	x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, sseSrcReg );
 	return x64EncodeImmediate8 ( Imm8 );
 }
 
 bool x64Encoder::pshufhwregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 )
 {
-	x64EncodeRipOffset32 ( MAKE3OPCODE( 0xf3, 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr );
-	return x64EncodeImmediate8 ( Imm8 );
+	x64EncodePrefix ( 0xf3 );
+	x64EncodeRipOffset32Imm8 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr, Imm8 );
+	//return x64EncodeImmediate8 ( Imm8 );
 }
 
 
@@ -5868,14 +6427,16 @@ bool x64Encoder::pshuflw ( long sseDestReg, long sseSrcReg, char Imm8 )
 
 bool x64Encoder::pshuflwregregimm ( long sseDestReg, long sseSrcReg, char Imm8 )
 {
-	x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, 0x0f, 0x70 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0xf2 );
+	x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, sseSrcReg );
 	return x64EncodeImmediate8 ( Imm8 );
 }
 
 bool x64Encoder::pshuflwregmemimm ( long sseDestReg, void* SrcPtr, char Imm8 )
 {
-	x64EncodeRipOffset32 ( MAKE3OPCODE( 0xf2, 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr );
-	return x64EncodeImmediate8 ( Imm8 );
+	x64EncodePrefix ( 0xf2 );
+	x64EncodeRipOffset32Imm8 ( MAKE2OPCODE( 0x0f, 0x70 ), sseDestReg, (char*) SrcPtr, Imm8 );
+	//return x64EncodeImmediate8 ( Imm8 );
 }
 
 bool x64Encoder::pslldq ( long sseDestReg, long sseSrcReg, char Imm8 )
@@ -5933,6 +6494,25 @@ bool x64Encoder::pslldregimm ( long sseDestReg, char Imm8 )
 {
 	//return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xf1 ), sseDestReg, sseSrcReg );
 	return x64EncodeReg32Imm8 ( MAKE3OPCODE( 0x66, 0x0f, 0x72 ), 0x6, sseDestReg, Imm8 );
+}
+
+bool x64Encoder::psllqregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xf3 ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::psllqregmem ( long sseDestReg, void* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xf3 ), sseDestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::psllqregimm ( long sseDestReg, char Imm8 )
+{
+	//return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xf1 ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeReg32Imm8 ( MAKE2OPCODE( 0x0f, 0x73 ), 0x6, sseDestReg, Imm8 );
 }
 
 
@@ -6054,6 +6634,21 @@ bool x64Encoder::psrldregimm ( long sseDestReg, char Imm8 )
 	return x64EncodeReg32Imm8 ( MAKE3OPCODE( 0x66, 0x0f, 0x72 ), 0x2, sseDestReg, Imm8 );
 }
 
+bool x64Encoder::psrlqregreg ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xd3 ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::psrlqregmem ( long sseDestReg, void* SrcPtr )
+{
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xd3 ), sseDestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::psrlqregimm ( long sseDestReg, char Imm8 )
+{
+	//return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xf1 ), sseDestReg, sseSrcReg );
+	return x64EncodeReg32Imm8 ( MAKE3OPCODE( 0x66, 0x0f, 0x73 ), 0x2, sseDestReg, Imm8 );
+}
 
 
 
@@ -6319,12 +6914,27 @@ bool x64Encoder::pxor ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 
 bool x64Encoder::pxorregreg ( long sseDestReg, long sseSrcReg )
 {
-	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, 0x0f, 0xef ), sseDestReg, sseSrcReg );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0xef ), sseDestReg, sseSrcReg );
 }
 
 bool x64Encoder::pxorregmem ( long sseDestReg, void* SrcPtr )
 {
-	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x66, 0x0f, 0xef ), sseDestReg, (char*) SrcPtr );
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0xef ), sseDestReg, (char*) SrcPtr );
+}
+
+
+bool x64Encoder::ptestregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x0f, 0x38, 0x17 ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::ptestregmem ( long sseDestReg, void* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE3OPCODE( 0x0f, 0x38, 0x17 ), sseDestReg, (char*) SrcPtr );
 }
 
 
@@ -6402,6 +7012,168 @@ bool x64Encoder::pmaddwdregmem ( long sseDestReg, void* SrcPtr )
 
 // sse floating point instructions
 
+// *** SSE instructions *** //
+
+bool x64Encoder::movd_to_sse ( long sseDestReg, long x64SrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, X64OP1_MOVD_FROMMEM, X64OP2_MOVD_FROMMEM ), sseDestReg, x64SrcReg );
+}
+
+bool x64Encoder::movd_from_sse ( long x64DestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0x66, X64OP1_MOVD_TOMEM, X64OP2_MOVD_TOMEM ), x64DestReg, sseSrcReg );
+}
+
+bool x64Encoder::movq_to_sse ( long sseDestReg, long x64SrcReg )
+{
+	x64CodeArea [ x64NextOffset++ ] = 0x66;
+	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_MOVQ_FROMMEM, X64OP2_MOVQ_FROMMEM ), sseDestReg, x64SrcReg );
+}
+
+bool x64Encoder::movq_from_sse ( long x64DestReg, long sseSrcReg )
+{
+	x64CodeArea [ x64NextOffset++ ] = 0x66;
+	return x64EncodeRegReg64 ( MAKE2OPCODE( X64OP1_MOVQ_TOMEM, X64OP2_MOVQ_TOMEM ), x64DestReg, sseSrcReg );
+}
+
+
+bool x64Encoder::movd_regmem ( long sseDestReg, long* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_MOVD_FROMMEM, X64OP2_MOVD_FROMMEM ), sseDestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::movd_memreg ( long* DstPtr, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_MOVD_TOMEM, X64OP2_MOVD_TOMEM ), sseSrcReg, (char*) DstPtr );
+}
+
+bool x64Encoder::movq_regmem ( long sseDestReg, long* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_MOVQ_FROMMEM, X64OP2_MOVQ_FROMMEM ), sseDestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::movq_memreg ( long* DstPtr, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( X64OP1_MOVQ_TOMEM, X64OP2_MOVQ_TOMEM ), sseSrcReg, (char*) DstPtr );
+}
+
+/*
+bool x64Encoder::movd_regmem ( long sseDestReg, long* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x6e ), sseDestReg, (char*) SrcPtr );
+}
+
+bool x64Encoder::movq_regmem ( long sseDestReg, long long* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset64 ( MAKE2OPCODE( 0x0f, 0x6e ), sseDestReg, (char*) SrcPtr );
+}
+*/
+
+
+// *** SSE floating point instructions *** //
+
+bool x64Encoder::addsd ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, X64OP1_ADDSD, X64OP2_ADDSD ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::subsd ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, X64OP1_SUBSD, X64OP2_SUBSD ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::mulsd ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, X64OP1_MULSD, X64OP2_MULSD ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::divsd ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, X64OP1_DIVSD, X64OP2_DIVSD ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::sqrtsd ( long sseDestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf2, X64OP1_SQRTSD, X64OP2_SQRTSD ), sseDestReg, sseSrcReg );
+}
+
+
+bool x64Encoder::addpdregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x58 ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::addpdregmem ( long sseDestReg, void* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x58 ), sseDestReg, (char*) SrcPtr );
+}
+
+
+bool x64Encoder::mulpdregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, 0x59 ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::mulpdregmem ( long sseDestReg, void* SrcPtr )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( 0x0f, 0x59 ), sseDestReg, (char*) SrcPtr );
+}
+
+
+bool x64Encoder::cvttss2si ( long x64DestReg, long sseSrcReg )
+{
+	return x64EncodeRegReg32 ( MAKE3OPCODE( 0xf3, X64OP1_CVTTSS2SI, X64OP2_CVTTSS2SI ), x64DestReg, sseSrcReg );
+}
+
+bool x64Encoder::cvttps2dq_regreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0xf3 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CVTTPS2DQ, X64OP2_CVTTPS2DQ ), sseDestReg, sseSrcReg );
+}
+
+
+bool x64Encoder::cvtsi2sd ( long sseDestReg, long x64SrcReg )
+{
+	x64EncodePrefix ( 0xf2 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CVTSI2SD, X64OP2_CVTSI2SD ), sseDestReg, x64SrcReg );
+}
+
+bool x64Encoder::cvtdq2pd_regreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0xf3 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_CVTDQ2PD, X64OP2_CVTDQ2PD ), sseDestReg, sseSrcReg );
+}
+
+
+bool x64Encoder::movddup_regreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0xf2 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_MOVDDUP, X64OP2_MOVDDUP ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::movddup_regmem ( long sseDestReg, long long* SrcPtr )
+{
+	x64EncodePrefix ( 0xf2 );
+	return x64EncodeRipOffset32 ( MAKE2OPCODE( X64OP1_MOVDDUP, X64OP2_MOVDDUP ), sseDestReg, (char*) SrcPtr );
+}
+
+
+
+
+// *** AVX instructions ***//
+
+
+
 bool x64Encoder::blendvps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg, long sseSrc3Reg )
 {
 	return x64EncodeRegVImm8 ( 0, 0, PP_BLENDPS, MMMMM_BLENDPS, AVXOP_BLENDPS, sseDestReg, sseSrc1Reg, sseSrc2Reg,  ( sseSrc3Reg << 4 ) );
@@ -6442,42 +7214,44 @@ bool x64Encoder::blendpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, lo
 	return x64EncodeRegMemVImm8 ( 1, 0, PP_BLENDPD, MMMMM_BLENDPD, AVXOP_BLENDPD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset, Imm8 );
 }
 
-bool x64Encoder::addps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+
+
+bool x64Encoder::vaddps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_ADDPS, MMMMM_ADDPS, AVXOP_ADDPS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::addpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vaddpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_ADDPD, MMMMM_ADDPD, AVXOP_ADDPD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::addss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vaddss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_ADDSS, MMMMM_ADDSS, AVXOP_ADDSS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::addsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vaddsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_ADDSD, MMMMM_ADDSD, AVXOP_ADDSD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::addps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vaddps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_ADDPS, MMMMM_ADDPS, AVXOP_ADDPS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::addpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vaddpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_ADDPD, MMMMM_ADDPD, AVXOP_ADDPD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::addss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vaddss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_ADDSS, MMMMM_ADDSS, AVXOP_ADDSS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::addsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vaddsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_ADDSD, MMMMM_ADDSD, AVXOP_ADDSD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
@@ -6590,42 +7364,42 @@ bool x64Encoder::cvtpd2ps ( long sseDestReg, long x64BaseReg, long x64IndexReg, 
 
 
 
-bool x64Encoder::divps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vdivps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_DIVPS, MMMMM_DIVPS, AVXOP_DIVPS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::divpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vdivpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_DIVPD, MMMMM_DIVPD, AVXOP_DIVPD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::divss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vdivss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_DIVSS, MMMMM_DIVSS, AVXOP_DIVSS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::divsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vdivsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_DIVSD, MMMMM_DIVSD, AVXOP_DIVSD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::divps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vdivps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_DIVPS, MMMMM_DIVPS, AVXOP_DIVPS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::divpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vdivpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_DIVPD, MMMMM_DIVPD, AVXOP_DIVPD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::divss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vdivss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_DIVSS, MMMMM_DIVSS, AVXOP_DIVSS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::divsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vdivsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_DIVSD, MMMMM_DIVSD, AVXOP_DIVSD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
@@ -6710,42 +7484,42 @@ bool x64Encoder::minsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long
 	return x64EncodeRegMemV ( 1, 0, PP_MINSD, MMMMM_MINSD, AVXOP_MINSD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::mulps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vmulps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_MULPS, MMMMM_MULPS, AVXOP_MULPS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::mulpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vmulpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_MULPD, MMMMM_MULPD, AVXOP_MULPD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::mulss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vmulss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_MULSS, MMMMM_MULSS, AVXOP_MULSS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::mulsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vmulsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_MULSD, MMMMM_MULSD, AVXOP_MULSD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::mulps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vmulps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_MULPS, MMMMM_MULPS, AVXOP_MULPS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::mulpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vmulpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_MULPD, MMMMM_MULPD, AVXOP_MULPD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::mulss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vmulss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_MULSS, MMMMM_MULSS, AVXOP_MULSS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::mulsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vmulsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_MULSD, MMMMM_MULSD, AVXOP_MULSD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
@@ -6796,86 +7570,97 @@ bool x64Encoder::shufpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, lon
 
 
 
-bool x64Encoder::sqrtps ( long sseDestReg, long sseSrc1Reg )
+bool x64Encoder::vsqrtps ( long sseDestReg, long sseSrc1Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_SQRTPS, MMMMM_SQRTPS, AVXOP_SQRTPS, sseDestReg, 0, sseSrc1Reg );
 }
 
-bool x64Encoder::sqrtpd ( long sseDestReg, long sseSrc1Reg )
+bool x64Encoder::vsqrtpd ( long sseDestReg, long sseSrc1Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_SQRTPD, MMMMM_SQRTPD, AVXOP_SQRTPD, sseDestReg, 0, sseSrc1Reg );
 }
 
-bool x64Encoder::sqrtss ( long sseDestReg, long sseSrc1Reg )
+bool x64Encoder::vsqrtss ( long sseDestReg, long sseSrc1Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_SQRTSS, MMMMM_SQRTSS, AVXOP_SQRTSS, sseDestReg, 0, sseSrc1Reg );
 }
 
-bool x64Encoder::sqrtsd ( long sseDestReg, long sseSrc1Reg )
+bool x64Encoder::vsqrtsd ( long sseDestReg, long sseSrc1Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_SQRTSD, MMMMM_SQRTSD, AVXOP_SQRTSD, sseDestReg, 0, sseSrc1Reg );
 }
 
 
-bool x64Encoder::sqrtps ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsqrtps ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_SQRTPS, MMMMM_SQRTPS, AVXOP_SQRTPS, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::sqrtpd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsqrtpd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_SQRTPD, MMMMM_SQRTPD, AVXOP_SQRTPD, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::sqrtss ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsqrtss ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_SQRTSS, MMMMM_SQRTSS, AVXOP_SQRTSS, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::sqrtsd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsqrtsd ( long sseDestReg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_SQRTSD, MMMMM_SQRTSD, AVXOP_SQRTSD, sseDestReg, 0, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
 
+bool x64Encoder::subpsregreg ( long sseDestReg, long sseSrcReg )
+{
+	//x64EncodePrefix ( 0xf2 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_SUBPS, X64OP2_SUBPS ), sseDestReg, sseSrcReg );
+}
+
+bool x64Encoder::subpdregreg ( long sseDestReg, long sseSrcReg )
+{
+	x64EncodePrefix ( 0x66 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( X64OP1_SUBPD, X64OP2_SUBPD ), sseDestReg, sseSrcReg );
+}
 
 
-bool x64Encoder::subps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vsubps ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_SUBPS, MMMMM_SUBPS, AVXOP_SUBPS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::subpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vsubpd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_SUBPD, MMMMM_SUBPD, AVXOP_SUBPD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::subss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vsubss ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 0, 0, PP_SUBSS, MMMMM_SUBSS, AVXOP_SUBSS, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::subsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
+bool x64Encoder::vsubsd ( long sseDestReg, long sseSrc1Reg, long sseSrc2Reg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_SUBSD, MMMMM_SUBSD, AVXOP_SUBSD, sseDestReg, sseSrc1Reg, sseSrc2Reg );
 }
 
-bool x64Encoder::subps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsubps ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_SUBPS, MMMMM_SUBPS, AVXOP_SUBPS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::subpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsubpd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_SUBPD, MMMMM_SUBPD, AVXOP_SUBPD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::subss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsubss ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 0, 0, PP_SUBSS, MMMMM_SUBSS, AVXOP_SUBSS, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
 
-bool x64Encoder::subsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
+bool x64Encoder::vsubsd ( long sseDestReg, long sseSrc1Reg, long x64BaseReg, long x64IndexReg, long Scale, long Offset )
 {
 	return x64EncodeRegMemV ( 1, 0, PP_SUBSD, MMMMM_SUBSD, AVXOP_SUBSD, sseDestReg, sseSrc1Reg, x64BaseReg, x64IndexReg, Scale, Offset );
 }
@@ -7323,6 +8108,13 @@ bool x64Encoder::extractps ( long x64DestReg, long sseSrcReg, char Imm8 )
 bool x64Encoder::movmskps256 ( long x64DestReg, long sseSrcReg )
 {
 	return x64EncodeRegRegV ( 1, 0, PP_MOVMSKPS, MMMMM_MOVMSKPS, AVXOP_MOVMSKPS, x64DestReg, 0, sseSrcReg );
+}
+
+
+bool x64Encoder::movmskpsregreg ( long x64DestReg, long sseSrcReg )
+{
+	//x64EncodePrefix ( 0xf2 );
+	return x64EncodeRegReg32 ( MAKE2OPCODE( 0x0f, AVXOP_MOVMSKPS ), x64DestReg, sseSrcReg );
 }
 
 

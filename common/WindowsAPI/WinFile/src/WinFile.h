@@ -53,6 +53,8 @@ namespace WinApi
 		bool ReadSync ( char* DataOut, unsigned long BytesToRead, unsigned long long SeekPosition );
 		bool ReadAsync ( char* DataOut, unsigned long BytesToRead, unsigned long long SeekPosition, void* Callback_Function );
 		
+		bool WaitAsync ();
+		
 		bool Seek ( unsigned long long offset );
 		
 		bool Close ();

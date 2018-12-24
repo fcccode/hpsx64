@@ -1646,6 +1646,7 @@ void CalibrateTimer_t ()
 		{
 			Timer::_llCycleCount = CycleCount;
 			Timer::_DebugCycleCount = CycleCount;
+			Timers::_DebugCycleCount = CycleCount;
 		}
 		
 		

@@ -30,6 +30,7 @@
 // need to restart dma#2 when path3 is un-masked
 #include "PS2_Dma.h"
 
+#include "VU.h"
 
 
 using namespace Playstation2;
@@ -42,20 +43,20 @@ using namespace Math::Reciprocal;
 //#define USE_MULTIPLY_CUSTOM
 
 
-#define USE_TEMPLATES_RECTANGLE
-#define USE_TEMPLATES_RECTANGLE8
-#define USE_TEMPLATES_RECTANGLE16
-#define USE_TEMPLATES_SPRITE
-#define USE_TEMPLATES_SPRITE8
-#define USE_TEMPLATES_SPRITE16
-#define USE_TEMPLATES_TRIANGLE_MONO
-#define USE_TEMPLATES_RECTANGLE_MONO
-#define USE_TEMPLATES_TRIANGLE_TEXTURE
-#define USE_TEMPLATES_RECTANGLE_TEXTURE
-#define USE_TEMPLATES_TRIANGLE_GRADIENT
-#define USE_TEMPLATES_RECTANGLE_GRADIENT
-#define USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
-#define USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
+//#define USE_TEMPLATES_RECTANGLE
+//#define USE_TEMPLATES_RECTANGLE8
+//#define USE_TEMPLATES_RECTANGLE16
+//#define USE_TEMPLATES_SPRITE
+//#define USE_TEMPLATES_SPRITE8
+//#define USE_TEMPLATES_SPRITE16
+//#define USE_TEMPLATES_TRIANGLE_MONO
+//#define USE_TEMPLATES_RECTANGLE_MONO
+//#define USE_TEMPLATES_TRIANGLE_TEXTURE
+//#define USE_TEMPLATES_RECTANGLE_TEXTURE
+//#define USE_TEMPLATES_TRIANGLE_GRADIENT
+//#define USE_TEMPLATES_RECTANGLE_GRADIENT
+//#define USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
+//#define USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
 
 
 //#define COUT_INDEX_RANGE
@@ -116,8 +117,6 @@ using namespace Math::Reciprocal;
 #define DISABLE_PATH1_WRAP
 
 
-// user, rhymes with... view mode
-#define ENABLE_PIXELBUF_INTERLACING	
 
 
 //#define ENABLE_TRANSPARENT24
@@ -138,15 +137,10 @@ using namespace Math::Reciprocal;
 #define USE_NEW_SYNC_PS2TIMERS
 
 
-// enables templates for PS2 GPU
-//#define USE_PS2_GPU_TEMPLATES
+
+#define ENABLE_DATA_STRUCTURE
 
 
-#ifdef USE_PS2_GPU_TEMPLATES
-
-#define USE_TEMPLATES_PS2_RECTANGLE
-
-#endif
 
 
 
@@ -168,18 +162,20 @@ using namespace Math::Reciprocal;
 #define INLINE_DEBUG_READ
 #define INLINE_DEBUG_WRITE
 #define INLINE_DEBUG_DMA_WRITE
+*/
 
-
-
+/*
 #define INLINE_DEBUG_PRIMITIVE
+
 
 #define INLINE_DEBUG_PRIMITIVE_RESERVED
 
 #define INLINE_DEBUG_FIFO
 #define INLINE_DEBUG_PATH1_WRITE
 #define INLINE_DEBUG_PATH2_WRITE
+*/
 
-
+/*
 #define INLINE_DEBUG_SPRITE
 #define INLINE_DEBUG_SPRITE_TEST
 #define INLINE_DEBUG_XFER
@@ -198,11 +194,15 @@ using namespace Math::Reciprocal;
 
 
 //#define INLINE_DEBUG_RASTER_SCANLINE
+*/
+
 
 
 #define INLINE_DEBUG_PRIMITIVE_TEST
+
+
 #define INLINE_DEBUG_TRANSFER_IN
-//#define INLINE_DEBUG_TRANSFER_IN_2
+#define INLINE_DEBUG_TRANSFER_IN_2
 #define INLINE_DEBUG_TRANSFER_OUT
 //#define INLINE_DEBUG_TRANSFER_OUT_2
 #define INLINE_DEBUG_TRANSFER_LOCAL
@@ -251,11 +251,14 @@ using namespace Math::Reciprocal;
 //#define INLINE_DEBUG_TRIANGLE_TEXTURE_GRADIENT
 //#define INLINE_DEBUG_TRIANGLE_MONO_TEST
 
-#define INLINE_DEBUG_SPRITE_PIXEL
-*/
+//#define INLINE_DEBUG_SPRITE_PIXEL
+
 
 #endif
 
+
+u32 GPU::ulNumberOfThreads;
+Api::Thread* GPU::GPUThreads [ GPU::c_iMaxThreads ];
 
 
 GPU::TEST_t *GPU::pTest;
@@ -301,11 +304,36 @@ bool GPU::DebugWindow_Enabled;
 
 void *GPU::PtrEnd;
 
+
+
+//static u32 GPU::ulNumberOfThreads;
+//static Api::Thread* GPU::GPUThreads [ GPU::c_iMaxThreads ];
+
+static volatile u64 GPU::ullInputBuffer_Index;
+static volatile u32 GPU::ulInputBuffer_Count;
+static volatile u64 GPU::inputdata [ ( 1 << GPU::c_ulInputBuffer_Shift ) * GPU::c_ulInputBuffer_Size ] __attribute__ ((aligned (32)));
+
+static volatile u32 GPU::ulInputBuffer_WriteIndex;
+static volatile u32 GPU::ulInputBuffer_TargetIndex;
+static volatile u32 GPU::ulInputBuffer_ReadIndex;
+
+
 u32 *GPU::buf32;
 u32 *GPU::zbuf32;
 
 
 Debug::Log GPU::debug;
+
+
+static u32 GPU::LUT_CvtAddrPix32 [ 64 * 32 ];
+static u32 GPU::LUT_CvtAddrPix16 [ 64 * 64 ];
+static u32 GPU::LUT_CvtAddrPix16s [ 64 * 64 ];
+static u32 GPU::LUT_CvtAddrPix8 [ 128 * 64 ];
+static u32 GPU::LUT_CvtAddrPix4 [ 128 * 128 ];
+
+static u32 GPU::LUT_CvtAddrZBuf32 [ 64 * 32 ];
+static u32 GPU::LUT_CvtAddrZBuf16 [ 64 * 64 ];
+static u32 GPU::LUT_CvtAddrZBuf16s [ 64 * 64 ];
 
 
 const u32 GPU::HBlank_X_LUT [ 8 ] = { 256, 368, 320, 0, 512, 0, 640, 0 };
@@ -477,6 +505,14 @@ void GPU::Reset ()
 	// set pointer to end of draw buffer (need this so variables don't get overwritten)
 	PtrEnd = RAM8 + c_iRAM_Size;
 
+	// init lookup tables for cvt
+	InitCvtLUTs ();
+	
+	
+	// new multi-threaded graphics reset code
+	ulNumberOfThreads = 0;
+	ullInputBuffer_Index = 0;
+	ulInputBuffer_Count = 0;
 }
 
 
@@ -517,9 +553,29 @@ void GPU::Start ()
 	// set as current GPU object
 	_GPU = this;
 	
-	// generate LUTs
-	//Generate_Modulo_LUT ();
+	
+	// set all transfers to end of packet
+	EndOfPacket [ 0 ] = 1;
+	EndOfPacket [ 1 ] = 1;
+	EndOfPacket [ 2 ] = 1;
+	EndOfPacket [ 3 ] = 1;
 
+	// 0 means on same thread, 1 or greater means on separate threads (power of 2 ONLY!!)
+	ulNumberOfThreads = 1;
+	
+	/*
+	if ( ulNumberOfThreads )
+	{
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			// create thread
+			GPUThreads [ i ] = new Api::Thread( Start_GPUThread, (void*) inputdata );
+		}
+	}
+	*/
+	
+	
+	
 	cout << "done\n";
 
 #ifdef INLINE_DEBUG
@@ -640,11 +696,53 @@ void GPU::Run ()
 		// draw output to program window @ vblank! - if output window is available
 		if ( DisplayOutput_Window )
 		{
+#ifdef USE_TEMPLATES_PS2_DRAWSCREEN
+			u64 *inputdata_ptr;
+			u64 NumPixels;
+
+#ifdef USE_OLD_MULTI_THREADING
+			inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+			inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+			// this actually puts in the code for the command
+			Select_DrawScreen_t ( inputdata_ptr, 0 );
+			
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// send the command to the other thread
+				ullInputBuffer_Index++;
+				Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+				
+				// make sure buffer is not full
+				while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+			}
+#endif
+			
+#else
+
+			// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// for now, wait to finish
+				while ( ulInputBuffer_Count );
+			}
+#else
+			Finish ();
+#endif
+
 			Draw_Screen ();
+#endif
 			
 			if ( DebugWindow_Enabled )
 			{
-				Draw_FrameBuffers ();
+				if ( !ulNumberOfThreads )
+				{
+					Draw_FrameBuffers ();
+				}
 			}
 		}
 		
@@ -680,6 +778,11 @@ void GPU::Run ()
 	debug << "\r\n\r\n***SCANLINE*** " << hex << setw( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount << "; BusyCycles=" << dec << BusyCycles << " Scanline=" << lScanline << " llScanlineStart=" << llScanlineStart << " llHBlankStart=" << llHBlankStart << " llNextScanlineStart=" << llNextScanlineStart << " lVBlank=" << lVBlank << " CyclesPerScanline=" << dCyclesPerScanline;
 	debug << " Interlaced?=" << GPURegs0.SMODE2.INTER << " Field=" << GPURegs1.CSR.FIELD;
 #endif
+
+
+	// flush gpu
+	Flush ();
+
 	
 	// update timers //
 	// do this before updating the next event
@@ -1154,16 +1257,16 @@ static void GPU::Write ( u32 Address, u64 Data, u64 Mask )
 			// make sure write is 128-bit
 			if ( !Mask )
 			{
-				//Arg0.Lo = ((u32*)Data) [ 3 ];
-				//Arg0.Hi = ((u32*)Data) [ 2 ];
+#ifdef OLD_GIF_TRANSFER
 				Arg0.Value = ((u64*)Data) [ 0 ];
 				
-				//Arg1.Lo = ((u32*)Data) [ 1 ];
-				//Arg1.Hi = ((u32*)Data) [ 0 ];
 				Arg1.Value = ((u64*)Data) [ 1 ];
 				
 				// pass the data in the correct order
 				_GPU->GIF_FIFO_Execute ( Arg0.Value, Arg1.Value );
+#else
+				_GPU->GIF_FIFO_Execute ( ((u64*)Data), 2 );
+#endif
 			}
 			
 			break;
@@ -1325,12 +1428,26 @@ static void GPU::Write ( u32 Address, u64 Data, u64 Mask )
 }
 
 
-
+// returns count of the remainder of data
+#ifdef OLD_GIF_TRANSFER
 void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
+#else
+u32 GPU::GIF_FIFO_Execute ( u64* pData64, u32 Count64 )
+#endif
 {
 	// ***todo*** use pointers instead as input
 	
 	u32 ulDestReg;
+	u32 TransferCount64, TransferRemaining64;
+	u64 Arg0, Arg1;
+	
+	u64 *inputdata_ptr;
+	
+#ifndef OLD_GIF_TRANSFER
+	// loop while there is data to transfer and transfer is in progress
+	while ( Count64 )
+	{
+#endif
 	
 	if ( !ulTransferCount [ CurrentPath ] )
 	{
@@ -1338,13 +1455,14 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 		// ...or not
 		//StartPrimitive ();
 		
+#ifdef OLD_GIF_TRANSFER
 		GIFTag0 [ CurrentPath ].Value = ull0;
-		//_GPU->GIFTag0 [ CurrentPath ].Lo = ((u32*)Data) [ 3 ];
-		//_GPU->GIFTag0 [ CurrentPath ].Hi = ((u32*)Data) [ 2 ];
-		
 		GIFTag1 [ CurrentPath ].Value = ull1;
-		//_GPU->GIFTag1 [ CurrentPath ].Lo = ((u32*)Data) [ 1 ];
-		//_GPU->GIFTag1 [ CurrentPath ].Hi = ((u32*)Data) [ 0 ];
+#else
+		GIFTag0 [ CurrentPath ].Value = *pData64++;
+		
+		GIFTag1 [ CurrentPath ].Value = *pData64++;
+#endif
 	
 #ifdef INLINE_DEBUG_FIFO
 			debug << "; GIFTag0 [ CurrentPath ]=" << hex << GIFTag0 [ CurrentPath ].Value;
@@ -1435,6 +1553,10 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 		
 		// update transfer count
 		ulTransferCount [ CurrentPath ] += 2;
+		
+#ifndef OLD_GIF_TRANSFER
+		Count64 -= 2;
+#endif
 	}
 	else
 	{
@@ -1460,7 +1582,20 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 				// if greater or equal to number of registers, reset
 				if ( ulRegCount [ CurrentPath ] >= ulNumRegs [ CurrentPath ] ) ulRegCount [ CurrentPath ] = 0;
 				
+#ifdef OLD_GIF_TRANSFER
 				WriteReg_Packed ( ulDestReg, ull0, ull1 );
+#else
+				Arg0 = *pData64++;
+				Arg1 = *pData64++;
+				WriteReg_Packed ( ulDestReg, Arg0, Arg1 );
+#endif
+				
+				// two 64-bit values transferred
+				ulTransferCount [ CurrentPath ] += 2;
+				
+#ifndef OLD_GIF_TRANSFER
+				Count64 -= 2;
+#endif
 				
 				break;
 			
@@ -1490,6 +1625,8 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 			debug << "; NOP";
 #endif
 
+						// NOP just means the data was not output
+						// probably still need to advance to the next data element and count as transfer?
 						break;
 						
 					default:
@@ -1500,8 +1637,11 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 			}
 #endif
 
-						//GPURegsGp.Regs [ ulDestReg ] = ull0;
+#ifdef OLD_GIF_TRANSFER
 						WriteReg ( ulDestReg, ull0 );
+#else
+						WriteReg ( ulDestReg, pData64 [ 0 ] );
+#endif
 						break;
 				}
 				
@@ -1540,12 +1680,25 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 						}
 #endif
 
-							//GPURegsGp.Regs [ ulDestReg ] = ull0;
+#ifdef OLD_GIF_TRANSFER
 							WriteReg ( ulDestReg, ull1 );
+#else
+							WriteReg ( ulDestReg, pData64 [ 1 ] );
+#endif
 							break;
 					}
 					
 				}
+				
+				// ?? assume two 64-bit values transferred ??
+				ulTransferCount [ CurrentPath ] += 2;
+				
+#ifndef OLD_GIF_TRANSFER
+				// update pointer
+				pData64 += 2;
+
+				Count64 -= 2;
+#endif
 				
 				break;
 			
@@ -1559,21 +1712,83 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 	debug << dec << " DOff32=" << XferDstOffset32 << " X=" << XferX << " Y=" << XferY << " DX=" << XferDstX << " DY=" << XferDstY << " XferWidth=" << XferWidth << " XferHeight=" << XferHeight << " BufWidth=" << XferDstBufWidth;
 #endif
 
-#ifdef ENABLE_DATA_STRUCTURE
 				// send data to destination
+#ifdef OLD_GIF_TRANSFER
 				TransferDataIn32_DS ( (u32*) ( &ull0 ), 2 );
 				TransferDataIn32_DS ( (u32*) ( &ull1 ), 2 );
+				
+				ulTransferCount [ CurrentPath ] += 2;
 #else
-				// send data to destination
-				TransferDataIn32 ( (u32*) ( &ull0 ), 2 );
-				TransferDataIn32 ( (u32*) ( &ull1 ), 2 );
+				TransferRemaining64 = ulTransferSize [ CurrentPath ] - ulTransferCount [ CurrentPath ];
+				TransferCount64 = ( ( Count64 > TransferRemaining64 ) ? TransferRemaining64 : Count64 );
+
+#ifdef USE_TEMPLATES_PS2_TRANSFERIN
+
+#ifdef USE_OLD_MULTI_THREADING
+				inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+				// can't fit more than 16 64-bit values into a transfer if multi-threading for now
+				if ( ( !ulNumberOfThreads ) || ( TransferCount64 <= 16 ) )
+				{
+					Select_TransferIn_t ( inputdata_ptr, 0, pData64, TransferCount64 );
+				}
+				else
+				{
+					Select_TransferIn_t ( inputdata_ptr, 0, pData64, 16 );
+					
+#ifdef USE_OLD_MULTI_THREADING
+					if ( ulNumberOfThreads )
+					{
+						// send the command to the other thread
+						ullInputBuffer_Index++;
+						Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+						
+						// make sure buffer is not full
+						while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+					}
+#endif
+					
+#ifdef USE_OLD_MULTI_THREADING
+					inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+					inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+					Select_TransferIn_t ( inputdata_ptr, 0, pData64 + 16, TransferCount64 - 16 );
+				}
+				
+				
+#ifdef USE_OLD_MULTI_THREADING
+				if ( ulNumberOfThreads )
+				{
+					// send the command to the other thread
+					ullInputBuffer_Index++;
+					Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+					
+					// make sure buffer is not full
+					while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+				}
+#endif
+
+#else
+				TransferDataIn32_DS ( (u32*) pData64, TransferCount64 << 1 );
+#endif
+				
+				ulTransferCount [ CurrentPath ] += TransferCount64;
+				Count64 -= TransferCount64;
+				
+				// update pointer
+				pData64 += TransferCount64;
 #endif
 				
 				break;
 		}
 		
 		// update transfer count
-		ulTransferCount [ CurrentPath ] += 2;
+		//ulTransferCount [ CurrentPath ] += 2;
 	}
 	
 	// if greater than number of items to transfer, then done
@@ -1589,8 +1804,20 @@ void GPU::GIF_FIFO_Execute ( u64 ull0, u64 ull1 )
 		Tag_Done = 1;
 		
 		// check if path1 transfer is complete (End of packet)
-		if ( GIFTag0 [ CurrentPath ].EOP ) EndOfPacket = 1;
+		if ( GIFTag0 [ CurrentPath ].EOP ) EndOfPacket [ CurrentPath ] = 1;
+		
+#ifndef OLD_GIF_TRANSFER
+		// *new* return the remaining count of 64-bit elements
+		return Count64;
+#endif
 	}
+	
+#ifndef OLD_GIF_TRANSFER
+	}	// while ( Count64 )
+		
+	// done
+	return 0;
+#endif
 }
 
 
@@ -1642,6 +1869,10 @@ void GPU::WriteReg_Packed ( u32 lIndex, u64 ull0, u64 ull1 )	//u64* pValue )
 			// save Q value
 			//Internal_Q = pValue [ 1 ];
 			Internal_Q = ull1;
+			
+			// don't know if there is a guarantee in which order ST or RGBAQ get executed in
+			// so will also set Q of RGBAQ register here
+			//GPURegsGp.RGBAQ.Q = Internal_Q;
 			
 			//WriteReg ( 2, Data );
 			
@@ -1740,6 +1971,8 @@ void GPU::WriteReg ( u32 lIndex, u64 Value )
 {
 	u32 lContext;
 	TEX0_t *TEX02;
+	
+	u64 *inputdata_ptr;
 	
 	// make sure index is within range
 	if ( lIndex >= c_iGPURegsGp_Count )
@@ -2021,6 +2254,89 @@ void GPU::WriteReg ( u32 lIndex, u64 Value )
 			
 		case TRXDIR:
 
+			if ( ( Value & 3 ) == 2 )
+			{
+				// local->local transfer //
+				
+#ifdef VERBOSE_LOCAL_TRANSFER
+				cout << "\nhps2x64: ALERT: GPU: Local->Local transfer started!!!\n";
+#endif
+
+#ifdef USE_TEMPLATES_PS2_COPYLOCAL
+
+				u64 NumPixels;
+
+#ifdef USE_OLD_MULTI_THREADING
+				inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+				NumPixels = Select_CopyLocal_t ( inputdata_ptr, 0 );
+				
+#ifdef USE_OLD_MULTI_THREADING
+				if ( ulNumberOfThreads )
+				{
+					// send the command to the other thread
+					ullInputBuffer_Index++;
+					Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+					
+					// make sure buffer is not full
+					while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+				}
+#endif
+
+				if ( BusyUntil_Cycle < *_DebugCycleCount )
+				{
+					BusyUntil_Cycle = *_DebugCycleCount + ( NumPixels >> 4 );
+				}
+
+				// done
+				break;
+#else
+
+				// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+				if ( ulNumberOfThreads )
+				{
+					// for now, wait to finish
+					while ( ulInputBuffer_Count );
+				}
+#else
+				Finish ();
+#endif
+
+#endif
+
+			}	// end if ( ( Value & 3 ) == 2 )
+#ifdef USE_TEMPLATES_PS2_TRANSFERIN
+			else
+			{
+#ifdef USE_OLD_MULTI_THREADING
+				inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+				Select_Start_Transfer_t ( inputdata_ptr, 0, Value );
+				
+#ifdef USE_OLD_MULTI_THREADING
+				if ( ulNumberOfThreads )
+				{
+					// send the command to the other thread
+					ullInputBuffer_Index++;
+					Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+					
+					// make sure buffer is not full
+					while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+				}
+#endif
+				
+				break;
+				
+			}	// end else if ( !( Value & 3 ) )
+#endif
+
 			// only reload all the variables from the register values here
 			
 			// BITBLTBUF //
@@ -2145,16 +2461,12 @@ if ( GPURegsGp.BITBLTBUF.DBW )
 				XferX = xStart;
 				XferY = yStart;
 				
-#ifdef ENABLE_DATA_STRUCTURE
+
 				// perform local->local transfer
 				// *** todo *** account for GPU delays and timing
 				TransferDataLocal_DS ();
-#else
-				// perform local->local transfer
-				// *** todo *** account for GPU delays and timing
-				TransferDataLocal ();
-#endif
-			}
+
+			}	// end if ( ( Value & 3 ) == 2 )
 			
 			break;
 
@@ -2248,13 +2560,34 @@ if ( GPURegsGp.BITBLTBUF.DBW )
 			cout << "\nhps2x64: GPU: Unimplemented Reg Write: " << GPURegsGp_Names [ lIndex ];
 #endif
 
-#ifdef ENABLE_DATA_STRUCTURE
-			// writing to hwreg transfers data into GPU memory ??
-			TransferDataIn32_DS ( (u32*) ( &Value ), 2 );
+#ifdef USE_TEMPLATES_PS2_TRANSFERIN
+			
+#ifdef USE_OLD_MULTI_THREADING
+			inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+			inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+			Select_TransferIn_t ( inputdata_ptr, 0, &Value, 1 );
+			
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// send the command to the other thread
+				ullInputBuffer_Index++;
+				Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+				
+				// make sure buffer is not full
+				while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+			}
+#endif
+
 #else
 			// writing to hwreg transfers data into GPU memory ??
-			TransferDataIn32 ( (u32*) ( &Value ), 2 );
+			TransferDataIn32_DS ( (u32*) ( &Value ), 2 );
+
 #endif
+
 			break;
 
 
@@ -2268,7 +2601,32 @@ if ( GPURegsGp.BITBLTBUF.DBW )
 			// set the master tex02 register
 			TEXX [ lContext ].Value = TEX02 [ lContext ].Value;
 			
+#ifdef USE_TEMPLATES_PS2_WRITECLUT
+
+#ifdef USE_OLD_MULTI_THREADING
+			inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+			inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+			
+			Select_WriteInternalCLUT_t( inputdata_ptr, 0, lContext );
+			
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// send the command to the other thread
+				ullInputBuffer_Index++;
+				Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+				
+				// make sure buffer is not full
+				while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+			}
+#endif
+
+#else
 			WriteInternalCLUT ( TEX02 [ lContext ] );
+			//WriteInternalCLUT ( TEXX [ lContext ] );
+#endif
 			
 			break;
 
@@ -2280,17 +2638,44 @@ if ( GPURegsGp.BITBLTBUF.DBW )
 			TEX02 = &GPURegsGp.TEX2_1;
 			
 			// set the master tex02 register
-			TEXX [ lContext ].PSM = TEX02 [ lContext ].PSM;
-			TEXX [ lContext ].CBP = TEX02 [ lContext ].CBP;
-			TEXX [ lContext ].CPSM = TEX02 [ lContext ].CPSM;
-			TEXX [ lContext ].CSM = TEX02 [ lContext ].CSM;
-			TEXX [ lContext ].CSA = TEX02 [ lContext ].CSA;
-			TEXX [ lContext ].CLD = TEX02 [ lContext ].CLD;
+			//TEXX [ lContext ].PSM = TEX02 [ lContext ].PSM;
+			//TEXX [ lContext ].CBP = TEX02 [ lContext ].CBP;
+			//TEXX [ lContext ].CPSM = TEX02 [ lContext ].CPSM;
+			//TEXX [ lContext ].CSM = TEX02 [ lContext ].CSM;
+			//TEXX [ lContext ].CSA = TEX02 [ lContext ].CSA;
+			//TEXX [ lContext ].CLD = TEX02 [ lContext ].CLD;
 			
+			TEXX [ lContext ].Value = ( TEX02 [ lContext ].Value & 0xffffffe003f00000ull ) | ( TEXX [ lContext ].Value & ~0xffffffe003f00000ull );
+			
+#ifdef USE_TEMPLATES_PS2_WRITECLUT
+
+#ifdef USE_OLD_MULTI_THREADING
+			inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+			inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+			
+			Select_WriteInternalCLUT_t( inputdata_ptr, 0, lContext );
+			
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// send the command to the other thread
+				ullInputBuffer_Index++;
+				Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+				
+				// make sure buffer is not full
+				while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+			}
+#endif
+
+#else
 			// ***TODO*** send palette to internal CLUT
 			// TEX2 looks like it is ONLY for changing CLUT info
 			// so this will use the clut code used for the TEX0 register
 			WriteInternalCLUT ( TEX02 [ lContext ] );
+			//WriteInternalCLUT ( TEXX [ lContext ] );
+#endif
 			
 			break;
 
@@ -2438,6 +2823,205 @@ if ( GPURegsGp.BITBLTBUF.DBW )
 }
 
 
+static void GPU::Start_Frame ( void )
+{
+	if ( ulNumberOfThreads )
+	{
+		// ***todo*** reset write index
+		ulInputBuffer_WriteIndex = 0;
+		
+		// clear read index
+		ulInputBuffer_ReadIndex = 0;
+		
+		// transfer to target index
+		Lock_Exchange32 ( (long&) ulInputBuffer_TargetIndex, ulInputBuffer_WriteIndex );
+
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			//cout << "\nCreating GPU thread#" << dec << i;
+			
+			// create thread
+			GPUThreads [ i ] = new Api::Thread( Start_GPUThread, (void*) inputdata, false );
+			
+			//cout << "\nCreated GPU thread#" << dec << i << " ThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			// reset index into buffer
+			ullInputBuffer_Index = 0;
+		}
+	}
+}
+
+static void GPU::End_Frame ( void )
+{
+	int iRet;
+	u64 *inputdata_ptr;
+	
+	if ( ulNumberOfThreads )
+	{
+		inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+		// send command to kill the threads
+		Select_KillGpuThreads_t ( inputdata_ptr, 0 );
+		
+		Flush ();
+		
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			//cout << "\nKilling GPU thread#" << dec << i << " ThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			// create thread
+			iRet = GPUThreads [ i ]->Join();
+			
+			//cout << "\nThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			if ( iRet )
+			{
+				cout << "\nhps1x64: GPU: ALERT: Problem with completion of GPU thread#" << dec << i << " iRet=" << iRet;
+			}
+			
+			delete GPUThreads [ i ];
+			
+			//cout << "\nKilled GPU thread#" << dec << i << " iRet=" << iRet;
+		}
+	}
+}
+
+
+static int GPU::Start_GPUThread( void* Param )
+{
+	u32 ulTBufferIndex = 0;
+	u64 *circularlist, *p_inputdata;
+	
+	//circularlist = (u64*) Param;
+	circularlist = (u64*) _GPU->inputdata;
+	
+	// infinite loop
+	while ( 1 )
+	{
+		// wait for data to appear in the input buffers
+		while ( ulTBufferIndex == ulInputBuffer_TargetIndex );
+		
+		while ( ulTBufferIndex != ulInputBuffer_TargetIndex )
+		{
+			
+		p_inputdata = & ( circularlist [ ( ulTBufferIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+//debug << "\nulInputBuffer_Count=" << dec << _GPU->ulInputBuffer_Count;
+//debug << "\nullInputBuffer_Index=" << dec << _GPU->ullInputBuffer_Index;
+//debug << "\nulTBufferIndex=" << dec << ulTBufferIndex;
+		
+		// get the command
+		switch ( p_inputdata [ 15 ] & 0x7 )
+		{
+			// point
+			case 0x0:
+				// *** TODO *** //
+#ifdef USE_TEMPLATES_PS2_POINT
+				Select_RenderPoint_t ( p_inputdata, 1 );
+#endif
+				break;
+				
+			// line/line-strip
+			case 0x1:
+			case 0x2:
+#ifdef USE_TEMPLATES_PS2_LINE
+				Select_RenderLine_t ( p_inputdata, 1 );
+#endif
+				break;
+				
+			// triangle/triangle-strip/triangle-fan
+			case 0x3:
+			case 0x4:
+			case 0x5:
+#ifdef USE_TEMPLATES_PS2_TRIANGLE
+				Select_RenderTriangle_t ( p_inputdata, 1 );
+#endif
+				break;
+				
+			// sprite
+			case 0x6:
+#ifdef USE_TEMPLATES_PS2_RECTANGLE
+				Select_RenderSprite_t( p_inputdata, 1 );
+#endif
+				break;
+			
+			case 0x7:
+				switch ( p_inputdata [ 14 ] & 0x7 )
+				{
+					case 0:
+#ifdef USE_TEMPLATES_PS2_DRAWSCREEN
+						Select_DrawScreen_t ( p_inputdata, 1 );
+#endif
+
+						break;
+						
+					case 1:
+#ifdef USE_TEMPLATES_PS2_COPYLOCAL
+						Select_CopyLocal_t ( p_inputdata, 1 );
+#endif
+						break;
+						
+					case 2:
+#ifdef USE_TEMPLATES_PS2_TRANSFERIN
+						// ***TODO*** Start GPU Transfer
+						_GPU->Select_Start_Transfer_t ( p_inputdata, 1 );
+#endif
+						break;
+						
+					case 3:
+						// CLUT palette
+#ifdef USE_TEMPLATES_PS2_WRITECLUT
+						Select_WriteInternalCLUT_t ( p_inputdata, 1 );
+#endif
+						break;
+						
+
+					case 4:
+#ifdef USE_TEMPLATES_PS2_TRANSFERIN
+						// copy data into GPU
+						Select_TransferIn_t ( p_inputdata, 1 );
+#endif
+						break;
+
+					case 5:
+						// Kill GPU Thread
+#ifdef USE_OLD_MULTI_THREADING
+						Lock_ExchangeAdd32 ( (long&) _GPU->ulInputBuffer_Count, -1 );
+#else
+						ulTBufferIndex++;
+						Lock_Exchange32 ( (long&) ulInputBuffer_ReadIndex, ulTBufferIndex );
+#endif
+						
+						return 0;
+						break;
+						
+					default:
+						break;
+				}
+				
+				break;
+				
+			default:
+				break;
+				
+		}	// end switch ( p_inputdata [ 15 ] & 0x7 )
+		
+		ulTBufferIndex++;
+		
+#ifdef USE_OLD_MULTI_THREADING
+		// command is now complete
+		Lock_ExchangeAdd32 ( (long&) _GPU->ulInputBuffer_Count, -1 );
+#else
+		}	// end while ( ulTBufferIndex != ulInputBuffer_TargetIndex )
+			
+		Lock_Exchange32 ( (long&) ulInputBuffer_ReadIndex, ulTBufferIndex );
+#endif
+		
+		
+	}	// end while ( 1 )
+}
+
+
 
 void GPU::WriteInternalCLUT ( TEX0_t TEX02 )
 {
@@ -2456,6 +3040,31 @@ void GPU::WriteInternalCLUT ( TEX0_t TEX02 )
 	u16 *CLUT_LUT;
 	
 	u32 ClutBufWidth;
+
+	
+	// check if psm is an indexed color format that requires CLUT
+	if ( ( !( TEX02.PSM >> 4 ) ) || ( TEX02.PSM >> 4 ) == 0x3 )
+	{
+		// this is not an indexed pixel format so has nothing to do with CLUT
+		return;
+	}
+	
+	
+
+#ifndef USE_TEMPLATES_PS2_CLUT
+
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
+
+#endif
 	
 	
 #ifdef INLINE_DEBUG_CLUT
@@ -2480,10 +3089,12 @@ void GPU::WriteInternalCLUT ( TEX0_t TEX02 )
 			break;
 			
 		case 1:
+		//case 7:
 			// always load //
 			break;
 			
 		case 2:
+		//case 6:
 			// load and copy CBP to CBP0 //
 #ifdef USE_CBP_SINGLEVALUE
 			CBP0 = TEX02.CBP;
@@ -2589,7 +3200,9 @@ void GPU::WriteInternalCLUT ( TEX0_t TEX02 )
 			}
 			*/
 		}
-	
+
+		
+//cout << "\nTEX_CLD=" << TEX02.CLD << " CLUT_CSM=" << hex << TEX02.CSM << " CLUT_PSM=" << TEX02.CPSM << " PIX_COUNT=" << ( TEX02.PSM & 0x4 ) << " c_ulPixelCount=" << lPixelCount << " CLUTOffset=" << CLUTOffset << " CLUTBufBase32=" << CLUTBufBase32;
 	
 		if ( !TEX02.CSM )
 		{
@@ -2681,6 +3294,8 @@ void GPU::WriteInternalCLUT ( TEX0_t TEX02 )
 					// in the case of CSM01, need to swap bits 3 and 4
 					bgr = ptr_clut32 [ lConvertedIndex ];
 #endif
+
+//cout << "\nlIndex#" << dec << lIndex << " bgr=" << hex << bgr;
 
 					// 512-entry 16-bit pixels
 					InternalCLUT [ ( CLUTOffset + lIndex ) & 511 ] = bgr;
@@ -3899,323 +4514,6 @@ void GPU::Draw_Screen ()
 #endif
 	
 	
-	/*
-	// so the max viewable width for PAL is 3232/4-544/4 = 808-136 = 672
-	// so the max viewable height for PAL is 292-34 = 258
-	
-	// actually, will initially start with a 1 pixel border based on screen width/height and then will shift if something is off screen
-
-	// need to know visible range of screen for NTSC and for PAL (each should be different)
-	// NTSC visible y range is usually from 16-256 (0x10-0x100) (height=240)
-	// PAL visible y range is usually from 35-291 (0x23-0x123) (height=256)
-	// NTSC visible x range is.. I don't know. start with from about gpu cycle#544 to about gpu cycle#3232 (must use gpu cycles since res changes)
-	s32 VisibleArea_StartX, VisibleArea_EndX, VisibleArea_StartY, VisibleArea_EndY, VisibleArea_Width, VisibleArea_Height;
-	
-	// there the frame buffer pixel, and then there's the screen buffer pixel
-	u32 Pixel16, Pixel32_0, Pixel32_1;
-	u64 Pixel64;
-	
-	u32 runx_1, runx_2;
-	
-	// this allows you to calculate horizontal pixels
-	u32 GPU_CyclesPerPixel;
-	
-	
-	Pixel_24bit_Format Pixel24;
-	
-	//u32 Pixel, FramePixel, CurrentPixel24;
-	//s32 DrawWidth, DrawHeight, Pixel_X, Pixel_Y;
-	//s32 StartX, StartY, EndX, EndY;
-	//u32 OutputBuffer_X, OutputBuffer_Y, TV_X, TV_Y;
-	
-	s32 FramePixel_X, FramePixel_Y;
-	
-	// need to know where to draw the actual image at
-	s32 Draw_StartX, Draw_StartY, Draw_EndX, Draw_EndY, Draw_Width, Draw_Height;
-	
-	u32 XResolution, YResolution;
-	
-	union
-	{
-		u32 *ptr_pixelbuffer;
-		u64 *ptr_pixelbuffer64;
-	};
-	
-	union
-	{
-		u16 *ptr_vram;
-		u32 *ptr_vram32;
-		u64 *ptr_vram64;
-	};
-	
-	s32 TopBorder_Height, BottomBorder_Height, LeftBorder_Width, RightBorder_Width;
-	s32 current_x, current_y, current_width, current_height, current_size, current_xmax, current_ymax;
-	
-#ifdef _ENABLE_SSE2
-	__m128i vRedMask, vGreenMask, vBlueMask;
-	__m128i vPixelsIn, vPixelsOut1, vPixelsOut2, vZero = _mm_setzero_si128 ();
-	vRedMask = _mm_set1_epi32 ( 0x1f );
-	vGreenMask = _mm_set1_epi32 ( 0x3e0 );
-	vBlueMask = _mm_set1_epi32 ( 0x7c00 );
-#endif
-	
-	// GPU cycles per pixel depends on width
-	GPU_CyclesPerPixel = c_iGPUCyclesPerPixel [ GPU_CTRL_Read.WIDTH ];
-	
-	// get the pixel to start and stop drawing at
-	Draw_StartX = DisplayRange_X1 / GPU_CyclesPerPixel;
-	Draw_EndX = DisplayRange_X2 / GPU_CyclesPerPixel;
-	Draw_StartY = DisplayRange_Y1;
-	Draw_EndY = DisplayRange_Y2;
-	
-	Draw_Width = Draw_EndX - Draw_StartX;
-	Draw_Height = Draw_EndY - Draw_StartY;
-	
-	// get the pixel to start and stop at for visible area
-	VisibleArea_StartX = c_iVisibleArea_StartX_Cycle / GPU_CyclesPerPixel;
-	VisibleArea_EndX = c_iVisibleArea_EndX_Cycle / GPU_CyclesPerPixel;
-	
-	// visible area start and end y depends on pal/ntsc
-	VisibleArea_StartY = c_iVisibleArea_StartY [ GPU_CTRL_Read.VIDEO ];
-	VisibleArea_EndY = c_iVisibleArea_EndY [ GPU_CTRL_Read.VIDEO ];
-	
-	VisibleArea_Width = VisibleArea_EndX - VisibleArea_StartX;
-	VisibleArea_Height = VisibleArea_EndY - VisibleArea_StartY;
-	
-	if ( GPU_CTRL_Read.ISINTER && GPU_CTRL_Read.HEIGHT )
-	{
-		// 480i mode //
-		
-		VisibleArea_EndY += Draw_Height;
-		VisibleArea_Height += Draw_Height;
-		
-		Draw_EndY += Draw_Height;
-		
-		Draw_Height <<= 1;
-	}
-	
-#ifdef INLINE_DEBUG_DRAW_SCREEN
-	debug << "\r\nGPU::Draw_Screen; GPU_CyclesPerPixel=" << dec << GPU_CyclesPerPixel << " Draw_StartX=" << Draw_StartX << " Draw_EndX=" << Draw_EndX;
-	debug << "\r\nDraw_StartY=" << Draw_StartY << " Draw_EndY=" << Draw_EndY << " VisibleArea_StartX=" << VisibleArea_StartX;
-	debug << "\r\nVisibleArea_EndX=" << VisibleArea_EndX << " VisibleArea_StartY=" << VisibleArea_StartY << " VisibleArea_EndY=" << VisibleArea_EndY;
-#endif
-
-	// *** new stuff *** //
-
-	//FramePixel = 0;
-	ptr_pixelbuffer = PixelBuffer;
-	
-	if ( !GPU_CTRL_Read.DEN )
-	{
-		BottomBorder_Height = VisibleArea_EndY - Draw_EndY;
-		LeftBorder_Width = Draw_StartX - VisibleArea_StartX;
-		TopBorder_Height = Draw_StartY - VisibleArea_StartY;
-		RightBorder_Width = VisibleArea_EndX - Draw_EndX;
-		
-		if ( BottomBorder_Height < 0 ) BottomBorder_Height = 0;
-		if ( LeftBorder_Width < 0 ) LeftBorder_Width = 0;
-		
-		//cout << "\n(before)Left=" << dec << LeftBorder_Width << " Bottom=" << BottomBorder_Height << " Draw_Width=" << Draw_Width << " VisibleArea_Width=" << VisibleArea_Width;
-		
-		
-		current_ymax = Draw_Height + BottomBorder_Height;
-		current_xmax = Draw_Width + LeftBorder_Width;
-		
-		// make suree that ymax and xmax are not greater than the size of visible area
-		if ( current_xmax > VisibleArea_Width )
-		{
-			// entire image is not on the screen, so take from left border and recalc xmax //
-
-			LeftBorder_Width -= ( current_xmax - VisibleArea_Width );
-			if ( LeftBorder_Width < 0 ) LeftBorder_Width = 0;
-			current_xmax = Draw_Width + LeftBorder_Width;
-			
-			// make sure again we do not draw past the edge of screen
-			if ( current_xmax > VisibleArea_Width ) current_xmax = VisibleArea_Width;
-		}
-		
-		if ( current_ymax > VisibleArea_Height )
-		{
-			BottomBorder_Height -= ( current_ymax - VisibleArea_Height );
-			if ( BottomBorder_Height < 0 ) BottomBorder_Height = 0;
-			current_ymax = Draw_Height + BottomBorder_Height;
-			
-			// make sure again we do not draw past the edge of screen
-			if ( current_ymax > VisibleArea_Height ) current_ymax = VisibleArea_Height;
-		}
-		
-		//cout << "\n(after)Left=" << dec << LeftBorder_Width << " Bottom=" << BottomBorder_Height << " Draw_Width=" << Draw_Width << " VisibleArea_Width=" << VisibleArea_Width;
-		//cout << "\n(after2)current_xmax=" << current_xmax << " current_ymax=" << current_ymax;
-		
-		current_y = BottomBorder_Height;
-		
-		// put in bottom border
-		current_size = BottomBorder_Height * VisibleArea_Width;
-		current_x = 0;
-#ifdef _ENABLE_SSE2
-		for ( ; current_x < ( current_size - 3 ); current_x += 4 )
-		{
-			//*ptr_pixelbuffer64++ = 0;
-			_mm_store_si128 ( (__m128i*) ptr_pixelbuffer, vZero );
-			ptr_pixelbuffer += 4;
-		}
-#endif
-		for ( ; current_x < ( current_size - 1 ); current_x += 2 )
-		{
-			*ptr_pixelbuffer64++ = 0;
-		}
-		for ( ; current_x < current_size; current_x++ )
-		{
-			*ptr_pixelbuffer++ = 0;
-		}
-
-		
-		// put in screen
-		
-		FramePixel_Y = ScreenArea_TopLeftY + Draw_Height - 1;
-		FramePixel_X = ScreenArea_TopLeftX;
-		
-		//for ( current_y = 0; current_y < Draw_Height; current_y++ )
-		for ( ; current_y < current_ymax; current_y++ )
-		{
-			// put in the left border
-			current_x = 0;
-#ifdef _ENABLE_SSE2
-			for ( ; current_x < ( LeftBorder_Width - 3 ); current_x += 4 )
-			{
-				//*ptr_pixelbuffer64++ = 0;
-				_mm_storeu_si128 ( (__m128i*) ptr_pixelbuffer, vZero );
-				ptr_pixelbuffer += 4;
-			}
-#endif
-			for ( ; current_x < ( LeftBorder_Width - 1 ); current_x += 2 )
-			{
-				*ptr_pixelbuffer64++ = 0;
-			}
-			for ( ; current_x < LeftBorder_Width; current_x++ )
-			{
-				*ptr_pixelbuffer++ = 0;
-			}
-			
-			// *** important note *** this wraps around the VRAM
-			//ptr_vram = & (VRAM [ FramePixel_X + ( FramePixel_Y << 10 ) ]);
-			ptr_vram = & (VRAM [ FramePixel_X + ( ( FramePixel_Y & FrameBuffer_YMask ) << 10 ) ]);
-			
-			// put in screeen pixels
-			if ( !GPU_CTRL_Read.ISRGB24 )
-			{
-#ifdef _ENABLE_SSE2
-				for ( ; current_x < ( current_xmax - 7 ); current_x += 8 )
-				{
-					//*ptr_pixelbuffer64++ = 0;
-					vPixelsIn = _mm_loadu_si128 ((__m128i const*) ptr_vram);
-					
-					vPixelsOut1 = _mm_unpacklo_epi16 ( vPixelsIn, vZero );
-					vPixelsOut2 = _mm_unpackhi_epi16 ( vPixelsIn, vZero );
-					
-					vPixelsOut1 = _mm_or_si128 ( _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut1, vRedMask ), 3 ), _mm_or_si128 ( _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut1, vGreenMask ), 6 ), _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut1, vBlueMask ), 9 ) ) );
-					vPixelsOut2 = _mm_or_si128 ( _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut2, vRedMask ), 3 ), _mm_or_si128 ( _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut2, vGreenMask ), 6 ), _mm_slli_epi32 ( _mm_and_si128 ( vPixelsOut2, vBlueMask ), 9 ) ) );
-					
-					_mm_storeu_si128 ( (__m128i*) ptr_pixelbuffer, vPixelsOut1 );
-					ptr_pixelbuffer += 4;
-					_mm_storeu_si128 ( (__m128i*) ptr_pixelbuffer, vPixelsOut2 );
-					ptr_pixelbuffer += 4;
-					
-					ptr_vram += 8;
-				}
-#endif
-				for ( ; current_x < ( current_xmax - 1 ); current_x += 2 )
-				{
-					Pixel64 = *ptr_vram32++;
-					Pixel64 |= Pixel64 << 16;
-					*ptr_pixelbuffer64++ = ( ( Pixel64 & 0x1f0000001fLL ) << 3 ) | ( ( Pixel64 & 0x3e0000003e0LL ) << 6 ) | ( ( Pixel64 & 0x7c0000007c00LL ) << 9 );
-				}
-				for ( ; current_x < current_xmax; current_x++ )
-				{
-					Pixel16 = *ptr_vram++;
-					Pixel32_0 = ( ( Pixel16 & 0x1f ) << 3 ) | ( ( Pixel16 & 0x3e0 ) << 6 ) | ( ( Pixel16 & 0x7c00 ) << 9 );
-					*ptr_pixelbuffer++ = Pixel32_0;
-				}
-			}
-			else
-			{
-				for ( ; current_x < current_xmax; current_x += 2 )
-				{
-					Pixel24.Pixel0 = *ptr_vram++;
-					Pixel24.Pixel1 = *ptr_vram++;
-					Pixel24.Pixel2 = *ptr_vram++;
-					
-					// draw first pixel
-					Pixel32_0 = ( ((u32)Pixel24.Red0) ) | ( ((u32)Pixel24.Green0) << 8 ) | ( ((u32)Pixel24.Blue0) << 16 );
-					
-					// draw second pixel
-					Pixel32_1 = ( ((u32)Pixel24.Red1) ) | ( ((u32)Pixel24.Green1) << 8 ) | ( ((u32)Pixel24.Blue1) << 16 );
-					
-					*ptr_pixelbuffer++ = Pixel32_0;
-					*ptr_pixelbuffer++ = Pixel32_1;
-				}
-			}
-			
-			// put in right border
-#ifdef _ENABLE_SSE2
-			for ( ; current_x < ( VisibleArea_Width - 3 ); current_x += 4 )
-			{
-				//*ptr_pixelbuffer64++ = 0;
-				_mm_storeu_si128 ( (__m128i*) ptr_pixelbuffer, vZero );
-				ptr_pixelbuffer += 4;
-			}
-#endif
-			for ( ; current_x < ( VisibleArea_Width - 1 ); current_x += 2 )
-			{
-				*ptr_pixelbuffer64++ = 0;
-			}
-			for ( ; current_x < VisibleArea_Width; current_x++ )
-			{
-				*ptr_pixelbuffer++ = 0;
-			}
-			
-			// go to next line in frame buffer
-			FramePixel_Y--;
-		}
-		
-		// put in top border
-		//current_size = TopBorder_Height * VisibleArea_Width;
-		current_size = ( VisibleArea_Height - current_y ) * VisibleArea_Width;
-		current_x = 0;
-		for ( ; current_x < ( current_size - 1 ); current_x += 2 )
-		{
-			*ptr_pixelbuffer64++ = 0;
-		}
-		for ( ; current_x < current_size; current_x++ )
-		{
-			*ptr_pixelbuffer++ = 0;
-		}
-	}
-	else
-	{
-		// display disabled //
-		
-		current_size = VisibleArea_Height * VisibleArea_Width;
-		current_x = 0;
-#ifdef _ENABLE_SSE2
-		for ( ; current_x < ( current_size - 3 ); current_x += 4 )
-		{
-			//*ptr_pixelbuffer64++ = 0;
-			_mm_store_si128 ( (__m128i*) ptr_pixelbuffer, vZero );
-			ptr_pixelbuffer += 4;
-		}
-#endif
-		for ( ; current_x < ( current_size - 1 ); current_x += 2 )
-		{
-			*ptr_pixelbuffer64++ = 0;
-		}
-		for ( ; current_x < current_size; current_x++ )
-		{
-			*ptr_pixelbuffer++ = 0;
-		}
-
-	}
-	*/
 		
 	// *** output of pixel buffer to screen *** //
 
@@ -4412,21 +4710,57 @@ static bool GPU::DMA_Write_Ready ()
 	{
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << " GPU: ALERT: Transfer via path3 while it is masked!!!";
+	debug << " Path3Count=" << _GPU->ulTransferCount [ 3 ];
+	debug << " IMT=" << _GPU->GIFRegs.MODE.IMT;
 #endif
 
 		// path 3 is masked //
 		
-		// for now need to act like data has been loaded into FIFO
-		// even when path3 is masked, it must be loading it into FIFO and then just not processing it
-		_GPU->GIFRegs.STAT.FQC = 16;
-		
-		// path3 in queue ???
-		_GPU->GIFRegs.STAT.P3Q = 1;
-		
-		return false;
-
+		// if path 3 is not currently in the middle of a transfer, then it is masked
+		//if ( !_GPU->ulTransferCount [ 3 ] )
+		if ( _GPU->EndOfPacket [ 3 ] )
+		{
+			// for now need to act like data has been loaded into FIFO
+			// even when path3 is masked, it must be loading it into FIFO and then just not processing it
+			_GPU->GIFRegs.STAT.FQC = 16;
+			
+			// path3 in queue ???
+			_GPU->GIFRegs.STAT.P3Q = 1;
+			
+			return false;
+		}
 
 	}
+	
+	// if path 2 is currently transferring, then can't transfer either
+	//if ( !_GPU->EndOfPacket [ 2 ] )
+	if ( _GPU->ulTransferCount [ 2 ] )
+	{
+		return false;
+	}
+
+	
+	
+	// check if in intermittent mode
+	/*
+	if ( _GPU->GIFRegs.MODE.IMT )
+	{
+		// path 3 transfer can be interrupted by path 1 or 2 //
+		
+		// check if path 2 is transfering via DIRECT command //
+		if ( VU::_VU[ 1 ]->bTransferringDirectViaPath2 )
+		{
+			return false;
+		}
+	}
+	else
+	{
+		// check if path 3 in the middle of a transfer //
+		
+		// check if tranfer can be interrupted?? //
+	}
+	*/
+	
 	
 	// path 3 NOT masked //
 	return true;
@@ -4441,10 +4775,16 @@ static u32 GPU::DMA_WriteBlock ( u64* Data, u32 QuadwordCount )
 	//debug << "\r\n";
 #endif
 
+	int i;
+	u32 DataTransferred, DataRemaining;
+	u32 TransferTotal = 0;
 
 	// check if path 3 is masked
 	if ( _GPU->GIFRegs.STAT.M3R || _GPU->GIFRegs.STAT.M3P )
 	{
+		if ( _GPU->EndOfPacket [ 3 ] )
+		{
+
 		// display warning for now
 #ifdef VERBOSE_PATH3MASK
 		cout << "\nhps2x64: GPU: ALERT: Transfer via path 3 while it is masked!!!";
@@ -4453,6 +4793,8 @@ static u32 GPU::DMA_WriteBlock ( u64* Data, u32 QuadwordCount )
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << "\r\nhps2x64: GPU: ALERT: Transfer via path 3 while it is masked!!!";
 #endif
+
+		}
 
 	}
 
@@ -4465,18 +4807,69 @@ static u32 GPU::DMA_WriteBlock ( u64* Data, u32 QuadwordCount )
 	
 	// set GPU as busy for 32 cycles for now
 	_GPU->BusyUntil_Cycle = *_DebugCycleCount + 32;
+	
+	// have not reached end of packet yet
+	_GPU->EndOfPacket [ 3 ] = 0;
 
-	for ( int i = 0; i < QuadwordCount; i++ )
+#ifdef OLD_GIF_TRANSFER
+	for ( i = 0; i < QuadwordCount; i++ )
+#else
+	while ( QuadwordCount )
+#endif
 	{
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << "\r\n";
 	debug << hex << Data [ 0 ] << " " << Data [ 1 ];
 #endif
 
+		// check if in-between transferring blocks
+		//if ( !_GPU->ulTransferCount [ 3 ] )
+		if ( _GPU->EndOfPacket [ 3 ] )
+		{
+			if ( _GPU->GIFRegs.STAT.M3R || _GPU->GIFRegs.STAT.M3P )
+			{
+				// break in between transfers for now if path3 is masked
+				break;
+			}
+		}
+		
+		
+#ifdef OLD_GIF_TRANSFER
 		_GPU->GIF_FIFO_Execute ( Data [ 0 ], Data [ 1 ] );
 		
+		// update pointer with number of 64-bit elements to advance
 		Data += 2;
+#else
+		DataRemaining = _GPU->GIF_FIFO_Execute ( Data, QuadwordCount << 1 );
+		
+		DataTransferred = ( QuadwordCount << 1 ) - DataRemaining;
+		TransferTotal += ( DataTransferred >> 1 );
+		
+		// update pointer with number of 64-bit elements to advance
+		//Data += 2;
+		Data += DataTransferred;
+		
+		// get the number of quadwords remaining from 64-bit elements remaining
+		QuadwordCount = DataRemaining >> 1;
+#endif
+		
+	}	// end while ( QuadwordCount )
+
+	
+	//if ( !_GPU->ulTransferCount [ 3 ] )
+	if ( _GPU->EndOfPacket [ 3 ] )
+	{
+		//if ( _GPU->GIFRegs.STAT.M3R || _GPU->GIFRegs.STAT.M3P )
+		if ( !VU::_VU[ 1 ]->VifRegs.STAT.VIS )
+		{
+		// for now, should disable stop on vif to check if it should continue
+		VU::_VU[ 1 ]->VifStopped = 0;
+		
+		// restart dma#1
+		//Dma::_DMA->Transfer ( 1 );
+		}
 	}
+	
 	
 	// for now, trigger signals
 	// ***TODO*** add correct event triggering
@@ -4493,7 +4886,12 @@ static u32 GPU::DMA_WriteBlock ( u64* Data, u32 QuadwordCount )
 	//}
 	
 	// return the amount of data written
-	return QuadwordCount;
+	//return QuadwordCount;
+#ifdef OLD_GIF_TRANSFER
+	return i;
+#else
+	return TransferTotal;
+#endif
 }
 
 
@@ -4554,7 +4952,7 @@ static void GPU::Path1_WriteBlock ( u64* pMemory64, u32 Address )
 	
 	// path1 is not done since it is just starting
 	_GPU->Tag_Done = 0;
-	_GPU->EndOfPacket = 0;
+	_GPU->EndOfPacket [ 1 ] = 0;
 	
 #ifdef DISABLE_PATH1_WRAP
 	// mask address
@@ -4563,7 +4961,7 @@ static void GPU::Path1_WriteBlock ( u64* pMemory64, u32 Address )
 
 	// loop while path1 is not done
 	//while ( !_GPU->Tag_Done )
-	while ( !_GPU->EndOfPacket
+	while ( !_GPU->EndOfPacket [ 1 ]
 #ifdef DISABLE_PATH1_WRAP
 	&& ( Address < 0x400 )
 #endif
@@ -4583,7 +4981,11 @@ static void GPU::Path1_WriteBlock ( u64* pMemory64, u32 Address )
 		
 		Data += 2;
 #else
+#ifdef OLD_GIF_TRANSFER
 		_GPU->GIF_FIFO_Execute ( pMemory64 [ ( ( Address & 0x3ff ) << 1 ) + 0 ], pMemory64 [ ( ( Address & 0x3ff ) << 1 ) + 1 ] );
+#else
+		_GPU->GIF_FIFO_Execute ( & ( pMemory64 [ ( ( Address & 0x3ff ) << 1 ) + 0 ] ), 2 );
+#endif
 		
 		Address += 1;
 #endif
@@ -4616,7 +5018,7 @@ static void GPU::Path2_WriteBlock ( u32* Data, u32 WordCount )
 #endif
 
 	u32 QuadwordCount;
-	
+	u32 DataTransferred, DataRemaining;
 	
 	// if there is no data to transfer, return immediately
 	//if ( !DoublewordCount )
@@ -4632,6 +5034,8 @@ static void GPU::Path2_WriteBlock ( u32* Data, u32 WordCount )
 
 	_GPU->CurrentPath = 2;
 
+	_GPU->EndOfPacket [ 2 ]	= 0;
+	
 	// if device not busy, then clear fifo size
 	/*
 	if ( *_DebugCycleCount < _GPU->BusyUntil_Cycle )
@@ -4669,8 +5073,12 @@ static void GPU::Path2_WriteBlock ( u32* Data, u32 WordCount )
 
 		// transfer the waiting data with the new data //
 		
+#ifdef OLD_GIF_TRANSFER
 		//_GPU->GIF_FIFO_Execute ( _GPU->ullPath2_Data, Data [ 0 ] );
 		_GPU->GIF_FIFO_Execute ( ((u64*)_GPU->ullPath2_Data) [ 0 ], ((u64*)_GPU->ullPath2_Data) [ 1 ] );
+#else
+		_GPU->GIF_FIFO_Execute ( ((u64*)_GPU->ullPath2_Data), 2 );
+#endif
 		
 		WordCount -= _GPU->ulPath2_DataWaiting;
 		_GPU->ulPath2_DataWaiting = 0;
@@ -4685,19 +5093,35 @@ static void GPU::Path2_WriteBlock ( u32* Data, u32 WordCount )
 	// its possible it could transfer less than a quad-word
 	if ( QuadwordCount )
 	{
+#ifdef OLD_GIF_TRANSFER
 		for ( int i = 0; i < QuadwordCount; i++ )
+#else
+		while ( QuadwordCount )
+#endif
 		{
 #ifdef INLINE_DEBUG_PATH2_WRITE
 	debug << "\r\n";
 	debug << hex << ((u64*)Data) [ 0 ] << " " << ((u64*)Data) [ 1 ];
 #endif
 
-			//_GPU->GIF_FIFO_Execute ( Data [ 0 ], Data [ 1 ] );
+#ifdef OLD_GIF_TRANSFER
 			_GPU->GIF_FIFO_Execute ( ((u64*)Data) [ 0 ], ((u64*)Data) [ 1 ] );
-			
-			//Data += 2;
 			Data += 4;
-		}
+#else
+			DataRemaining = _GPU->GIF_FIFO_Execute ( ((u64*)Data), QuadwordCount << 1 );
+			
+			// get the amount transferred
+			DataTransferred = ( QuadwordCount << 1 ) - DataRemaining;
+			
+			// update qwc count so it counts quadwords remaining
+			QuadwordCount = DataRemaining >> 1;
+			
+			//Data += 4;
+			Data += ( DataTransferred << 1 );
+			
+#endif
+			
+		}	// end while ( QuadwordCount )
 	}
 	
 	// check if there is an extra piece of 64-bit data on the end
@@ -4722,6 +5146,13 @@ static void GPU::Path2_WriteBlock ( u32* Data, u32 WordCount )
 // vif1
 static void GPU::Path2_ReadBlock ( u64* Data, u32 QuadwordCount )
 {
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+	if ( _GPU->ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( _GPU->ulInputBuffer_Count );
+	}
+	
 	// this would be path 2
 	_GPU->CurrentPath = 2;
 	
@@ -4734,13 +5165,8 @@ static void GPU::Path2_ReadBlock ( u64* Data, u32 QuadwordCount )
 	// set GPU as busy for 32 cycles for now
 	_GPU->BusyUntil_Cycle = *_DebugCycleCount + 32;
 
-#ifdef ENABLE_DATA_STRUCTURE
 	// read data from GPU and specify amount of data to read in words
 	_GPU->TransferDataOut32_DS ( (u32*) Data, QuadwordCount << 2 );
-#else
-	// read data from GPU and specify amount of data to read in words
-	_GPU->TransferDataOut32 ( (u32*) Data, QuadwordCount << 2 );
-#endif
 	
 	// return the amount of data written
 	return QuadwordCount;
@@ -5044,6 +5470,180 @@ void GPU::SetDrawVars ()
 
 
 
+void GPU::SetDrawVars_Line ( u64 *inputdata_ptr, u32 Coord0, u32 Coord1, u32 Coord2 )
+{
+#if defined INLINE_DEBUG_SETDRAWVARS || defined INLINE_DEBUG_PRIMITIVE
+	debug << "; SetDrawVars";
+#endif
+
+
+	// 0: SCISSOR
+	// 1: XYOFFSET
+	// 2: FRAME
+	// 3: ZBUF
+	// 4: FBA
+	// 5: TEST
+	// 6: COLCLAMP
+	// 7: ALPHA
+	// 8: PABE
+	// 9: DTHE
+	// 10: DIMX
+	// 11: FOGCOL
+	// 12: CLAMP
+	// 13: TEX0
+	// 14: TEXCLUT
+	// -------------
+	// 15: PRIM (COMMAND)
+	// 16: RGBAQ
+	// 17: XYZ
+	// 18: UV
+	// 19: FOG
+	// 20: RGBAQ
+	// 21: XYZ
+	// 22: UV
+	// 23: FOG
+	// 24: RGBAQ
+	// 25: XYZ
+	// 26: UV
+	// 27: FOG
+
+	if ( !Ctx )
+	{
+		// set SCISSOR
+		inputdata_ptr [ 0 ] = GPURegsGp.SCISSOR_1.Value;
+		
+		// set XYOFFSET
+		inputdata_ptr [ 1 ] = GPURegsGp.XYOFFSET_1.Value;
+		
+		// set FRAME
+		inputdata_ptr [ 2 ] = GPURegsGp.FRAME_1.Value;
+		
+		// set ZBUF
+		inputdata_ptr [ 3 ] = GPURegsGp.ZBUF_1.Value;
+		
+		// set FBA
+		inputdata_ptr [ 4 ] = GPURegsGp.FBA_1;
+		
+		// set TEST
+		inputdata_ptr [ 5 ] = GPURegsGp.TEST_1.Value;
+		
+		// set ALPHA
+		inputdata_ptr [ 7 ] = GPURegsGp.ALPHA_1.Value;
+
+		
+		// texture mapping info
+		
+		// set CLAMP
+		inputdata_ptr [ 12 ] = GPURegsGp.CLAMP_1.Value;
+		
+		// set TEX0
+		inputdata_ptr [ 13 ] = TEXX [ 0 ].Value;
+		
+	}
+	else
+	{
+		// set SCISSOR
+		inputdata_ptr [ 0 ] = GPURegsGp.SCISSOR_2.Value;
+		
+		// set XYOFFSET
+		inputdata_ptr [ 1 ] = GPURegsGp.XYOFFSET_2.Value;
+		
+		// set FRAME
+		inputdata_ptr [ 2 ] = GPURegsGp.FRAME_2.Value;
+		
+		// set ZBUF
+		inputdata_ptr [ 3 ] = GPURegsGp.ZBUF_2.Value;
+		
+		// set FBA
+		inputdata_ptr [ 4 ] = GPURegsGp.FBA_2;
+		
+		// set TEST
+		inputdata_ptr [ 5 ] = GPURegsGp.TEST_2.Value;
+		
+		// set ALPHA
+		inputdata_ptr [ 7 ] = GPURegsGp.ALPHA_2.Value;
+		
+		
+		// texture mapping info
+		
+		// set CLAMP
+		inputdata_ptr [ 12 ] = GPURegsGp.CLAMP_2.Value;
+		
+		// set TEX0
+		inputdata_ptr [ 13 ] = TEXX [ 1 ].Value;
+	}
+
+	// set COLCLAMP
+	inputdata_ptr [ 6 ] = GPURegsGp.COLCLAMP;
+	
+	// set PABE
+	inputdata_ptr [ 8 ] = GPURegsGp.PABE;
+	
+	// set DTHE
+	inputdata_ptr [ 9 ] = GPURegsGp.DTHE;
+	
+	// set DIMX
+	inputdata_ptr [ 10 ] = GPURegsGp.DIMX;
+	
+	if ( GPURegsGp.PRMODECONT & 1 )
+	{
+		// set PRIM
+		inputdata_ptr [ 15 ] = GPURegsGp.PRIM.Value;
+	}
+	else
+	{
+		// set PRMODE
+		inputdata_ptr [ 15 ] = ( GPURegsGp.PRIM.Value & 0x7 ) | ( GPURegsGp.PRMODE.Value & ~0x7 );
+	}
+	
+	inputdata_ptr [ 16 ] = rgbaq [ Coord0 ].Value;
+	inputdata_ptr [ 17 ] = xyz [ Coord0 ].Value;
+	inputdata_ptr [ 20 ] = rgbaq [ Coord1 ].Value;
+	inputdata_ptr [ 21 ] = xyz [ Coord1 ].Value;
+	inputdata_ptr [ 24 ] = rgbaq [ Coord2 ].Value;
+	inputdata_ptr [ 25 ] = xyz [ Coord2 ].Value;
+	
+
+	// texture mapping info
+
+	
+	// set FOGCOL
+	inputdata_ptr [ 11 ] = GPURegsGp.FOGCOL;
+
+	// set TEXCLUT
+	inputdata_ptr [ 14 ] = GPURegsGp.TEXCLUT.Value;
+	
+	// set TEXA
+	inputdata_ptr [ 31 ] = GPURegsGp.TEXA.Value;
+
+	// check fst
+	if ( inputdata_ptr [ 15 ] & 0x100 )
+	{
+		// uv coords (FST=1) //
+		inputdata_ptr [ 18 ] = uv [ Coord0 ].Value;
+		inputdata_ptr [ 22 ] = uv [ Coord1 ].Value;
+		inputdata_ptr [ 26 ] = uv [ Coord2 ].Value;
+	}
+	else
+	{
+		// st coords (FST=0) //
+		inputdata_ptr [ 18 ] = st [ Coord0 ].Value;
+		inputdata_ptr [ 22 ] = st [ Coord1 ].Value;
+		inputdata_ptr [ 26 ] = st [ Coord2 ].Value;
+	}
+	
+	inputdata_ptr [ 19 ] = f [ Coord0 ].Value;
+	inputdata_ptr [ 23 ] = f [ Coord1 ].Value;
+	inputdata_ptr [ 27 ] = f [ Coord2 ].Value;
+	
+#if defined INLINE_DEBUG_SETDRAWVARS_LINE || defined INLINE_DEBUG_PRIMITIVE
+	//debug << dec << " FrameBufferStartOffset32=" << FrameBufferStartOffset32 << " FrameBufferWidth_Pixels=" << FrameBufferWidth_Pixels;
+#endif
+
+}
+
+
+
 void GPU::DrawPoint ( u32 Coord0 )
 {
 #if defined INLINE_DEBUG_TRIANGLE || defined INLINE_DEBUG_PRIMITIVE
@@ -5065,9 +5665,52 @@ void GPU::DrawPoint ( u32 Coord0 )
 		cout << "\nhps2x64 ALERT: GPU: Window_YBottom < Window_YTop.\n";
 		return;
 	}
+
+
+#ifdef USE_TEMPLATES_PS2_POINT
+
+	u64 *inputdata_ptr;
+	u64 NumPixels;
+
+#ifdef USE_OLD_MULTI_THREADING
+	inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+	inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+	SetDrawVars_Line ( inputdata_ptr, Coord0, 0, 0 );
+	
+	Select_RenderPoint_t ( inputdata_ptr, 0 );
+	
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// send the command to the other thread
+		ullInputBuffer_Index++;
+		Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+		
+		// make sure buffer is not full
+		while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+	}
+#endif
+
+	//if ( BusyUntil_Cycle < *_DebugCycleCount )
+	//{
+	//	BusyUntil_Cycle = *_DebugCycleCount + ( NumPixels >> 4 );
+	//}
+
+#else
+	
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
 	
 	// draw single-color point //
 	RenderPoint_DS ( Coord0 );
+#endif
 }
 
 
@@ -5094,6 +5737,53 @@ void GPU::DrawLine ( u32 Coord0, u32 Coord1 )
 		return;
 	}
 	
+	
+
+#ifdef USE_TEMPLATES_PS2_LINE
+	u64 *inputdata_ptr;
+	u64 NumPixels;
+
+#ifdef USE_OLD_MULTI_THREADING
+	inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+	inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+	SetDrawVars_Line ( inputdata_ptr, Coord0, Coord1, 0 );
+	
+	NumPixels = Select_RenderLine_t ( inputdata_ptr, 0 );
+	
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// send the command to the other thread
+		ullInputBuffer_Index++;
+		Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+		
+		// make sure buffer is not full
+		while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+	}
+#endif
+	
+
+	if ( BusyUntil_Cycle < *_DebugCycleCount )
+	{
+		BusyUntil_Cycle = *_DebugCycleCount + ( NumPixels >> 4 );
+	}
+	
+#else
+
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
+
 	// check if object is shaded
 	switch ( Gradient )
 	{
@@ -5107,6 +5797,8 @@ void GPU::DrawLine ( u32 Coord0, u32 Coord1 )
 			RenderLine_Gradient_DS ( Coord0, Coord1 );
 			break;
 	}
+#endif
+
 }
 
 
@@ -5136,7 +5828,54 @@ void GPU::DrawTriangle ( u32 Coord0, u32 Coord1, u32 Coord2 )
 		cout << "\nhps2x64 ALERT: GPU: Window_YBottom < Window_YTop.\n";
 		return;
 	}
+
 	
+	u64 *inputdata_ptr;
+	u64 NumPixels;
+
+#ifdef USE_TEMPLATES_PS2_TRIANGLE
+
+	
+#ifdef USE_OLD_MULTI_THREADING
+	inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+	inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+	SetDrawVars_Line ( inputdata_ptr, Coord0, Coord1, Coord2 );
+	
+	NumPixels = Select_RenderTriangle_t ( inputdata_ptr, 0 );
+	
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// send the command to the other thread
+		ullInputBuffer_Index++;
+		Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+		
+		// make sure buffer is not full
+		while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+	}
+#endif
+	
+			
+	if ( BusyUntil_Cycle < *_DebugCycleCount )
+	{
+		BusyUntil_Cycle = *_DebugCycleCount + ( NumPixels >> 4 );
+	}
+
+#else
+
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
 	
 	// check if object is texture mapped
 	switch ( TextureMapped )
@@ -5162,6 +5901,14 @@ void GPU::DrawTriangle ( u32 Coord0, u32 Coord1, u32 Coord2 )
 		
 			if ( Gradient )
 			{
+				
+	//u64 *inputdata_ptr;
+
+	//inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+
+	//SetDrawVars_Line ( inputdata_ptr, Coord0, Coord1, Coord2 );
+	//Select_RenderTriangle_t ( inputdata_ptr, 0 );
+	
 				DrawTriangle_GradientTexture32_DS ( Coord0, Coord1, Coord2 );
 			}
 			else
@@ -5171,6 +5918,7 @@ void GPU::DrawTriangle ( u32 Coord0, u32 Coord1, u32 Coord2 )
 			}
 			break;
 	}
+#endif
 }
 
 
@@ -5201,6 +5949,51 @@ void GPU::DrawSprite ( u32 Coord0, u32 Coord1 )
 		cout << "\nhps2x64 ALERT: GPU: Window_YBottom < Window_YTop.\n";
 		return;
 	}
+
+	
+	u64 *inputdata_ptr;
+	u64 NumPixels;
+
+#ifdef USE_TEMPLATES_PS2_RECTANGLE
+
+#ifdef USE_OLD_MULTI_THREADING
+	inputdata_ptr = & ( inputdata [ ( ullInputBuffer_Index & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#else
+	inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+#endif
+
+			SetDrawVars_Line ( inputdata_ptr, Coord0, Coord1, 0 );
+			
+			NumPixels = Select_RenderSprite_t ( inputdata_ptr, 0 );
+			
+#ifdef USE_OLD_MULTI_THREADING
+			if ( ulNumberOfThreads )
+			{
+				// send the command to the other thread
+				ullInputBuffer_Index++;
+				Lock_ExchangeAdd32 ( (long&) ulInputBuffer_Count, ulNumberOfThreads );
+				
+				// make sure buffer is not full
+				while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+			}
+#endif
+			
+			if ( BusyUntil_Cycle < *_DebugCycleCount )
+			{
+				BusyUntil_Cycle = *_DebugCycleCount + ( NumPixels >> 4 );
+			}
+#else
+
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
 	
 	// check if object is texture mapped
 	switch ( TextureMapped )
@@ -5214,12 +6007,8 @@ void GPU::DrawSprite ( u32 Coord0, u32 Coord1 )
 			}
 #endif
 
-#ifdef USE_TEMPLATES_PS2_RECTANGLE
-			Select_RenderRectangle_t ( Coord0, Coord1 );
-#else
 			// draw single-color rectangle //
 			RenderRectangle_DS ( Coord0, Coord1 );
-#endif
 			break;
 			
 		case 1:
@@ -5232,9 +6021,16 @@ void GPU::DrawSprite ( u32 Coord0, u32 Coord1 )
 #endif
 
 			// draw texture-mapped sprite //
+#ifdef USE_TEMPLATES_SPRITE
+			Select_RenderSprite_t ( Coord0, Coord1 );
+#else
 			RenderSprite_DS ( Coord0, Coord1 );
+#endif
 			break;
 	}
+
+#endif
+
 	
 #if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
 	debug << "; (after)BusyUntil_Cycle=" << dec << BusyUntil_Cycle;
@@ -6767,13 +7563,6 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 	s32 StartX, EndX, StartY, EndY;
 	u32 NumberOfPixelsDrawn;
 	
-	/*
-	// if writing 16-bit pixels, then this could change to a u16 pointer
-	u32 *ptr, *buf;
-	//u16 *ptr_texture16;
-	u32 *buf32;
-	u16 *buf16;
-	*/
 	
 	u32 *ptr32;
 	u16 *ptr16;
@@ -6830,72 +7619,6 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 	u32 TexX_And, TexX_Or, TexY_And, TexY_Or;
 
 	
-	/*
-	// pabe
-	u32 AlphaXor32, AlphaXor16;
-	
-	// alpha correction value (FBA)
-	u32 PixelOr32, PixelOr16;
-	
-	// alpha value for rgb24 pixels
-	// RGB24_Alpha -> this will be or'ed with pixel when writing to add-in alpha value for RGB24 format when writing
-	// Pixel24_Mask -> this will be and'ed with pixel after reading from source
-	u32 RGB24_Alpha, Pixel24_Mask;
-	
-	// determine if rgb24 value is transparent (a=0)
-	// this will be or'ed with pixel to determine if pixels is transparent
-	u32 RGB24_TAlpha;
-	
-	// alpha blending selection
-	u32 uA, uB, uC, uD;
-	
-	// array for alpha selection
-	u32 AlphaSelect [ 4 ];
-	
-	// not used
-	//u32 TexBPP;
-	//u32 TexWidth_Shift;
-
-	
-	// destination alpha test
-	// DA_Enable -> the value of DATE, to be and'ed with pixel
-	// DA_Test -> the value of DATM, to be xor'ed with pixel
-	u32 DA_Enable, DA_Test;
-	
-	// source alpha test
-	u64 LessThan_And, GreaterOrEqualTo_And, LessThan_Or;
-	u32 Alpha_Fail;
-	u32 SrcAlphaTest_Pass, SrcAlpha_ARef;
-	
-	// z-buffer
-	u32 *zbuf32;
-	u16 *zbuf16;
-	u32 ZBuffer_Shift, ZBuffer_32bit;
-	s64 ZBufValue;
-	
-	// depth test
-	s64 DepthTest_Offset;
-
-	void *PtrEnd;
-	PtrEnd = RAM8 + c_iRAM_Size;
-	
-	// in a 24-bit frame buffer, destination alpha is always 0x80
-	u32 DestAlpha24, DestMask24;
-	
-	// get pabe (exclusive-or this with pixel and don't perform alpha if result is 1 in MSB)
-	AlphaXor32 = ( GPURegsGp.PABE & 1 ) << 31;
-	AlphaXor16 = ( GPURegsGp.PABE & 1 ) << 15;
-	
-	// get fba (set just before drawing pixel?)
-	PixelOr32 = ( FBA_X << 31 );
-	PixelOr16 = ( FBA_X << 15 );
-	
-	// get alpha selection
-	uA = ALPHA_X.A;
-	uB = ALPHA_X.B;
-	uC = ALPHA_X.C;
-	uD = ALPHA_X.D;
-	*/
 
 	// set fixed alpha values
 	AlphaSelect [ 2 ] = ALPHA_X.FIX << 24;
@@ -6913,28 +7636,15 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 	//TEX0_t *TEX0 = &GPURegsGp.TEX0_1;
 	TEX0_t *TEX0 = TEXX;
 
-	/*
-	// get frame buffer pointer
-	buf = & ( RAM32 [ FrameBufferStartOffset32 ] );
-	buf32 = (u32*) buf;
-	buf16 = (u16*) buf;
-	*/
+	TEX1_t *TEX1 = &GPURegsGp.TEX1_1;
 	
-	//u32 TWYTWH, TWXTWW, Not_TWH, Not_TWW;
-	//TWYTWH = ( ( TWY & TWH ) << 3 );
-	//TWXTWW = ( ( TWX & TWW ) << 3 );
-	//Not_TWH = ~( TWH << 3 );
-	//Not_TWW = ~( TWW << 3 );
-	//if ( GPU_CTRL_Read.ME ) PixelMask = 0x10000;
-	//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x10000;
+	
 	TexBufWidth = TEX0 [ Ctx ].TBW0 << 6;
 	TexWidth = 1 << TEX0 [ Ctx ].TW;
 	TexHeight = 1 << TEX0 [ Ctx ].TH;
 	TexWidth_Mask = TexWidth - 1;
 	TexHeight_Mask = TexHeight - 1;
 	
-	// if TBW is 1, then use TexWidth ??
-	//if ( TEX0 [ Ctx ].TBW0 == 1 ) TexBufWidth = TexWidth;
 	
 	
 	//TexWidth_Shift = TEX0 [ Ctx ].TW;
@@ -7015,128 +7725,35 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 		RGB24_TAlpha = 0;
 	}
 	
-	/*
-	// assume bpp = 32, ptr = 32-bit
-	Shift1 = 0;
-	
-	if ( PixelFormat == 0x14 )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT4";
-#endif
-
-		// bpp = 4, ptr = 32-bit
-		Shift1 = 3;
-		Shift2 = 2;
-		And1 = 0x7; And2 = 0xf;
-	}
-	
-	if ( PixelFormat == 0x13 )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT8";
-#endif
-
-		// bpp = 8, ptr = 32-bit
-		Shift1 = 2;
-		Shift2 = 3;
-		And1 = 0x3; And2 = 0xff;
-	}
-	
-	if ( ( PixelFormat == 0x2 ) || ( PixelFormat == 0xa ) )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT16";
-#endif
-
-		// bpp = 16, texture ptr = 32-bit
-		Shift1 = 1;
-		Shift2 = 4;
-		And1 = 0x1; And2 = 0xffff;
-	}
-	
-	
-	// check for psmt8h
-	if ( PixelFormat == 0x1b )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT8H";
-#endif
-
-		// texture pixel format is psmt8h //
-		
-		Shift0 = 24;
-		And2 = 0xff000000;
-		
-	}
-
-
-	// check for psmt4hl
-	if ( PixelFormat == 0x24 )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT4HL";
-#endif
-
-		// texture pixel format is psmt4hl //
-		
-		Shift0 = 24;
-		And2 = 0x0f000000;
-		
-	}
-
-	// check for psmt4hh
-	if ( PixelFormat == 0x2c )
-	{
-#if defined INLINE_DEBUG_SPRITE || defined INLINE_DEBUG_PRIMITIVE
-	debug << " TEXPSMT4HH";
-#endif
-
-		// texture pixel format is psmt4hh //
-		
-		Shift0 = 28;
-		And2 = 0xf0000000;
-		
-	}
-	*/
 
 	switch ( PixelFormat )
 	{
 		// PSMCT32
 		case 0:
-			break;
 			
 		// PSMCT24
 		case 1:
-			break;
 			
 		// PSMCT16
 		case 2:
-			break;
 			
 		// PSMCT16S
 		case 0xa:
-			break;
 			
 		// PSMT8
 		case 0x13:
-			break;
 			
 		// PSMT4
 		case 0x14:
-			break;
 			
 		// PSMT8H
 		case 0x1b:
-			break;
 			
 		// PSMT4HL
 		case 0x24:
-			break;
 			
 		// PSMT4HH
 		case 0x2c:
-			break;
 			
 		// Z-buffer formats
 		
@@ -7146,11 +7763,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 		// PSMZ24
 		case 0x31:
 		//case 0x35:
-			break;
 			
 		// PSMZ16
 		case 0x32:
-			break;
 			
 		// PSMZ16S
 		case 0x3a:
@@ -7184,14 +7799,6 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 		Shift3 = 1;
 		Shift4 = 4;
 		
-		/*
-		if ( FrameBuffer_PixelFormat == 0 || FrameBuffer_PixelFormat == 1 )
-		{
-			Pixel_SrcMask = 0x1f;
-			Pixel_SrcBpp = 5;
-			Pixel_DstShift1 = 3;
-		}
-		*/
 	}
 
 	
@@ -7257,11 +7864,6 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 	z0 = (u64) xyz [ Coord0 ].Z;
 	z1 = (u64) xyz [ Coord1 ].Z;
 	
-#ifdef ENABLE_INVERT_ZVALUE
-	// invert z for now
-	z0 ^= 0xffffffffULL;
-	z1 ^= 0xffffffffULL;
-#endif
 
 	// z0 should be same as z1 ??
 	z0 = z1;
@@ -7456,6 +8058,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 		debug << PixelFormat_Names [ ZBuffer_PixelFormat ];
 		debug << " ZFlags=" << ZBUF_X.Value;
 		debug << " TEST=" << TEST_X.Value;
+		debug << " MXL=" << TEX1 [ Ctx ].MXL;
+		debug << " LCM=" << TEX1 [ Ctx ].LCM;
+		debug << " K=" << TEX1 [ Ctx ].K;
 	}
 #endif
 
@@ -7560,20 +8165,6 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 			break;
 	}
 
-	/*
-	if ( FrameBuffer_PixelFormat == 1 )
-	{
-		// 24-bit frame buffer //
-		DestAlpha24 = -0x80000000;
-		DestMask24 = 0xffffff;
-	}
-	else
-	{
-		// NOT 24-bit frame buffer //
-		DestAlpha24 = 0;
-		DestMask24 = 0xffffffff;
-	}
-	*/
 
 	
 	//StartX = x0;
@@ -7663,12 +8254,12 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 
 		for ( Line = StartY; Line <= EndY; Line++ )
 		{
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << "\r\n";
-#endif
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " y=" << dec << Line;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << "\r\n";
+//#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " y=" << dec << Line;
+//#endif
 
 	
 			// need to start texture coord from left again
@@ -7688,9 +8279,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 			//ptr = & ( VRAM [ StartX + ( Line << 10 ) ] );
 			//ptr32 = & ( buf [ StartX + ( Line * FrameBufferWidth_Pixels ) ] );
 			
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " TY=" << dec << TexCoordY;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " TY=" << dec << TexCoordY;
+//#endif
 
 			// initialize z for line
 			//iZ = z0;
@@ -7702,9 +8293,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 			//for ( x_across = StartX; x_across <= EndX; x_across++ )
 			for ( x_across = StartX; x_across <= EndX /* && ptr32 < PtrEnd */; x_across += c_iVectorSize )
 			{
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " x=" << dec << x_across;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " x=" << dec << x_across;
+//#endif
 
 				// get pointer into frame buffer
 				//ptr32 = & ( buf32 [ CvtAddrPix32 ( x_across, Line, FrameBufferWidth_Pixels ) ] );
@@ -7719,9 +8310,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 				TexCoordX |= TexX_Or;
 
 
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " TX=" << dec << TexCoordX;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " TX=" << dec << TexCoordX;
+//#endif
 
 
 //if ( !Line )
@@ -7808,9 +8399,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 				{
 					// lookup color value in CLUT //
 					
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " IDX=" << hex << bgr_temp;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " IDX=" << hex << bgr_temp;
+//#endif
 
 					bgr = ptr_clut16 [ bgr_temp ];
 					
@@ -7878,9 +8469,9 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 				
 
 
-#if defined INLINE_DEBUG_SPRITE_PIXEL
-	debug << " BGR=" << hex << bgr;
-#endif
+//#if defined INLINE_DEBUG_SPRITE_PIXEL
+//	debug << " BGR=" << hex << bgr;
+//#endif
 
 				// texture function ??
 				
@@ -7924,7 +8515,19 @@ void GPU::RenderSprite_DS ( u32 Coord0, u32 Coord1 )
 }
 
 
-
+// shading
+// texture mapping
+// fogging
+// alpha blending
+// anti-aliasing
+// texture coordinate spec
+// alpha test enable
+// destination alpha test enable
+// zbuf test enable
+// frame buffer pixel format (3-bits)
+// frame buffer mask enable
+// zbuf pixel format (2-bits)
+// zbuf write enable
 void GPU::DrawTriangle_Mono32_DS ( u32 Coord0, u32 Coord1, u32 Coord2 )
 {
 	// before sse2, was sending 1 pixels at a time
@@ -9706,6 +10309,7 @@ void GPU::DrawTriangle_Texture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2 )
 	//TEX0_t *TEX0 = &GPURegsGp.TEX0_1;
 	TEX0_t *TEX0 = TEXX;
 	
+	TEX1_t *TEX1 = &GPURegsGp.TEX1_1;
 	
 	/*
 	///////////////////////////////////
@@ -9745,7 +10349,7 @@ void GPU::DrawTriangle_Texture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2 )
 	CLUTPixelFormat = TEX0 [ Ctx ].CPSM;
 	
 	// get base pointer to color lookup table (32-bit word address divided by 64)
-	//CLUTBufBase32 = TEX0 [ Ctx ].CBP << 6;
+	CLUTBufBase32 = TEX0 [ Ctx ].CBP << 6;
 	
 	// storage mode ??
 	CLUTStoreMode = TEX0 [ Ctx ].CSM;
@@ -10163,6 +10767,9 @@ void GPU::DrawTriangle_Texture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2 )
 		debug << " PABE=" << GPURegsGp.PABE;
 		debug << " FBA=" << FBA_X;
 		debug << " ZBUF=" << ZBUF_X.Value;
+		debug << " MXL=" << TEX1 [ Ctx ].MXL;
+		debug << " LCM=" << TEX1 [ Ctx ].LCM;
+		debug << " K=" << TEX1 [ Ctx ].K;
 	}
 #endif
 	
@@ -11474,6 +12081,7 @@ void GPU::DrawTriangle_GradientTexture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2
 	//TEX0_t *TEX0 = &GPURegsGp.TEX0_1;
 	TEX0_t *TEX0 = TEXX;
 	
+	TEX1_t *TEX1 = &GPURegsGp.TEX1_1;
 	
 	/*
 	///////////////////////////////////
@@ -11513,7 +12121,7 @@ void GPU::DrawTriangle_GradientTexture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2
 	CLUTPixelFormat = TEX0 [ Ctx ].CPSM;
 	
 	// get base pointer to color lookup table (32-bit word address divided by 64)
-	//CLUTBufBase32 = TEX0 [ Ctx ].CBP << 6;
+	CLUTBufBase32 = TEX0 [ Ctx ].CBP << 6;
 	
 	// storage mode ??
 	CLUTStoreMode = TEX0 [ Ctx ].CSM;
@@ -11929,6 +12537,9 @@ void GPU::DrawTriangle_GradientTexture32_DS ( u32 Coord0, u32 Coord1, u32 Coord2
 		debug << " FrameBufPixFmt=" << PixelFormat_Names [ FrameBuffer_PixelFormat ];
 		debug << " Alpha=" << Alpha;
 		debug << " ZBUF=" << ZBUF_X.Value;
+		debug << " MXL=" << TEX1 [ Ctx ].MXL;
+		debug << " LCM=" << TEX1 [ Ctx ].LCM;
+		debug << " K=" << TEX1 [ Ctx ].K;
 	}
 #endif
 	
@@ -13294,32 +13905,8 @@ void GPU::TransferDataLocal_DS ()
 				}
 			}
 			
-			/*
-			if ( ( ( XferSrcOffset32 + ( ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) >> 0 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-
-			if ( ( ( XferDstOffset32 + ( ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) >> 0 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-			*/
 			
 			// 32-bit pixels
-			//SrcBuffer32 = & ( srcbuf32 [ ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) /* & ( c_iRAM_Mask >> 2 ) */ ] );
-			//DstBuffer32 = & ( dstbuf32 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) /* & ( c_iRAM_Mask >> 2 ) */ ] );
-			//DestBuffer32 = Data;
-			
-			// check if starting point is outside gpu ram
-			//if ( ( SrcBuffer32 >= PtrEnd ) || ( DstBuffer32 >= PtrEnd ) )
-			//{
-			//	return;
-			//}
 			
 			while ( ( XferY < XferHeight ) && Count )
 			{
@@ -13373,8 +13960,6 @@ void GPU::TransferDataLocal_DS ()
 					} // end switch ( GPURegsGp.BITBLTBUF.DPSM & 1 )
 				}
 				
-				//DstBuffer32 += xInc;
-				//SrcBuffer32 += xInc;
 				
 				// update x
 				//XferX++;
@@ -13394,19 +13979,6 @@ void GPU::TransferDataLocal_DS ()
 					//DstBuffer32 = & ( dstbuf32 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
 				}
 				
-				/*
-				if ( ( XferX + XferSrcX ) == XferSrcBufWidth )
-				{
-					// wrap around
-					SrcBuffer32 = & ( srcbuf32 [ ( ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-				}
-				
-				if ( ( XferX + XferDstX ) == XferDstBufWidth )
-				{
-					// wrap around
-					DstBuffer32 = & ( dstbuf32 [ ( ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
-				}
-				*/
 				
 				// don't go past the number of pixels available to read
 				Count--;
@@ -13461,29 +14033,8 @@ void GPU::TransferDataLocal_DS ()
 				}
 			}
 			
-			/*
-			if ( ( ( XferSrcOffset32 + ( ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) >> 1 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-
-			if ( ( ( XferDstOffset32 + ( ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) >> 1 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-			*/
 			
 			// 16-bit pixels //
-			//SrcBuffer16 = & ( srcbuf16 [ ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-			//DstBuffer16 = & ( dstbuf16 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
-			//DestBuffer16 = (u16*) Data;
-			
-			// 2 times the pixels
-			//WordCount32 <<= 1;
 			
 			while ( ( XferY < XferHeight ) && Count )
 			{
@@ -13539,8 +14090,6 @@ void GPU::TransferDataLocal_DS ()
 					*DstBuffer16 = *SrcBuffer16;
 				}
 				
-				//DstBuffer16 += xInc;
-				//SrcBuffer16 += xInc;
 				
 				// update x
 				//XferX++;
@@ -13555,24 +14104,8 @@ void GPU::TransferDataLocal_DS ()
 					XferX = xStart;
 					XferY += yInc;
 					
-					// set buffer pointer
-					//SrcBuffer16 = & ( srcbuf16 [ ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-					//DstBuffer16 = & ( dstbuf16 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
 				}
 				
-				/*
-				if ( ( XferX + XferSrcX ) >= XferSrcBufWidth )
-				{
-					// wrap around
-					SrcBuffer16 = & ( srcbuf16 [ ( ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-				}
-				
-				if ( ( XferX + XferDstX ) >= XferDstBufWidth )
-				{
-					// wrap around
-					DstBuffer16 = & ( dstbuf16 [ ( ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
-				}
-				*/
 				
 				// don't go past the number of pixels available to read
 				Count--;
@@ -13646,29 +14179,8 @@ void GPU::TransferDataLocal_DS ()
 				}
 			}
 			
-			/*
-			if ( ( ( XferSrcOffset32 + ( ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) >> 2 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-			
-			if ( ( ( XferDstOffset32 + ( ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) >> 2 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-			*/
 			
 			// 8-bit pixels //
-			//SrcBuffer8 = & ( srcbuf8 [ ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-			//DstBuffer8 = & ( dstbuf8 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
-			//DestBuffer8 = (u8*) Data;
-			
-			// 4 times the pixels
-			//WordCount32 <<= 2;
 			
 			while ( ( XferY < XferHeight ) && Count )
 			{
@@ -13710,17 +14222,6 @@ void GPU::TransferDataLocal_DS ()
 						break;
 				}
 					
-				/*
-				if ( ( DstBuffer8 < PtrEnd ) && ( SrcBuffer8 < PtrEnd ) )
-				{
-					// transfer a pixel
-					// *DstBuffer8++ = *SrcBuffer8++;
-					*DstBuffer8 = *SrcBuffer8;
-				}
-				
-				DstBuffer8 += xInc;
-				SrcBuffer8 += xInc;
-				*/
 				
 				// update x
 				//XferX++;
@@ -13736,23 +14237,8 @@ void GPU::TransferDataLocal_DS ()
 					XferX = xStart;
 					XferY += yInc;
 					
-					// set buffer pointer
-					//SrcBuffer8 = & ( srcbuf8 [ ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-					//DstBuffer8 = & ( dstbuf8 [ ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
 				}
 				
-				/*
-				if ( ( XferX + XferSrcX ) == XferSrcBufWidth )
-				{
-					// wrap around
-					SrcBuffer8 = & ( srcbuf8 [ ( ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) ] );
-				}
-				if ( ( XferX + XferDstX ) == XferDstBufWidth )
-				{
-					// wrap around
-					DstBuffer8 = & ( dstbuf8 [ ( ( ( XferY + XferDstY ) * XferDstBufWidth ) ) ] );
-				}
-				*/
 				
 				// don't go past the number of pixels available to read
 				Count--;
@@ -13823,25 +14309,7 @@ void GPU::TransferDataLocal_DS ()
 				}
 			}
 			
-			/*
-			if ( ( ( XferSrcOffset32 + ( ( ( XferX + XferSrcX ) + ( ( XferY + XferSrcY ) * XferSrcBufWidth ) ) >> 3 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
 			
-			if ( ( ( XferDstOffset32 + ( ( ( XferX + XferDstX ) + ( ( XferY + XferDstY ) * XferDstBufWidth ) ) >> 3 ) ) << 2 ) >= c_iRAM_Size )
-			{
-				// transfer is outside range
-				// stopping transfer for now
-				return;
-			}
-			*/
-			
-			//SrcBuffer8 = & ( srcbuf8 [ ( ( ( XferX + XferSrcX ) >> 1 ) + ( ( XferY + XferSrcY ) * ( XferSrcBufWidth >> 1 ) ) ) ] );
-			//DstBuffer8 = & ( dstbuf8 [ ( ( ( XferX + XferDstX ) >> 1 ) + ( ( XferY + XferDstY ) * ( XferDstBufWidth >> 1 ) ) ) ] );
-			//DestBuffer8 = (u8*) Data;
 			
 			// 8 times the pixels, but transferring 2 at a time, so times 4
 			//WordCount32 <<= 2;
@@ -13959,7 +14427,7 @@ void GPU::TransferDataOut32_DS ( u32* Data, u32 WordCount32 )
 
 	//u64 PixelShift
 	u64 PixelLoad;
-	u32 Pixel0;
+	u64 Pixel0;
 	//u64 PixelCount;
 	
 	u32 PixelMask;
@@ -13987,6 +14455,20 @@ void GPU::TransferDataOut32_DS ( u32* Data, u32 WordCount32 )
 	
 	void *PtrEnd;
 	PtrEnd = RAM8 + c_iRAM_Size;
+
+
+#ifdef USE_OLD_MULTI_THREADING
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
+
+
 	
 	if ( !XferSrcBufWidth )
 	{
@@ -14041,10 +14523,10 @@ void GPU::TransferDataOut32_DS ( u32* Data, u32 WordCount32 )
 			
 			if ( !XferX && !XferY )
 			{
-				if ( GPURegsGp.BITBLTBUF.SPSM & 1 )
-				{
-					cout << "\nhps2x64: ALERT: 24-bit pixel output from GPU - Not implented properly yet!!!";
-				}
+				//if ( GPURegsGp.BITBLTBUF.SPSM & 1 )
+				//{
+				//	cout << "\nhps2x64: ALERT: 24-bit pixel output from GPU - Not implented properly yet!!!";
+				//}
 			
 			
 				// check if this transfers outside of GPU memory device
@@ -14096,12 +14578,57 @@ void GPU::TransferDataOut32_DS ( u32* Data, u32 WordCount32 )
 			
 				if ( SrcBuffer32 < PtrEnd )
 				{
+					// get the pixel from gpu memory
+					Pixel0 = *SrcBuffer32;
+					
+					switch ( GPURegsGp.BITBLTBUF.SPSM & 1 )
+					{
+						// PSMCT32
+						// PSMZ32
+						case 0:
+							
+							// transfer a pixel
+							// *DestBuffer32++ = *SrcBuffer32++;
+							// *DestBuffer32++ = Pixel0 & PixelMask;
+							*DestBuffer32++ = Pixel0;
+							WordCount32--;
+							break;
+							
+						// *** TODO: Need to improve the logic here since this might not be bulletproof ***
+						// PSMCT24
+						// PSMZ24
+						case 1:
+							
+							// mask pixel (only need 24-bits)
+							Pixel0 &= 0xffffff;
+							
+							// pack pixel
+							PixelShift |= Pixel0 << PixelCount;
+							
+							// add the pixel into the count
+							PixelCount += 24;
+							
+							if ( PixelCount >= 32 )
+							{
+								*DestBuffer32++ = (u32) PixelShift;
+								PixelShift >>= 32;
+								PixelCount -= 32;
+								WordCount32--;
+							}
+							
+							
+							break;
+					}
+					
+					
+					/*
 					Pixel0 = *SrcBuffer32++;
 					
 
 					// transfer a pixel
 					// *DestBuffer32++ = *SrcBuffer32++;
 					*DestBuffer32++ = Pixel0 & PixelMask;
+					*/
 				}
 				
 				// update x
@@ -14128,7 +14655,7 @@ void GPU::TransferDataOut32_DS ( u32* Data, u32 WordCount32 )
 				*/
 				
 				// don't go past the number of pixels available to read
-				WordCount32--;
+				//WordCount32--;
 			}
 		}
 		else if ( ( GPURegsGp.BITBLTBUF.SPSM & 7 ) == 2 )
@@ -14480,6 +15007,7 @@ void GPU::TransferDataIn32_DS ( u32* Data, u32 WordCount32 )
 	//debug << " XferDstX=" << XferDstX << " XferDstY=" << XferDstY;
 #endif
 
+	
 	//u64 PixelShift
 	u64 PixelLoad;
 	u32 Pixel0;
@@ -14505,6 +15033,19 @@ void GPU::TransferDataIn32_DS ( u32* Data, u32 WordCount32 )
 	void *PtrEnd;
 	PtrEnd = RAM8 + c_iRAM_Size;
 	
+	
+	// make sure that if multi-threading, that the threads are idle for now (until this part is multi-threaded)
+#ifdef USE_OLD_MULTI_THREADING
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		while ( ulInputBuffer_Count );
+	}
+#else
+	Finish ();
+#endif
+	
+	
 	// make sure transfer method is set to cpu->gpu
 	if ( GPURegsGp.TRXDIR.XDIR != 0 )
 	{
@@ -14514,6 +15055,7 @@ void GPU::TransferDataIn32_DS ( u32* Data, u32 WordCount32 )
 		debug << "\r\nhps2x64: ALERT: GPU: Performing mem->gpu transmission while not activated";
 #endif
 	}
+
 	
 	if ( !XferDstBufWidth )
 	{
@@ -15196,6 +15738,68 @@ void GPU::TransferDataIn32_DS ( u32* Data, u32 WordCount32 )
 			}
 		}
 	}
+}
+
+
+
+void GPU::InitCvtLUTs ()
+{
+	u32 x, y, dx, dy;
+	u32 Offset;
+	
+	for ( dx = 0; dx < 128; dx++ )
+	{
+		for ( dy = 0; dy < 128; dy++ )
+		{
+			x = dx & 0x3f;
+			y = dy & 0x1f;
+			Offset = ( x & 0x1 ) | ( ( ( y & 0x1 ) | ( x & 0x6 ) ) << 1 ) | ( ( ( y & 0x6 ) | ( x & 0x8 ) ) << 3 ) | ( ( ( y & 0x8 ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 5 );
+			LUT_CvtAddrPix32 [ x + ( y << 6 ) ] = Offset;
+			
+			Offset = ( x & 0x1 ) | ( ( ( y & 0x1 ) | ( x & 0x6 ) ) << 1 ) | ( ( ( y & 0x6 ) | ( x & 0x8 ) ) << 3 ) | ( ( ( y & 0x8 ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 5 );
+			Offset ^= 0x600;
+			LUT_CvtAddrZBuf32 [ x + ( y << 6 ) ] = Offset;
+			
+			x = dx & 0x3f;
+			y = dy & 0x3f;
+			Offset = ( ( x & 8 ) >> 3 ) | ( ( x & 1 ) << 1 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 2 ) | ( ( ( y & 0xe ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 5 ) | ( ( y & 0x20 ) << 6 );
+			LUT_CvtAddrPix16 [ x + ( y << 6 ) ] = Offset;
+			
+			Offset = ( ( x & 8 ) >> 3 ) | ( ( x & 1 ) << 1 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 2 ) | ( ( ( y & 0x2e ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 6 );
+			LUT_CvtAddrPix16s [ x + ( y << 6 ) ] = Offset;
+
+			Offset = ( ( x & 8 ) >> 3 ) | ( ( x & 1 ) << 1 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 2 ) | ( ( ( y & 0xe ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 5 ) | ( ( y & 0x20 ) << 6 );
+			Offset ^= 0xc00;
+			LUT_CvtAddrZBuf16 [ x + ( y << 6 ) ] = Offset;
+			
+			Offset = ( ( x & 8 ) >> 3 ) | ( ( x & 1 ) << 1 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 2 ) | ( ( ( y & 0x2e ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 6 );
+			Offset ^= 0xc00;
+			LUT_CvtAddrZBuf16s [ x + ( y << 6 ) ] = Offset;
+			
+			x = dx;
+			y = dy & 0x3f;
+			Offset = ( ( y & 2 ) >> 1 ) | ( ( x & 8 ) >> 2 ) | ( ( x & 1 ) << 2 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 3 ) | ( ( ( y & 0xc ) | ( x & 0x10 ) ) << 4 ) | ( ( ( y & 0x10 ) | ( x & 0x20 ) ) << 5 ) | ( ( ( y & 0x20 ) | ( x & 0x40 ) ) << 6 );
+			Offset ^= ( ( y & 2 ) << 4 ) ^ ( ( y & 4 ) << 3 );
+			LUT_CvtAddrPix8 [ x + ( y << 7 ) ] = Offset;
+			
+			x = dx;
+			y = dy;
+			Offset = ( ( y & 2 ) >> 1 ) | ( ( x & 0x18 ) >> 2 ) | ( ( x & 1 ) << 3 ) | ( ( ( y & 1 ) | ( x & 6 ) ) << 4 ) | ( ( ( y & 0x1c ) | ( x & 0x20 ) ) << 5 ) | ( ( ( y & 0x20 ) | ( x & 0x40 ) ) << 6 ) | ( ( y & 0x40 ) << 7 );
+			Offset ^= ( ( y & 2 ) << 5 ) ^ ( ( y & 4 ) << 4 );
+			LUT_CvtAddrPix4 [ x + ( y << 7 ) ] = Offset;
+		}
+	}
+	
+	//static u32 LUT_CvtAddrPix32 [ 64 * 32 ];
+	//static u32 LUT_CvtAddrPix16 [ 64 * 64 ];
+	//static u32 LUT_CvtAddrPix16s [ 64 * 64 ];
+	//static u32 LUT_CvtAddrPix8 [ 128 * 64 ];
+	//static u32 LUT_CvtAddrPix4 [ 128 * 128 ];
+	
+	//static u32 LUT_CvtAddrZBuf32 [ 64 * 32 ];
+	//static u32 LUT_CvtAddrZBuf16 [ 64 * 64 ];
+	//static u32 LUT_CvtAddrZBuf16s [ 64 * 64 ];
+
 }
 
 

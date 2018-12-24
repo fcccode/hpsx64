@@ -56,6 +56,11 @@ using namespace std;
 #define ENABLE_RECOMPILER_R5900
 
 
+// enables i-cache on R5900
+// must be enabled here and in R5900_Execute.cpp
+#define ENABLE_R5900_ICACHE
+
+
 // this one goes to cout and is good for bug reports
 #define INLINE_DEBUG_COUT
 
@@ -270,9 +275,13 @@ void Cpu::Start ()
 	Instruction::Execute::Start ();
 	
 	
-	rs = new Recompiler ( this, 19 - Playstation2::DataBus::c_iInvalidate_Shift, Playstation2::DataBus::c_iInvalidate_Shift + 7, Playstation2::DataBus::c_iInvalidate_Shift );
+	rs = new Recompiler ( this, 19 - Playstation2::DataBus::c_iInvalidate_Shift, Playstation2::DataBus::c_iInvalidate_Shift + 10, Playstation2::DataBus::c_iInvalidate_Shift );
 	
 	rs->SetOptimizationLevel ( 1 );
+	//rs->SetOptimizationLevel ( 0 );
+	
+	// enable recompiler by default
+	bEnableRecompiler = true;
 }
 
 void Cpu::Reset ( void )
@@ -333,6 +342,8 @@ void Cpu::InvalidateCache ( u32 Address )
 void Cpu::Run ()
 {
 	u32 Index;
+	u32 *pCacheLine32;
+	u64 *pMemPtr64, *pCacheLine64;
 	
 	/////////////////////////////////////////////////////////
 	// Run DMA Controller first incase it needs to use bus //
@@ -373,6 +384,10 @@ void Cpu::Run ()
 		debug << ";Fetch";
 #endif
 
+	*/
+
+	
+#ifdef ENABLE_R5900_ICACHE
 			
 		// load next instruction to be executed
 		// step 0: check if instruction is in a cached location
@@ -387,7 +402,10 @@ void Cpu::Run ()
 			// bus might be free //
 			
 			// check if there is a cache hit
-			if ( !ICache.isCacheHit ( PC ) )
+			pCacheLine32 = ICache.isCacheHit ( PC );
+			
+			// check if there is a cache hit
+			if ( !pCacheLine32 )
 			{
 				// cache miss //
 				
@@ -395,81 +413,101 @@ void Cpu::Run ()
 				debug << ";MISS";
 #endif
 
-#ifdef INLINE_DEBUG
-				debug << ";Miss State Enter";
-#endif
+//#ifdef INLINE_DEBUG
+//				debug << ";Miss State Enter";
+//#endif
 				
 				////////////////////////////////////////////
 				// check if we can access data bus
 				
-				if ( !Bus->isReady () )
-				{
-					// bus is not free //
-					
-					// need to wait until the bus is free
-					WaitForBusReady1 ();
-				}
-				
-				//if ( Bus->isReady () )
-				//{
-					// data bus is free for use //
-						
-#ifdef INLINE_DEBUG
-					debug << ";Bus->AccessOK";
-#endif
 
 
 					// *** testing *** maybe i need to flush the store buffer before doing any loads
-					FlushStoreBuffer ();
+					//FlushStoreBuffer ();
 					
-					// step 2: location is cached, so this is a cache miss
-					//Status.isICacheMiss = true;
 					
 					// step 3: there is a certain delay before i-cache is done loading
 					//ICacheMiss_BusyCycles = ICacheMissCycles;
 					//ICacheMiss_BusyUntil_Cycle = CycleCount + ICacheMissCycles;
-					BusyUntil_Cycle = CycleCount + ICacheMissCycles;
+					//BusyUntil_Cycle = CycleCount + ICacheMissCycles;
 					
 					// since it is pipelined, we can read all 4 instructions to refill cache all at once and then wait until setting cache as valid
 					// I'll have bus decide how many cycles it is busy for
 						
 #ifdef INLINE_DEBUG
-					debug << ";IREAD4";
+				debug << ";IREAD16";
 #endif
 
-					u32* CacheLine;
-					CacheLine = ICache.GetCacheLinePtr ( PC & 0x1ffffff0 );
-					CacheLine [ 0 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 0 );
-					CacheLine [ 1 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 4 );
-					CacheLine [ 2 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 8 );
-					CacheLine [ 3 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 12 );
+					//u32* CacheLine;
+					//CacheLine = ICache.GetCacheLinePtr ( PC & 0x1ffffff0 );
+					//CacheLine [ 0 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 0 );
+					//CacheLine [ 1 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 4 );
+					//CacheLine [ 2 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 8 );
+					//CacheLine [ 3 ] = Bus->Read ( ( PC & 0x1ffffff0 ) + 12 );
+					pMemPtr64 = (u64*) Bus->GetIMemPtr ( PC & 0xffffffc0 );
+					
+#ifdef INLINE_DEBUG
+				debug << " Inst(Mem): ";
+				for ( int i = 0; i < 16; i++ ) { debug << " " << R5900::Instruction::Print::PrintInstruction ( ((u32*)pMemPtr64) [ i ] ).c_str(); }
+#endif
+					
+					ICache.ReloadCache ( PC, pMemPtr64 );
+
+#ifdef INLINE_DEBUG
+				debug << " Inst(ICache): ";
+				pCacheLine32 = ICache.isCacheHit_Line ( PC );
+				for ( int i = 0; i < 16; i++ ) { debug << " " << R5900::Instruction::Print::PrintInstruction ( pCacheLine32 [ i ] ).c_str(); }
+#endif
+					
+					CycleCount += Bus->GetLatency ();
 					
 					// validate cache lines
 					
-#ifdef INLINE_DEBUG
-					debug << ";ICache Validate;HIT";
-#endif
+//#ifdef INLINE_DEBUG
+//					debug << ";ICache Validate;HIT";
+//#endif
 
-					ICache.ValidateCacheLine ( PC );
+					//ICache.ValidateCacheLine ( PC );
 				
 					// reserve the bus for at least 4 cycles
 					// no, reserve the bus for the number of cycles used
 					//Bus->ReserveBus ( 4 );
-					Bus->ReserveBus_Latency ();
+					//Bus->ReserveBus_Latency ();
 					
 					// the cpu is busy until the bus is free
-					BusyUntil_Cycle = Bus->BusyUntil_Cycle;
+					//BusyUntil_Cycle = Bus->BusyUntil_Cycle;
 					
 					// skip the idle cycles
 					//SkipIdleCycles ();
 					
 					// wait until the cpu has loaded the data and is ready to load instruction from cache
-					WaitForCpuReady1 ();
+					//WaitForCpuReady1 ();
 					
 					// *** testing *** load the instruction from cache //
-					CurInst.Value = ICache.Read ( PC );
+					//CurInst.Value = ICache.Read ( PC );
+					CurInst.Value = ((u32*)pMemPtr64) [ ( PC >> 2 ) & 0xf ];
 				//}
 				
+					if ( bEnableRecompiler )
+					{
+						
+					if ( Bus->GetLatency () <= DataBus::c_iRAM_Read_Latency )
+					{
+						
+					// check for data-modify if using recompiler //
+					if ( Bus->InvalidArray.b8 [ ( ( PC & DataBus::MainMemory_Mask ) >> ( 2 + DataBus::c_iInvalidate_Shift ) ) & DataBus::c_iInvalidate_Mask ] )
+					{
+#ifdef VERBOSE_RECOMPILE
+cout << "\nR3000A: CacheMiss: Recompile: PC=" << hex << PC;
+#endif
+
+						rs->Recompile ( PC );
+						Bus->InvalidArray.b8 [ ( ( PC & DataBus::MainMemory_Mask ) >> ( 2 + DataBus::c_iInvalidate_Shift ) ) & DataBus::c_iInvalidate_Mask ] = 0;
+					}
+					
+					} // if ( Bus->GetLatency () <= c_iRAM_Read_Latency )
+					
+					} // if ( bEnableRecompiler )
 				
 			}
 			else
@@ -480,7 +518,8 @@ void Cpu::Run ()
 					debug << ";HIT";
 #endif
 
-				CurInst.Value = ICache.Read ( PC );
+				//CurInst.Value = ICache.Read ( PC );
+				CurInst.Value = *pCacheLine32;
 			}
 			
 			
@@ -506,6 +545,7 @@ void Cpu::Run ()
 				
 			// step 2: if bus is not busy and cpu can access bus, and there are no pending load/stores...
 			// then load instruction into current instruction
+			/*
 			if ( !Bus->isReady () )
 			{
 				// instruction could not be loaded from bus
@@ -532,6 +572,7 @@ void Cpu::Run ()
 
 			// *** testing *** flush store buffer before loading anything?
 			FlushStoreBuffer ();
+			*/
 
 #ifdef INLINE_DEBUG
 			debug << ";IREAD1";
@@ -539,20 +580,45 @@ void Cpu::Run ()
 
 			// the bus is free and there are no pending load/store operations
 			// Important: When reading from the bus, it has already been determined whether address is in I-Cache or not, so clear top 3 bits
-			//Bus->IRead ( &CurInst.Value, PC & 0x1fffffff, Playstation1::DataBus::RW_32 );
-			//CurInst.Value = Bus->Read ( PC );
-			CurInst.Value = Bus->Read ( PC & 0x1fffffff );
+			//CurInst.Value = Bus->Read ( PC & 0x1fffffff );
+			CurInst.Value = Bus->Read_t<0xffffffff> ( PC );
+			
+			CycleCount += Bus->GetLatency ();
+
+
+			if ( bEnableRecompiler )
+			{
+				
+			if ( Bus->GetLatency () <= DataBus::c_iRAM_Read_Latency )
+			{
+				
+			// check for data-modify if using recompiler //
+			if ( Bus->InvalidArray.b8 [ ( ( PC & DataBus::MainMemory_Mask ) >> ( 2 + DataBus::c_iInvalidate_Shift ) ) & DataBus::c_iInvalidate_Mask ] )
+			{
+#ifdef VERBOSE_RECOMPILE
+cout << "\nR3000A: CacheMiss: Recompile: PC=" << hex << PC;
+#endif
+
+				rs->Recompile ( PC );
+				Bus->InvalidArray.b8 [ ( ( PC & DataBus::MainMemory_Mask ) >> ( 2 + DataBus::c_iInvalidate_Shift ) ) & DataBus::c_iInvalidate_Mask ] = 0;
+			}
+			
+			} // if ( Bus->GetLatency () <= c_iRAM_Read_Latency )
+			
+			} // if ( bEnableRecompiler )
+
+
 			
 			// reserve bus for at least one cycle to load instruction
 			// don't reserve bus yet
 			// no, reserve bus for the number of cycles used
 			//Bus->ReserveBus ( 1 );
 			//Bus->ReserveBus ( c_InstructionLoad_Cycles );
-			Bus->ReserveBus_Latency ();
+			//Bus->ReserveBus_Latency ();
 			
 			// wait until instruction is loaded
-			BusyUntil_Cycle = Bus->BusyUntil_Cycle;
-			WaitForCpuReady1 ();
+			//BusyUntil_Cycle = Bus->BusyUntil_Cycle;
+			//WaitForCpuReady1 ();
 			
 			// step 3: we can execute instruction right away since memory access is probably pipelined
 			
@@ -567,13 +633,18 @@ void Cpu::Run ()
 	
 	//}
 	
-	*/
 
+#else
 	
 	// load instruction
 	//CurInst.Value = Bus->Read ( PC, 0xffffffff );
 	CurInst.Value = Bus->Read_t<0xffffffff> ( PC );
 	
+#endif
+
+#ifdef INLINE_DEBUG
+	debug << " INST=" << dec << R5900::Instruction::Print::PrintInstruction ( CurInst.Value ).c_str();
+#endif
 	
 	/////////////////////////
 	// Execute Instruction //
@@ -606,11 +677,16 @@ void Cpu::Run ()
 	{
 		if ( Status.Value )
 		{
+#ifdef INLINE_DEBUG
+	debug << ";Interpret";
+#endif
+
 			Instruction::Execute::ExecuteInstruction ( CurInst );
 		}
 		else
 		{
 			
+		/*
 		//if ( bEnableRecompiler )
 		//{
 			
@@ -623,17 +699,23 @@ void Cpu::Run ()
 		}
 		
 		//} // if ( bEnableRecompiler )
-			
+		*/
 		
 		// check that address block is encoded
 		if ( ! rs->isRecompiled ( PC ) )
 		{
+#ifdef INLINE_DEBUG
+	debug << ";NOT Recompiled";
+#endif
 			// address is NOT encoded //
 			
 			// recompile block
 			rs->Recompile ( PC );
 		}
 		
+#ifdef INLINE_DEBUG
+	debug << ";Recompiled";
+#endif
 		
 		// get the block index
 		Index = rs->Get_Index ( PC );
@@ -645,8 +727,17 @@ void Cpu::Run ()
 		// execute from address
 		( (func2) (rs->pCodeStart [ Index ]) ) ();
 		
+#ifdef INLINE_DEBUG
+	debug << ";RecompilerReturned";
+#endif
+
 		} // end if ( Status.Value )
+			
 	}
+#endif
+
+#ifdef INLINE_DEBUG
+	debug << ";ExeDone";
 #endif
 	
 	
@@ -2802,10 +2893,14 @@ static void Cpu::DebugWindow_Enable ()
 		
 		GPR_ValueList->AddVariable ( "PCount", & Playstation2::GPU::_GPU->Primitive_Count );
 		
-		GPR_ValueList->AddVariable ( "addr180", & ((u32*)Playstation2::GPU::_GPU->ulTransferCount) [ 2 ] );
-		GPR_ValueList->AddVariable ( "addr181", & ((u32*)Bus->VuMem1) [ ( 0x12f << 2 ) + 1 ] );
-		GPR_ValueList->AddVariable ( "addr182", & ((u32*)Bus->VuMem1) [ ( 0x12f << 2 ) + 2 ] );
-		GPR_ValueList->AddVariable ( "addr183", & ((u32*)Bus->VuMem1) [ ( 0x12f << 2 ) + 3 ] );
+		GPR_ValueList->AddVariable ( "a0", &_CPU->testvar [ 0 ] );
+		GPR_ValueList->AddVariable ( "a1", &_CPU->testvar [ 1 ] );
+		GPR_ValueList->AddVariable ( "a2", &_CPU->testvar [ 2 ] );
+		GPR_ValueList->AddVariable ( "a3", &_CPU->testvar [ 3 ] );
+		GPR_ValueList->AddVariable ( "a4", &_CPU->testvar [ 4 ] );
+		GPR_ValueList->AddVariable ( "a5", &_CPU->testvar [ 5 ] );
+		GPR_ValueList->AddVariable ( "a6", &_CPU->testvar [ 6 ] );
+		GPR_ValueList->AddVariable ( "a7", &_CPU->testvar [ 7 ] );
 		
 		GPR_ValueList->AddVariable ( "GNE", (u32*) &(Playstation2::GPU::_GPU->lVBlank) );
 

@@ -224,7 +224,7 @@ struct Reg128
 		
 		
 	};
-} __attribute__ ((aligned (128)));
+} __attribute__ ((aligned (16)));
 
 
 union MultiPtr

@@ -127,10 +127,15 @@ namespace Playstation1
 		static const long long c_llDVDSeek_CyclesPerSector = 5;	//25;
 		
 		static const long long c_llCDSeekInMilliSecs = 100;
-		static const long long c_llCDFastSeekInMilliSecs = 37;	//30;
+		static const long long c_llCDFastSeekInMilliSecs = 30;
 
 		static const long long c_llDVDSeekInMilliSecs = 100;
-		static const long long c_llDVDFastSeekInMilliSecs = 37;	//30;
+		static const long long c_llDVDFastSeekInMilliSecs = 30;
+		
+		// maximum seek time in cycles
+		//static const long long c_llMaxDVDSeekTime = 6635520;
+		//static const long long c_llMaxDVDSectors = 
+
 
 		// this is the delay before data that was read is actually ready for output by CD/DVD via DMA etc
 		// should probably be a minimum of 2048

@@ -285,11 +285,11 @@ namespace DiskImage
 		
 		// these are static since you can only put one disc in a ps1/ps2 at a time and will need to use callback function for asychronous file reading
 		// c_BufferSectorCount needs to be a power of 2 and cannot be 2
-		static const u32 c_BufferSectorCount = 8;
+		static const u32 c_BufferSectorCount = 32;
 		static const u32 c_BufferSectorMask = c_BufferSectorCount - 1;
 		
 		// this is the number parts the buffer is split into
-		static const u32 c_BufferPartitionCount = 4;
+		static const u32 c_BufferPartitionCount = 2;
 		
 		// this is the number of sectors to read at a time
 		static const u32 c_SectorReadCount = c_BufferSectorCount / c_BufferPartitionCount;
@@ -326,8 +326,8 @@ namespace DiskImage
 		//s64 SectorOffset;
 	
 		// determines if a file read is in progress in the background for this particular object
-		static u32 isReadInProgress;
-		static u32 isSubReadInProgress;
+		static volatile u32 isReadInProgress;
+		static volatile u32 isSubReadInProgress;
 		
 		static unsigned long isDiskOpen;
 		

@@ -64,6 +64,7 @@ namespace WindowClass
 	// call this at least once a frame to keep everything running as it should
 	void DoEvents ();
 	void DoEventsNoWait ();
+	void DoSingleEvent ();
 
 	// this is the id we should start numbering controls at when the ID to use is not specified
 	static const u32 StartId = 9000;

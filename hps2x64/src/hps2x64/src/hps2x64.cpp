@@ -336,9 +336,15 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	ProgramWindow->Menus->UnCheckItem ( "Pad 1 Digital" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 1 Analog" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 1 DualShock2" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: None" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: Device0" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: Device1" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 2 Digital" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 2 Analog" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 2 DualShock2" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: None" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: Device0" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: Device1" );
 	ProgramWindow->Menus->UnCheckItem ( "Disconnect Card1" );
 	ProgramWindow->Menus->UnCheckItem ( "Connect Card1" );
 	ProgramWindow->Menus->UnCheckItem ( "Disconnect Card2" );
@@ -361,10 +367,16 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	ProgramWindow->Menus->UnCheckItem ( "Recompiler: R3000A" );
 	ProgramWindow->Menus->UnCheckItem ( "Interpreter: R5900" );
 	ProgramWindow->Menus->UnCheckItem ( "Recompiler: R5900" );
+	ProgramWindow->Menus->UnCheckItem ( "Interpreter: VU0" );
+	ProgramWindow->Menus->UnCheckItem ( "Recompiler: VU0" );
+	ProgramWindow->Menus->UnCheckItem ( "Interpreter: VU1" );
+	ProgramWindow->Menus->UnCheckItem ( "Recompiler: VU1" );
+	ProgramWindow->Menus->UnCheckItem ( "1 (multi-thread)" );
+	ProgramWindow->Menus->UnCheckItem ( "0 (single-thread)" );
 	
 	
 	// check box for audio output enable //
-	if ( _SYSTEM._PS1SYSTEM._SPU.AudioOutput_Enabled )
+	if ( _SYSTEM._PS1SYSTEM._SPU2.AudioOutput_Enabled )
 	{
 		ProgramWindow->Menus->CheckItem ( "Enable" );
 	}
@@ -402,6 +414,21 @@ void hps2x64::Update_CheckMarksOnMenu ()
 			ProgramWindow->Menus->CheckItem ( "Pad 1 DualShock2" );
 			break;
 	}
+
+	switch ( _SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] )
+	{
+		case 0:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: Device0" );
+			break;
+			
+		case 1:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: Device1" );
+			break;
+			
+		default:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: None" );
+			break;
+	}
 	
 	// do pad 2
 	switch ( _SYSTEM._PS1SYSTEM._SIO.ControlPad_Type [ 1 ] )
@@ -416,6 +443,21 @@ void hps2x64::Update_CheckMarksOnMenu ()
 			
 		case Playstation1::SIO::PADTYPE_DUALSHOCK2:
 			ProgramWindow->Menus->CheckItem ( "Pad 2 DualShock2" );
+			break;
+	}
+
+	switch ( _SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] )
+	{
+		case 0:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: Device0" );
+			break;
+			
+		case 1:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: Device1" );
+			break;
+			
+		default:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: None" );
 			break;
 	}
 	
@@ -464,7 +506,7 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	}
 	
 	// check box for audio buffer size //
-	switch ( _SYSTEM._PS1SYSTEM._SPU.NextPlayBuffer_Size )
+	switch ( _SYSTEM._PS1SYSTEM._SPU2.NextPlayBuffer_Size )
 	{
 		case 8192:
 			ProgramWindow->Menus->CheckItem ( "8 KB" );
@@ -488,7 +530,7 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	}
 	
 	// check box for audio volume //
-	switch ( _SYSTEM._PS1SYSTEM._SPU.GlobalVolume )
+	switch ( _SYSTEM._PS1SYSTEM._SPU2.GlobalVolume )
 	{
 		case 0x400:
 			ProgramWindow->Menus->CheckItem ( "25%" );
@@ -508,7 +550,7 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	}
 	
 	// audio filter enable/disable //
-	if ( _SYSTEM._PS1SYSTEM._SPU.AudioFilter_Enabled )
+	if ( _SYSTEM._PS1SYSTEM._SPU2.AudioFilter_Enabled )
 	{
 		ProgramWindow->Menus->CheckItem ( "Filter" );
 	}
@@ -530,6 +572,34 @@ void hps2x64::Update_CheckMarksOnMenu ()
 	{
 		ProgramWindow->Menus->CheckItem ( "Interpreter: R5900" );
 	}
+	
+	if ( _HPS2X64._SYSTEM._VU0.VU0.bEnableRecompiler )
+	{
+		ProgramWindow->Menus->CheckItem ( "Recompiler: VU0" );
+	}
+	else
+	{
+		ProgramWindow->Menus->CheckItem ( "Interpreter: VU0" );
+	}
+	
+	if ( _HPS2X64._SYSTEM._VU1.VU1.bEnableRecompiler )
+	{
+		ProgramWindow->Menus->CheckItem ( "Recompiler: VU1" );
+	}
+	else
+	{
+		ProgramWindow->Menus->CheckItem ( "Interpreter: VU1" );
+	}
+	
+	if ( _HPS2X64._SYSTEM._GPU.ulNumberOfThreads )
+	{
+		ProgramWindow->Menus->CheckItem ( "1 (multi-thread)" );
+	}
+	else
+	{
+		ProgramWindow->Menus->CheckItem ( "0 (single-thread)" );
+	}
+	
 }
 
 
@@ -624,7 +694,7 @@ int hps2x64::InitializeProgram ()
 	m->AddItem ( "Show PS1", "Timers", OnClick_Debug_Show_TIMER );
 	m->AddItem ( "Show PS1", "SPU", OnClick_Debug_Show_SPU );
 	m->AddItem ( "Show PS1", "INTC", OnClick_Debug_Show_INTC );
-	m->AddItem ( "Show PS1", "GPU" );
+	m->AddItem ( "Show PS1", "PS1 GPU" );
 	m->AddItem ( "Show PS1", "MDEC" );
 	m->AddItem ( "Show PS1", "SIO" );
 	//m->AddItem ( "Show PS1", "PIO" );
@@ -637,17 +707,27 @@ int hps2x64::InitializeProgram ()
 	
 	// add menu items for controllers //
 	m->AddMainMenuItem ( "Peripherals" );
-	m->AddItem ( "Peripherals", "Configure Joypad...", OnClick_Controllers_Configure );
+	//m->AddItem ( "Peripherals", "Configure Joypad...", OnClick_Controllers_Configure );
 	m->AddMenu ( "Peripherals", "Pad 1" );
+	m->AddItem ( "Pad 1", "Configure Joypad1...", OnClick_Controllers0_Configure );
 	m->AddMenu ( "Pad 1", "Pad 1 Type" );
 	m->AddItem ( "Pad 1 Type", "Pad 1 Digital", OnClick_Pad1Type_Digital );
 	m->AddItem ( "Pad 1 Type", "Pad 1 Analog", OnClick_Pad1Type_Analog );
 	m->AddItem ( "Pad 1 Type", "Pad 1 DualShock2", OnClick_Pad1Type_DualShock2 );
+	m->AddMenu ( "Pad 1", "Pad 1: Input" );
+	m->AddItem ( "Pad 1: Input", "Pad 1: None", OnClick_Pad1Input_None );
+	m->AddItem ( "Pad 1: Input", "Pad 1: Device0", OnClick_Pad1Input_Device0 );
+	m->AddItem ( "Pad 1: Input", "Pad 1: Device1", OnClick_Pad1Input_Device1 );
 	m->AddMenu ( "Peripherals", "Pad 2" );
+	m->AddItem ( "Pad 2", "Configure Joypad2...", OnClick_Controllers1_Configure );
 	m->AddMenu ( "Pad 2", "Pad 2 Type" );
 	m->AddItem ( "Pad 2 Type", "Pad 2 Digital", OnClick_Pad2Type_Digital );
 	m->AddItem ( "Pad 2 Type", "Pad 2 Analog", OnClick_Pad2Type_Analog );
 	m->AddItem ( "Pad 2 Type", "Pad 2 DualShock2", OnClick_Pad2Type_DualShock2 );
+	m->AddMenu ( "Pad 2", "Pad 2: Input" );
+	m->AddItem ( "Pad 2: Input", "Pad 2: None", OnClick_Pad2Input_None );
+	m->AddItem ( "Pad 2: Input", "Pad 2: Device0", OnClick_Pad2Input_Device0 );
+	m->AddItem ( "Pad 2: Input", "Pad 2: Device1", OnClick_Pad2Input_Device1 );
 	
 	// add menu items for memory cards //
 	m->AddMenu ( "Peripherals", "Memory Cards" );
@@ -693,6 +773,18 @@ int hps2x64::InitializeProgram ()
 	m->AddMenu ( "CPU", "CPU: R5900" );
 	m->AddItem ( "CPU: R5900", "Interpreter: R5900", OnClick_R5900CPU_Interpreter );
 	m->AddItem ( "CPU: R5900", "Recompiler: R5900", OnClick_R5900CPU_Recompiler );
+	m->AddMenu ( "CPU", "CPU: VU0" );
+	m->AddItem ( "CPU: VU0", "Interpreter: VU0", OnClick_VU0_Interpreter );
+	m->AddItem ( "CPU: VU0", "Recompiler: VU0", OnClick_VU0_Recompiler );
+	m->AddMenu ( "CPU", "CPU: VU1" );
+	m->AddItem ( "CPU: VU1", "Interpreter: VU1", OnClick_VU1_Interpreter );
+	m->AddItem ( "CPU: VU1", "Recompiler: VU1", OnClick_VU1_Recompiler );
+	
+	m->AddMainMenuItem ( "GPU" );
+	m->AddMenu ( "GPU", "GPU: Threads" );
+	m->AddItem ( "GPU: Threads", "0 (single-thread)", OnClick_GPU_0Threads );
+	m->AddItem ( "GPU: Threads", "1 (multi-thread)", OnClick_GPU_1Threads );
+	
 	
 	cout << "\nShowing menu bar";
 	
@@ -818,7 +910,7 @@ int hps2x64::RunProgram ()
 	
 	bool bRunningTooSlow;
 	
-	u64 MilliSecsToWait;
+	s64 MilliSecsToWait;
 	
 	u64 TicksPerSec, CurrentTimer, TargetTimer;
 	s64 TicksLeft;
@@ -836,7 +928,7 @@ int hps2x64::RunProgram ()
 	dTicksPerMilliSec = ( (double) TicksPerSec ) / 1000.0L;
 	
 	// get a pointer to the current frame number
-	//pCurrentFrameNumber = (volatile u32*) & _SYSTEM._GPU.Frame_Count;
+	pCurrentFrameNumber = (volatile u32*) & _SYSTEM._GPU.Frame_Count;
 	
 	cout << "\nWaiting for command\n";
 	
@@ -937,39 +1029,47 @@ int hps2x64::RunProgram ()
 				for ( j = 0; j < 60; j++ )
 				{
 					// get the last frame number
-					//LastFrameNumber = *pCurrentFrameNumber;
+					LastFrameNumber = *pCurrentFrameNumber;
+					
+					// multi-threading testing
+					GPU::Start_Frame ();
 					
 					// loop until we reach the next frame
-					for ( i = 0; i < CyclesToRunContinuous; i++ )
-					//while ( LastFrameNumber == ( *pCurrentFrameNumber ) )
+					//for ( i = 0; i < CyclesToRunContinuous; i++ )
+					while ( LastFrameNumber == ( *pCurrentFrameNumber ) )
 					{
 						// run playstation 1 system in regular mode for one cpu instruction
 						_SYSTEM.Run ();
 					}
 					
+					// multi-threading testing
+					GPU::End_Frame ();
+					
 					// get the target platform timer value for this frame
 					// check if this is ntsc or pal
+					// ***TODO*** todo for PS2
 					/*
 					if ( _SYSTEM._GPU.GPU_CTRL_Read.VIDEO )
 					{
 						// PAL //
-						TargetTimer += ( TicksPerSec / 50 );
+						//TargetTimer += ( TicksPerSec / 50 );
+						TargetTimer += ( ( (double) TicksPerSec ) / GPU::PAL_FramesPerSec );
 					}
 					else
+					*/
 					{
 						// NTSC //
-						TargetTimer += ( TicksPerSec / 60 );
+						//TargetTimer += ( TicksPerSec / 60 );
+						TargetTimer += ( ( (double) TicksPerSec ) / GPU::NTSC_FramesPerSec );
 					}
-					*/
 					
 					// process events
-					WindowClass::DoEventsNoWait ();
+					//WindowClass::DoEventsNoWait ();
 					
-					/*
 					// check if we are running slower than target
 					if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
 					{
-						cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+						cout << "\nhps2x64: Error returned from QueryPerformanceCounter\n";
 					}
 					
 					TicksLeft = TargetTimer - CurrentTimer;
@@ -982,27 +1082,43 @@ int hps2x64::RunProgram ()
 					}
 					else
 					{
-						MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
-						MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait, QS_ALLINPUT, MWMO_ALERTABLE );
+						//MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
+						//MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait, QS_ALLINPUT, MWMO_ALERTABLE );
 					}
-					*/
 					
-					/*
+					
 					do
 					{
 						// active-wait
-						//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 						
 						// process events
 						WindowClass::DoEventsNoWait ();
 						
-						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &SystemTimer_Current ) )
+						
+						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
 						{
 							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
 						}
 						
-					} while ( SystemTimer_Current < SystemTimer_Target );
-					*/
+						TicksLeft = TargetTimer - CurrentTimer;
+						
+						MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
+						
+						if ( MilliSecsToWait <= 0 ) MilliSecsToWait = 1;
+						
+						MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait, QS_ALLINPUT, MWMO_ALERTABLE );
+						
+						// process events
+						//WindowClass::DoEventsNoWait ();
+						//WindowClass::DoSingleEvent ();
+						
+						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
+						{
+							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+						}
+						
+					} while ( CurrentTimer < TargetTimer );
+					
 					
 					// if menu has been clicked then wait
 					WindowClass::Window::WaitForModalMenuLoop ();
@@ -1011,17 +1127,16 @@ int hps2x64::RunProgram ()
 					if ( HandleMenuClick () ) break;
 					
 					
-					/*
 					// check if we are running too slow
 					if ( bRunningTooSlow )
 					{
 						// set the new timer target to be the current timer
 						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &TargetTimer ) )
 						{
-							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+							cout << "\nhps2x64: Error returned from QueryPerformanceCounter\n";
 						}
 					}
-					*/
+					
 					
 				}
 				
@@ -1641,6 +1756,7 @@ static void hps2x64::OnClick_File_Save_State ( u32 i )
 	//m.File_Save_State = true;
 	//x64ThreadSafe::Utilities::Lock_OR64 ( (long long&)_MenuClick.Value, (long long) m.Value );
 	cout << "\nYou clicked File | Save | State\n";
+	
 	_HPS2X64.SaveState ();
 	
 	_MenuWasClicked = 1;
@@ -2205,7 +2321,7 @@ static void hps2x64::OnClick_Debug_Show_SPU1 ( u32 i )
 
 
 
-static void hps2x64::OnClick_Controllers_Configure ( u32 i )
+static void hps2x64::OnClick_Controllers0_Configure ( u32 i )
 {
 	//MenuClicked m;
 	//m.Controllers_Configure = true;
@@ -2251,6 +2367,52 @@ static void hps2x64::OnClick_Controllers_Configure ( u32 i )
 	
 	_MenuWasClicked = 1;
 }
+static void hps2x64::OnClick_Controllers1_Configure ( u32 i )
+{
+	//MenuClicked m;
+	//m.Controllers_Configure = true;
+	//x64ThreadSafe::Utilities::Lock_OR64 ( (long long&)_MenuClick.Value, (long long) m.Value );
+	cout << "\nYou clicked Controllers | Configure...\n";
+	
+	Dialog_KeyConfigure::KeyConfigure [ 0 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 1 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_O [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 2 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Triangle [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 3 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Square [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 4 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R1 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 5 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R2 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 6 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R3 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 7 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L1 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 8 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L2 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 9 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L3 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 10 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Start [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 11 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Select [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 12 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.LeftAnalog_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 13 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.LeftAnalog_Y [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 14 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.RightAnalog_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 15 ] = _HPS2X64._SYSTEM._PS1SYSTEM._SIO.RightAnalog_Y [ 1 ];
+	
+	if ( Dialog_KeyConfigure::Show_ConfigureKeysDialog () )
+	{
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 0 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_O [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 1 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Triangle [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 2 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Square [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 3 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R1 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 4 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R2 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 5 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_R3 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 6 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L1 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 7 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L2 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 8 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_L3 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 9 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Start [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 10 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.Key_Select [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 11 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.LeftAnalog_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 12 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.LeftAnalog_Y [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 13 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.RightAnalog_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 14 ];
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.RightAnalog_Y [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 15 ];
+	}
+	
+	_MenuWasClicked = 1;
+}
 
 static void hps2x64::OnClick_Pad1Type_Digital ( u32 i )
 {
@@ -2281,6 +2443,40 @@ static void hps2x64::OnClick_Pad1Type_DualShock2 ( u32 i )
 	_MenuWasClicked = 1;
 }
 
+static void hps2x64::OnClick_Pad1Input_None ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_Pad1Input_Device0 ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] = 0;
+
+	if ( _HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] == 0 )
+	{
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	}
+
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_Pad1Input_Device1 ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] = 1;
+
+	if ( _HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] == 1 )
+	{
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	}
+
+	_MenuWasClicked = 1;
+}
+
+
+
+
 static void hps2x64::OnClick_Pad2Type_Digital ( u32 i )
 {
 	//MenuClicked m;
@@ -2309,6 +2505,38 @@ static void hps2x64::OnClick_Pad2Type_DualShock2 ( u32 i )
 	
 	_MenuWasClicked = 1;
 }
+
+static void hps2x64::OnClick_Pad2Input_None ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_Pad2Input_Device0 ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] = 0;
+
+	if ( _HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] == 0 )
+	{
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	}
+
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_Pad2Input_Device1 ( u32 i )
+{
+	_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 1 ] = 1;
+
+	if ( _HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] == 1 )
+	{
+		_HPS2X64._SYSTEM._PS1SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	}
+
+	_MenuWasClicked = 1;
+}
+
 
 
 static void hps2x64::OnClick_Card1_Connect ( u32 i )
@@ -2612,6 +2840,74 @@ static void hps2x64::OnClick_R5900CPU_Recompiler ( u32 i )
 }
 
 
+static void hps2x64::OnClick_VU0_Interpreter ( u32 i )
+{
+	cout << "\nYou clicked CPU | VU0 | Interpreter\n";
+
+	_HPS2X64._SYSTEM._VU0.VU0.bEnableRecompiler = false;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_VU0_Recompiler ( u32 i )
+{
+	cout << "\nYou clicked CPU | VU0 | Recompiler\n";
+
+	_HPS2X64._SYSTEM._VU0.VU0.bEnableRecompiler = true;
+	
+	// need to reset the recompiler
+	//_HPS2X64._SYSTEM._VU0.VU0.vrs[0]->Reset ();
+	_HPS2X64._SYSTEM._VU0.VU0.bCodeModified [ 0 ] = 1;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_VU1_Interpreter ( u32 i )
+{
+	cout << "\nYou clicked CPU | VU1 | Interpreter\n";
+
+	_HPS2X64._SYSTEM._VU1.VU1.bEnableRecompiler = false;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_VU1_Recompiler ( u32 i )
+{
+	cout << "\nYou clicked CPU | VU1 | Recompiler\n";
+
+	_HPS2X64._SYSTEM._VU1.VU1.bEnableRecompiler = true;
+	
+	// need to reset the recompiler
+	//_HPS2X64._SYSTEM._VU1.VU1.vrs[1]->Reset ();
+	_HPS2X64._SYSTEM._VU1.VU1.bCodeModified [ 1 ] = 1;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
+
+
+static void hps2x64::OnClick_GPU_0Threads ( u32 i )
+{
+	cout << "\nYou clicked GPU | GPU: Threads | 0 threads\n";
+	
+	_HPS2X64._SYSTEM._GPU.ulNumberOfThreads = 0;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
+
+static void hps2x64::OnClick_GPU_1Threads ( u32 i )
+{
+	cout << "\nYou clicked GPU | GPU: Threads | 1 threads\n";
+	
+	_HPS2X64._SYSTEM._GPU.ulNumberOfThreads = 1;
+	
+	_HPS2X64.Update_CheckMarksOnMenu ();
+	_MenuWasClicked = 1;
+}
 
 
 
@@ -2664,7 +2960,7 @@ void hps2x64::SaveState ( string FilePath )
 	static const char* PathToSaveState = "SaveState.hps1";
 	
 	// make sure cd is not reading asynchronously??
-	//_SYSTEM._CD.cd_image.WaitForAllReadsComplete ();
+	_SYSTEM._PS1SYSTEM._CD.cd_image.WaitForAllReadsComplete ();
 
 	////////////////////////////////////////////////////////
 	// We need to prompt for the file to save state to

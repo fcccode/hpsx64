@@ -35,6 +35,9 @@
 #include "R3000A.h"
 
 
+#include "MultiThread.h"
+#include "GNUThreading_x64.h"
+
 
 using namespace Playstation1;
 using namespace x64Asm::Utilities;
@@ -55,6 +58,7 @@ using namespace Math::Reciprocal;
 
 #ifdef USE_TEMPLATES_PS1_GPU
 
+/*
 #define USE_TEMPLATES_RECTANGLE
 #define USE_TEMPLATES_RECTANGLE8
 #define USE_TEMPLATES_RECTANGLE16
@@ -73,6 +77,7 @@ using namespace Math::Reciprocal;
 #define USE_TEMPLATES_LINE_SHADED
 #define USE_TEMPLATES_POLYLINE_MONO
 #define USE_TEMPLATES_POLYLINE_SHADED
+*/
 
 #endif
 
@@ -107,8 +112,8 @@ using namespace Math::Reciprocal;
 //#define INLINE_DEBUG_SPLIT
 
 
-#define INLINE_DEBUG_WRITE
-#define INLINE_DEBUG_DMA_WRITE
+//#define INLINE_DEBUG_WRITE
+//#define INLINE_DEBUG_DMA_WRITE
 #define INLINE_DEBUG_EXECUTE
 //#define INLINE_DEBUG_READ
 //#define INLINE_DEBUG_DMA_READ
@@ -117,15 +122,15 @@ using namespace Math::Reciprocal;
 //#define INLINE_DEBUG_RASTER_SCANLINE
 
 
-#define INLINE_DEBUG_RASTER_VBLANK
+//#define INLINE_DEBUG_RASTER_VBLANK
 
 //#define INLINE_DEBUG_DRAWSTART
 //#define INLINE_DEBUG_EVENT
 //#define INLINE_DEBUG_VARS
-//#define INLINE_DEBUG_EXECUTE_NAME
+#define INLINE_DEBUG_EXECUTE_NAME
 //#define INLINE_DEBUG_DRAW_SCREEN
 
-
+/*
 //#define INLINE_DEBUG_DISPLAYAREA
 //#define INLINE_DEBUG_DISPLAYMODE
 //#define INLINE_DEBUG_DISPLAYENABLE
@@ -155,7 +160,7 @@ using namespace Math::Reciprocal;
 //#define INLINE_DEBUG_TRIANGLE_TEXTURE
 //#define INLINE_DEBUG_TRIANGLE_TEXTURE_GRADIENT
 //#define INLINE_DEBUG_TRIANGLE_MONO_TEST
-
+*/
 
 #endif
 
@@ -205,6 +210,22 @@ u32 GPU::MainProgramWindow_Width;
 u32 GPU::MainProgramWindow_Height;
 
 
+//Compute::Context *GPU::ctx;
+
+
+
+static u32 GPU::ulNumberOfThreads;
+static Api::Thread* GPU::GPUThreads [ GPU::c_iMaxThreads ];
+
+static volatile u64 GPU::ullInputBuffer_Index;
+static volatile u32 GPU::ulInputBuffer_Count;
+static volatile u32 GPU::inputdata [ ( 1 << GPU::c_ulInputBuffer_Shift ) * GPU::c_ulInputBuffer_Size ] __attribute__ ((aligned (32)));
+
+static volatile u32 GPU::ulInputBuffer_WriteIndex;
+static volatile u32 GPU::ulInputBuffer_TargetIndex;
+static volatile u32 GPU::ulInputBuffer_ReadIndex;
+
+
 bool GPU::DebugWindow_Enabled;
 //WindowClass::Window *GPU::DebugWindow;
 
@@ -237,6 +258,11 @@ const s64 GPU::c_iDitherValues24 [] = { -4LL << 24, 0LL << 24, -3LL << 24, 1LL <
 									2LL << 24, -2LL << 24, 3LL << 24, -1LL << 24,
 									-3LL << 24, 1LL << 24, -4LL << 24, 0LL << 24,
 									3LL << 24, -1LL << 24, 2LL << 24, -2LL << 24 };
+
+const s32 GPU::c_iDitherValues16 [] = { -4LL << 16, 0LL << 16, -3LL << 16, 1LL << 16,
+									2LL << 16, -2LL << 16, 3LL << 16, -1LL << 16,
+									-3LL << 16, 1LL << 16, -4LL << 16, 0LL << 16,
+									3LL << 16, -1LL << 16, 2LL << 16, -2LL << 16 };
 
 const s32 GPU::c_iDitherValues4 [] = { -4LL << 4, 0LL << 4, -3LL << 4, 1LL << 4,
 									2LL << 4, -2LL << 4, 3LL << 4, -1LL << 4,
@@ -436,8 +462,88 @@ void GPU::Start ()
 	// set as current GPU object
 	_GPU = this;
 	
-	// generate LUTs
-	//Generate_Modulo_LUT ();
+	
+	// hooking in opencl //
+	
+	/*
+	// open cl init
+	Compute::Context::Init ();
+	
+	cout << "\nCreating compute context";
+	
+	ctx = new Compute::Context();
+	
+	
+	
+	cout << "\nCreating program";
+	
+	//while ( 1 );
+	//cin.ignore ();
+	
+	p = //ctx->CreateProgram ( "ps1_gpu_backend.cl" );
+	
+	if ( !p )
+	{
+		cout << "\nError creating program.";
+		return;
+	}
+	
+	cout << "\nCreating kernel";
+	
+	//ctx->CreateKernel ( "ps1_gfx_test" );
+
+	cout << "\nCreating buffers";
+	
+	cout << "\nsizeof(VRAM)= " << sizeof( VRAM );
+	cout << "\nsizeof(PixelBuffer)= " << sizeof( PixelBuffer );
+	cout << "\nsizeof(inputdata)= " << sizeof( inputdata );
+	
+	cout << "\nlocal memsize= " << //ctx->GetLocalMemSize ( //ctx->GetDeviceId( 0 ) );
+	cout << "\nmax compute units= " << //ctx->GetComputeUnitCount ( //ctx->GetDeviceId( 0 ) );
+	cout << "\nmax local work units= " << //ctx->GetLocalWorkUnitCount ( //ctx->GetDeviceId( 0 ) );
+	
+	num_compute_units = //ctx->GetComputeUnitCount ( //ctx->GetDeviceId( 0 ) );
+	num_local_workers = //ctx->GetLocalWorkUnitCount ( //ctx->GetDeviceId( 0 ) );
+	total_compute_units = num_compute_units * num_local_workers;
+	
+	//bufa = ctx.CreateRWBuffer( sizeof( ps1gfxbuffer ), ps1gfxbuffer );
+	//bufb = ctx.CreateWriteBuffer ( sizeof( inputdata ), inputdata );
+	
+	// this is the VRAM for ps1
+	bufa = //ctx->CreateRWBuffer( sizeof( VRAM ), VRAM );
+	
+	// this is where the commands will be coming from
+	bufb = //ctx->CreateRWBuffer ( sizeof( inputdata ), inputdata );
+	
+	// the buffer where the screen is drawn to
+	bufc = //ctx->CreateRWBuffer ( sizeof( PixelBuffer ), PixelBuffer );
+
+	bufd = //ctx->CreateRWBuffer ( sizeof( Dummy ) );
+	
+	cout << "\nCreating kernel args";
+	
+	//ctx->SetKernelArg ( 0, bufa );
+	//ctx->SetKernelArg ( 1, bufb );
+	//ctx->SetKernelArg ( 2, bufc );
+	//ctx->SetKernelArg ( 3, bufd );
+	*/
+	
+	// testing opencl
+	bEnable_OpenCL = false;
+	
+	// 0 means on same thread, 1 or greater means on separate threads (power of 2 ONLY!!)
+	ulNumberOfThreads = 0;
+	
+	/*
+	if ( ulNumberOfThreads )
+	{
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			// create thread
+			GPUThreads [ i ] = new Api::Thread( Start_GPUThread, (void*) inputdata );
+		}
+	}
+	*/
 
 	cout << "done\n";
 
@@ -447,6 +553,7420 @@ void GPU::Start ()
 
 	cout << "Exiting GPU::Start...\n";
 }
+
+
+
+static void GPU::draw_screen_th( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;	//get_local_id( 0 );
+	const int group_id = 0;	//get_group_id( 0 );
+	const int num_local_threads = 1;	//get_local_size ( 0 );
+	const int num_global_groups = 1;	//get_num_groups( 0 );
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = 0;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	const int group_yoffset = group_id;
+//#endif
+
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DisplayRange_Horizontal
+//2: DisplayRange_Vertical
+//3: ScreenArea_TopLeft
+//4: bEnableScanline
+//5: Y_Pixel
+//6: -----------
+//7: Command
+
+
+
+	const int c_iVisibleArea_StartX_Cycle = 584;
+	const int c_iVisibleArea_EndX_Cycle = 3192;
+	const int c_iVisibleArea_StartY_Pixel_NTSC = 15;
+	const int c_iVisibleArea_EndY_Pixel_NTSC = 257;
+	const int c_iVisibleArea_StartY_Pixel_PAL = 34;
+	const int c_iVisibleArea_EndY_Pixel_PAL = 292;
+
+	const int c_iVisibleArea_StartY [] = { c_iVisibleArea_StartY_Pixel_NTSC, c_iVisibleArea_StartY_Pixel_PAL };
+	const int c_iVisibleArea_EndY [] = { c_iVisibleArea_EndY_Pixel_NTSC, c_iVisibleArea_EndY_Pixel_PAL };
+
+	const u32 c_iGPUCyclesPerPixel [] = { 10, 7, 8, 0, 5, 0, 4, 0 };
+
+
+	
+
+	u32 GPU_CTRL_Read;
+	u32 DisplayRange_X1;
+	u32 DisplayRange_X2;
+	u32 DisplayRange_Y1;
+	u32 DisplayRange_Y2;
+	u32 ScreenArea_TopLeftX;
+	u32 ScreenArea_TopLeftY;
+	u32 bEnableScanline;
+	u32 Y_Pixel;
+
+	
+	// so the max viewable width for PAL is 3232/4-544/4 = 808-136 = 672
+	// so the max viewable height for PAL is 292-34 = 258
+	
+	// actually, will initially start with a 1 pixel border based on screen width/height and then will shift if something is off screen
+
+	// need to know visible range of screen for NTSC and for PAL (each should be different)
+	// NTSC visible y range is usually from 16-256 (0x10-0x100) (height=240)
+	// PAL visible y range is usually from 35-291 (0x23-0x123) (height=256)
+	// NTSC visible x range is.. I don't know. start with from about gpu cycle#544 to about gpu cycle#3232 (must use gpu cycles since res changes)
+	s32 VisibleArea_StartX, VisibleArea_EndX, VisibleArea_StartY, VisibleArea_EndY, VisibleArea_Width, VisibleArea_Height;
+	
+	// there the frame buffer pixel, and then there's the screen buffer pixel
+	u32 Pixel16, Pixel32_0, Pixel32_1;
+	//u64 Pixel64;
+	
+	
+	// this allows you to calculate horizontal pixels
+	u32 GPU_CyclesPerPixel;
+	
+	
+	Pixel_24bit_Format Pixel24;
+	
+	
+	s32 FramePixel_X, FramePixel_Y;
+	
+	// need to know where to draw the actual image at
+	s32 Draw_StartX, Draw_StartY, Draw_EndX, Draw_EndY, Draw_Width, Draw_Height;
+	
+	s32 Source_Height;
+	
+	
+	u16* ptr_vram16;
+	u32* ptr_pixelbuffer32;
+	
+	s32 TopBorder_Height, BottomBorder_Height, LeftBorder_Width, RightBorder_Width;
+	s32 current_x, current_y;
+	s32 current_xmax, current_ymax;
+
+	
+	u32 GPU_CTRL_Read_ISINTER;
+	u32 GPU_CTRL_Read_HEIGHT;
+	u32 GPU_CTRL_Read_WIDTH;
+	u32 GPU_CTRL_Read_DEN;
+	u32 GPU_CTRL_Read_ISRGB24;
+	u32 GPU_CTRL_Read_VIDEO;
+
+		
+	// don't do this if it is running on a different thread
+	if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+	{
+		return;
+	}
+	
+	
+	//if ( !local_id )
+	//{
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DisplayRange_X1 = inputdata [ 1 ].Value & 0xfff;
+		DisplayRange_X2 = ( inputdata [ 1 ].Value >> 12 ) & 0xfff;
+		DisplayRange_Y1 = inputdata [ 2 ].Value & 0x3ff;
+		DisplayRange_Y2 = ( inputdata [ 2 ].Value >> 10 ) & 0x7ff;
+		ScreenArea_TopLeftX = inputdata [ 3 ].Value & 0x3ff;
+		ScreenArea_TopLeftY = ( inputdata [ 3 ].Value >> 10 ) & 0x1ff;
+		bEnableScanline = inputdata [ 4 ].Value;
+		Y_Pixel = inputdata [ 5 ].Value;
+
+		
+		// bits 16-18
+		GPU_CTRL_Read_WIDTH = ( GPU_CTRL_Read >> 16 ) & 7;
+		
+		// bit 19
+		GPU_CTRL_Read_HEIGHT = ( GPU_CTRL_Read >> 19 ) & 1;
+		
+		// bit 20
+		GPU_CTRL_Read_VIDEO = ( GPU_CTRL_Read >> 20 ) & 1;
+		
+		// bit 21
+		GPU_CTRL_Read_ISRGB24 = ( GPU_CTRL_Read >> 21 ) & 1;
+		
+		// bit 22
+		GPU_CTRL_Read_ISINTER = ( GPU_CTRL_Read >> 22 ) & 1;
+		
+		// bit 23
+		GPU_CTRL_Read_DEN = ( GPU_CTRL_Read >> 23 ) & 1;
+		
+		
+		// GPU cycles per pixel depends on width
+		GPU_CyclesPerPixel = c_iGPUCyclesPerPixel [ GPU_CTRL_Read_WIDTH ];
+
+		// get the pixel to start and stop drawing at
+		Draw_StartX = DisplayRange_X1 / GPU_CyclesPerPixel;
+		Draw_EndX = DisplayRange_X2 / GPU_CyclesPerPixel;
+		Draw_StartY = DisplayRange_Y1;
+		Draw_EndY = DisplayRange_Y2;
+
+		Draw_Width = Draw_EndX - Draw_StartX;
+		Draw_Height = Draw_EndY - Draw_StartY;
+		// get the pixel to start and stop at for visible area
+		VisibleArea_StartX = c_iVisibleArea_StartX_Cycle / GPU_CyclesPerPixel;
+		VisibleArea_EndX = c_iVisibleArea_EndX_Cycle / GPU_CyclesPerPixel;
+
+		// visible area start and end y depends on pal/ntsc
+		VisibleArea_StartY = c_iVisibleArea_StartY [ GPU_CTRL_Read_VIDEO ];
+		VisibleArea_EndY = c_iVisibleArea_EndY [ GPU_CTRL_Read_VIDEO ];
+
+		VisibleArea_Width = VisibleArea_EndX - VisibleArea_StartX;
+		VisibleArea_Height = VisibleArea_EndY - VisibleArea_StartY;
+
+
+		Source_Height = Draw_Height;
+
+		if ( GPU_CTRL_Read_ISINTER && GPU_CTRL_Read_HEIGHT )
+		{
+			// 480i mode //
+			
+			// if not simulating scanlines, then the draw height should double too
+			if ( !bEnableScanline )
+			{
+				VisibleArea_EndY += Draw_Height;
+				VisibleArea_Height += Draw_Height;
+				
+				Draw_EndY += Draw_Height;
+				
+				Draw_Height <<= 1;
+			}
+			
+			Source_Height <<= 1;
+		}
+	
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; GPU_CyclesPerPixel=" << dec << GPU_CyclesPerPixel << " Draw_StartX=" << Draw_StartX << " Draw_EndX=" << Draw_EndX;
+	debug << "\r\nDraw_StartY=" << Draw_StartY << " Draw_EndY=" << Draw_EndY << " VisibleArea_StartX=" << VisibleArea_StartX;
+	debug << "\r\nVisibleArea_EndX=" << VisibleArea_EndX << " VisibleArea_StartY=" << VisibleArea_StartY << " VisibleArea_EndY=" << VisibleArea_EndY;
+#endif
+
+		
+		
+		if ( !GPU_CTRL_Read_DEN )
+		{
+			BottomBorder_Height = VisibleArea_EndY - Draw_EndY;
+			LeftBorder_Width = Draw_StartX - VisibleArea_StartX;
+			TopBorder_Height = Draw_StartY - VisibleArea_StartY;
+			RightBorder_Width = VisibleArea_EndX - Draw_EndX;
+			
+			if ( BottomBorder_Height < 0 ) BottomBorder_Height = 0;
+			if ( LeftBorder_Width < 0 ) LeftBorder_Width = 0;
+			
+			//cout << "\n(before)Left=" << dec << LeftBorder_Width << " Bottom=" << BottomBorder_Height << " Draw_Width=" << Draw_Width << " VisibleArea_Width=" << VisibleArea_Width;
+			
+			
+			current_ymax = Draw_Height + BottomBorder_Height;
+			current_xmax = Draw_Width + LeftBorder_Width;
+			
+			// make suree that ymax and xmax are not greater than the size of visible area
+			if ( current_xmax > VisibleArea_Width )
+			{
+				// entire image is not on the screen, so take from left border and recalc xmax //
+
+				LeftBorder_Width -= ( current_xmax - VisibleArea_Width );
+				if ( LeftBorder_Width < 0 ) LeftBorder_Width = 0;
+				current_xmax = Draw_Width + LeftBorder_Width;
+				
+				// make sure again we do not draw past the edge of screen
+				if ( current_xmax > VisibleArea_Width ) current_xmax = VisibleArea_Width;
+			}
+			
+			if ( current_ymax > VisibleArea_Height )
+			{
+				BottomBorder_Height -= ( current_ymax - VisibleArea_Height );
+				if ( BottomBorder_Height < 0 ) BottomBorder_Height = 0;
+				current_ymax = Draw_Height + BottomBorder_Height;
+				
+				// make sure again we do not draw past the edge of screen
+				if ( current_ymax > VisibleArea_Height ) current_ymax = VisibleArea_Height;
+			}
+			
+		}	// end if ( !GPU_CTRL_Read_DEN )
+		
+	//}	// end if ( !local_id )
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+	
+
+	// *** new stuff *** //
+
+	//FramePixel = 0;
+	ptr_pixelbuffer32 = _GPU->PixelBuffer;
+	//ptr_pixelbuffer64 = (u64*) PixelBuffer;
+
+	
+		//cout << "\n(after)Left=" << dec << LeftBorder_Width << " Bottom=" << BottomBorder_Height << " Draw_Width=" << Draw_Width << " VisibleArea_Width=" << VisibleArea_Width;
+		//cout << "\n(after2)current_xmax=" << current_xmax << " current_ymax=" << current_ymax;
+		
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; Drawing bottom border";
+#endif
+
+	if ( !GPU_CTRL_Read_DEN )
+	{
+		// current_y should start at zero for even field and one for odd
+		//current_y = 0;
+		current_y = group_yoffset + yid;
+		
+		// added for opencl, need to start in pixel buffer on the right line
+		ptr_pixelbuffer32 += ( VisibleArea_Width * ( group_yoffset + yid ) );
+		
+		// put in bottom border //
+		
+		
+		// check if scanlines simulation is enabled
+		if ( bEnableScanline )
+		{
+			// spread out workers on every other line
+			ptr_pixelbuffer32 += ( VisibleArea_Width * ( group_yoffset + yid ) );
+			
+			// if this is an odd field, then start writing on the next line
+			if ( Y_Pixel & 1 )
+			{
+				// odd field //
+				
+				ptr_pixelbuffer32 += VisibleArea_Width;
+			}
+		}
+		
+
+		while ( current_y < BottomBorder_Height )
+		{
+			//current_x = 0;
+			current_x = xid;
+			
+			while ( current_x < VisibleArea_Width )
+			{
+				// *ptr_pixelbuffer32++ = 0;
+				ptr_pixelbuffer32 [ current_x ] = 0;
+				
+				//current_x++;
+				current_x += xinc;
+			}
+			
+			//current_y++;
+			current_y += yinc;
+			
+			// added for opencl, update pixel buffer multiple lines
+			ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			
+			// check if scanline simulation is enabled
+			if ( bEnableScanline )
+			{
+				// update again since doing every other line
+				//ptr_pixelbuffer32 += VisibleArea_Width;
+				ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			}
+		}
+
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; Putting in screen";
+	debug << " current_ymax=" << dec << current_ymax;
+	debug << " current_xmax=" << current_xmax;
+	debug << " VisibleArea_Width=" << VisibleArea_Width;
+	debug << " VisibleArea_Height=" << VisibleArea_Height;
+	debug << " LeftBorder_Width=" << LeftBorder_Width;
+#endif
+		
+		// put in screen
+		
+		
+		FramePixel_Y = ScreenArea_TopLeftY + Source_Height - 1;
+		FramePixel_X = ScreenArea_TopLeftX;
+
+
+//if ( !__global_id )
+//{
+//	printf( "FramePixel_X= %i FramePixel_Y= %i", FramePixel_X, FramePixel_Y );
+//}
+
+		
+		// for opencl, spread the workers across the lines
+		//FramePixel_Y -= group_yoffset + yid;
+		FramePixel_Y -= ( current_y - BottomBorder_Height );
+		
+		// check if simulating scanlines
+		if ( bEnableScanline )
+		{
+			// check if 480i
+			if ( GPU_CTRL_Read_ISINTER && GPU_CTRL_Read_HEIGHT )
+			{
+				// 480i //
+				
+				// for opencl, spread interlace mode to every other line
+				//FramePixel_Y -= group_yoffset + yid;
+				FramePixel_Y -= ( current_y - BottomBorder_Height );
+				
+				// check if in odd field or even field
+				if ( Y_Pixel & 1 )
+				{
+					// odd field //
+					
+					// if the height is even, then it is ok
+					// if the height is odd, need to compensate
+					if ( ! ( Source_Height & 1 ) )
+					{
+						FramePixel_Y--;
+					}
+				}
+				else
+				{
+					// even field //
+					
+					// if the height is odd, then it is ok
+					// if the height is even, need to compensate
+					if ( Source_Height & 1 )
+					{
+						FramePixel_Y--;
+					}
+				}
+				
+			} // end if ( GPU_CTRL_Read.ISINTER && GPU_CTRL_Read.HEIGHT )
+		}
+		
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; drawing screen pixels";
+	debug << " current_x=" << dec << current_x;
+	debug << " FramePixel_X=" << FramePixel_X;
+	debug << " FramePixel_Y=" << FramePixel_Y;
+#endif
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\ncheck: current_x=" << current_x;
+	debug << " current_xmax=" << current_xmax;
+	debug << " ptr_vram32=" << ( (u64) ptr_vram32 );
+	debug << " VRAM=" << ( (u64) VRAM );
+	debug << " ptr_pixelbuffer64=" << ( (u64) ptr_pixelbuffer64 );
+	debug << " PixelBuffer=" << ( (u64) PixelBuffer );
+#endif
+
+
+
+
+	
+		while ( current_y < current_ymax )
+		{
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; drawing left border";
+	debug << " current_y=" << dec << current_y;
+#endif
+			// put in the left border
+			//current_x = 0;
+			current_x = xid;
+
+			while ( current_x < LeftBorder_Width )
+			{
+				// *ptr_pixelbuffer32++ = 0;
+				ptr_pixelbuffer32 [ current_x ] = 0;
+				
+				//current_x++;
+				current_x += xinc;
+			}
+			
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; drawing screen pixels";
+	debug << " current_x=" << dec << current_x;
+	debug << " FramePixel_X=" << FramePixel_X;
+	debug << " FramePixel_Y=" << FramePixel_Y;
+#endif
+
+			// *** important note *** this wraps around the VRAM
+			ptr_vram16 = & (_GPU->VRAM [ FramePixel_X + ( ( FramePixel_Y & FrameBuffer_YMask ) << 10 ) ]);
+			
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; got vram ptr";
+#endif
+
+			// put in screeen pixels
+			if ( !GPU_CTRL_Read_ISRGB24 )
+			{
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; !ISRGB24";
+#endif
+
+				while ( current_x < current_xmax )
+				{
+//#ifdef INLINE_DEBUG_DRAW_SCREEN
+//	debug << "\r\ndrawx1; current_x=" << current_x;
+//#endif
+
+					//Pixel16 = *ptr_vram16++;
+					Pixel16 = ptr_vram16 [ current_x - LeftBorder_Width ];
+					
+					// the previous pixel conversion is wrong
+					Pixel32_0 = ( ( Pixel16 & 0x1f ) << 3 ) | ( ( Pixel16 & 0x3e0 ) << 6 ) | ( ( Pixel16 & 0x7c00 ) << 9 );
+					
+					// *ptr_pixelbuffer32++ = Pixel32_0;
+					ptr_pixelbuffer32 [ current_x ] = Pixel32_0;
+					
+					
+					//current_x++;
+					current_x += xinc;
+				}
+			}
+			else
+			{
+				while ( current_x < current_xmax )
+				{
+					//Pixel24.Pixel0 = *ptr_vram16++;
+					//Pixel24.Pixel1 = *ptr_vram16++;
+					//Pixel24.Pixel2 = *ptr_vram16++;
+					Pixel24.Pixel0 = ptr_vram16 [ ( ( ( current_x - LeftBorder_Width ) >> 1 ) * 3 ) + 0 ];
+					Pixel24.Pixel1 = ptr_vram16 [ ( ( ( current_x - LeftBorder_Width ) >> 1 ) * 3 ) + 1 ];
+					Pixel24.Pixel2 = ptr_vram16 [ ( ( ( current_x - LeftBorder_Width ) >> 1 ) * 3 ) + 2 ];
+					
+					// draw first pixel
+					Pixel32_0 = ( ((u32)Pixel24.Red0) ) | ( ((u32)Pixel24.Green0) << 8 ) | ( ((u32)Pixel24.Blue0) << 16 );
+					
+					// draw second pixel
+					Pixel32_1 = ( ((u32)Pixel24.Red1) ) | ( ((u32)Pixel24.Green1) << 8 ) | ( ((u32)Pixel24.Blue1) << 16 );
+					
+					// *ptr_pixelbuffer32++ = Pixel32_0;
+					// *ptr_pixelbuffer32++ = Pixel32_1;
+					ptr_pixelbuffer32 [ current_x ] = Pixel32_0;
+					ptr_pixelbuffer32 [ current_x + 1 ] = Pixel32_1;
+					
+					//current_x += 2;
+					current_x += ( xinc << 1 );
+				}
+			}
+			
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; drawing right border";
+	debug << " current_x=" << dec << current_x;
+#endif
+
+			// put in right border
+			while ( current_x < VisibleArea_Width )
+			{
+				// *ptr_pixelbuffer32++ = 0;
+				ptr_pixelbuffer32 [ current_x ] = 0;
+				
+				//current_x++;
+				current_x += xinc;
+			}
+			
+			
+			//current_y++;
+			current_y += yinc;
+			
+			// for opencl, update pixel buffer to next line
+			ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			
+			if ( bEnableScanline )
+			{
+				// check if this is 480i
+				if ( GPU_CTRL_Read_ISINTER && GPU_CTRL_Read_HEIGHT )
+				{
+					// 480i mode //
+					
+					// jump two lines in source image
+					//FramePixel_Y -= 2;
+					FramePixel_Y -= ( yinc << 1 );
+				}
+				else
+				{
+					// go to next line in frame buffer
+					//FramePixel_Y--;
+					FramePixel_Y -= yinc;
+				}
+				
+				// also go to next line in destination buffer
+				//ptr_pixelbuffer32 += VisibleArea_Width;
+				ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			}
+			else
+			{
+				// go to next line in frame buffer
+				//FramePixel_Y--;
+				FramePixel_Y -= yinc;
+			}
+			
+			
+		} // end while ( current_y < current_ymax )
+		
+#ifdef INLINE_DEBUG_DRAW_SCREEN_2
+	debug << "\r\nGPU::Draw_Screen; Drawing top border";
+#endif
+
+		// put in top border //
+		
+
+		while ( current_y < VisibleArea_Height )
+		{
+			//current_x = 0;
+			current_x = xid;
+			
+			while ( current_x < VisibleArea_Width )
+			{
+				// *ptr_pixelbuffer32++ = 0;
+				ptr_pixelbuffer32 [ current_x ] = 0;
+				
+				//current_x++;
+				current_x += xinc;
+			} // end while ( current_x < VisibleArea_Width )
+				
+			//current_y++;
+			current_y += yinc;
+				
+			// for opencl, update pixel buffer to next line
+			ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			
+			// check if scanline simulation is enabled
+			if ( bEnableScanline )
+			{
+				// also go to next line in destination buffer
+				//ptr_pixelbuffer32 += VisibleArea_Width;
+				ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			}
+			
+		} // end while ( current_y < current_ymax )
+	}
+	else
+	{
+		// display disabled //
+		
+
+		//current_y = 0;
+		current_y = group_yoffset + yid;
+		
+		// set initial row for pixel buffer pointer
+		ptr_pixelbuffer32 += ( VisibleArea_Width * current_y );
+		
+		if ( bEnableScanline )
+		{
+			// space out to every other line
+			ptr_pixelbuffer32 += ( VisibleArea_Width * current_y );
+			
+			if ( Y_Pixel & 1 )
+			{
+				// odd field //
+				
+				ptr_pixelbuffer32 += VisibleArea_Width;
+			}
+		}
+		
+		while ( current_y < VisibleArea_Height )
+		{
+			//current_x = 0;
+			current_x = xid;
+			
+			while ( current_x < VisibleArea_Width )
+			{
+				// *ptr_pixelbuffer32++ = 0;
+				ptr_pixelbuffer32 [ current_x ] = 0;
+				
+				//current_x++;
+				current_x += xinc;
+			}
+			
+			//current_y++;
+			current_y += yinc;
+			
+			// for opencl, update pixel buffer to next line
+			ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			
+			if ( bEnableScanline )
+			{
+				//ptr_pixelbuffer32 += VisibleArea_Width;
+				ptr_pixelbuffer32 += ( VisibleArea_Width * yinc );
+			}
+		}
+
+	}
+	
+	
+	// *** output of pixel buffer to screen *** //
+
+	// make this the current window we are drawing to
+	DisplayOutput_Window->OpenGL_MakeCurrentWindow ();
+
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; glPixelZoom";
+#endif
+
+
+	// check if simulating scanlines
+	if ( bEnableScanline )
+	{
+		// the visible height is actually times 2 in the buffer for odd and even fields
+		VisibleArea_Height <<= 1;
+		
+		// but, its actually times 2 and then minus one
+		VisibleArea_Height--;
+	}
+	
+	//glPixelZoom ( (float)MainProgramWindow_Width / (float)DrawWidth, (float)MainProgramWindow_Height / (float)DrawHeight );
+	//glDrawPixels ( DrawWidth, DrawHeight, GL_RGBA, GL_UNSIGNED_BYTE, (const GLvoid*) PixelBuffer );
+	glPixelZoom ( (float)MainProgramWindow_Width / (float)VisibleArea_Width, (float)MainProgramWindow_Height / (float)VisibleArea_Height );
+	
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; glDrawPixels";
+#endif
+	
+	glDrawPixels ( VisibleArea_Width, VisibleArea_Height, GL_RGBA, GL_UNSIGNED_BYTE, (const GLvoid*) _GPU->PixelBuffer );
+
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; DisplayOutput_Window->FlipScreen";
+#endif
+	
+	// update screen
+	DisplayOutput_Window->FlipScreen ();
+
+#ifdef INLINE_DEBUG_DRAW_SCREEN
+	debug << "\r\nGPU::Draw_Screen; DisplayOutput_Window->OpenGL_ReleaseWindow";
+#endif
+	
+	// this is no longer the current window we are drawing to
+	DisplayOutput_Window->OpenGL_ReleaseWindow ();
+	
+}
+
+
+// returns number of pixels drawn (as all or nothing, no clipping)
+static u64 GPU::DrawTriangle_Mono_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = 0;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	int group_yoffset = group_id;
+//#endif
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY0 ( Buffer [ 1 ] );
+//9: GetXY1 ( Buffer [ 2 ] );
+//10: GetXY2 ( Buffer [ 3 ] );
+
+
+
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	
+	// the y starts and ends at the same place, but the x is different for each line
+	s32 StartY, EndY;
+	
+	
+	//s64 r10, r20, r21;
+	
+	// new variables
+	s32 x0, x1, x2, y0, y1, y2;
+	s32 dx_left, dx_right;
+	u32 bgr;
+	s32 t0, t1, denominator;
+	
+	u32 Coord0, Coord1, Coord2;
+	
+	u32 PixelMask, SetPixelMask;
+	
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	u32 Command_ABE;
+	
+	s32 x_left, x_right;
+	
+	//s32 group_yoffset;
+	
+	
+	s32 StartX, EndX;
+	s32 x_across;
+	u32 xoff, yoff;
+	s32 xoff_left, xoff_right;
+	u32 DestPixel;
+	u32 bgr_temp;
+	s32 Line;
+	u16 *ptr;
+	
+	u32 NumPixels;
+	
+//debug << "\nDrawTriangle_Mono_th";
+
+	// setup vars
+	//if ( !local_id )
+	//{
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 11 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 11 ].y << 5 ) >> 5 );
+		gx [ 2 ] = (s32) ( ( inputdata [ 14 ].x << 5 ) >> 5 );
+		gy [ 2 ] = (s32) ( ( inputdata [ 14 ].y << 5 ) >> 5 );
+		
+		Coord0 = 0;
+		Coord1 = 1;
+		Coord2 = 2;
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+		
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		//if ( y2 < y0 )
+		if ( gy [ Coord2 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y2 );
+			//Swap ( Coord0, Coord2 );
+			Temp = Coord0;
+			Coord0 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		///////////////////////////////////////
+		// put middle coordinates in x1,y1
+		//if ( y2 < y1 )
+		if ( gy [ Coord2 ] < gy [ Coord1 ] )
+		{
+			//Swap ( y1, y2 );
+			//Swap ( Coord1, Coord2 );
+			Temp = Coord1;
+			Coord1 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		x2 = gx [ Coord2 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+		y2 = gy [ Coord2 ];
+		
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		x2 += DrawArea_OffsetX;
+		y2 += DrawArea_OffsetY;
+		
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+
+		
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX <= ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y2 <= ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( _Abs( x2 - x1 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) || ( y2 - y1 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+		
+		
+		/////////////////////////////////////////////////
+		// draw top part of triangle
+		
+		// denominator is negative when x1 is on the left, positive when x1 is on the right
+		t0 = y1 - y2;
+		t1 = y0 - y2;
+		denominator = ( ( x0 - x2 ) * t0 ) - ( ( x1 - x2 ) * t1 );
+		
+		
+		NumPixels = _Abs( denominator ) >> 1;
+		
+		// if this is being drawn on same thread, set number of pixels, else return them
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			// return number of pixels that will be drawn
+			return NumPixels;
+		}
+		
+		
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		// get color(s)
+		bgr = gbgr [ 0 ];
+		
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		//bgr = ( ( bgr & ( 0xf8 << 0 ) ) >> 3 ) | ( ( bgr & ( 0xf8 << 8 ) ) >> 6 ) | ( ( bgr & ( 0xf8 << 16 ) ) >> 9 );
+		bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+
+		// get reciprocals
+		// *** todo ***
+		//if ( y1 - y0 ) r10 = ( 1LL << 48 ) / ((s64)( y1 - y0 ));
+		//if ( y2 - y0 ) r20 = ( 1LL << 48 ) / ((s64)( y2 - y0 ));
+		//if ( y2 - y1 ) r21 = ( 1LL << 48 ) / ((s64)( y2 - y1 ));
+		
+		///////////////////////////////////////////
+		// start at y0
+		//Line = y0;
+		
+		
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+			if ( y1 - y0 )
+			{
+				/////////////////////////////////////////////
+				// init x on the left and right
+				x_left = ( x0 << 16 );
+				x_right = x_left;
+				
+				if ( denominator < 0 )
+				{
+					dx_left = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_left = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+				}
+				else
+				{
+					dx_right = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_right = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+				}
+			}
+			else
+			{
+				if ( denominator < 0 )
+				{
+					// change x_left and x_right where y1 is on left
+					x_left = ( x1 << 16 );
+					x_right = ( x0 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						dx_left = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					}
+				}
+				else
+				{
+					x_right = ( x1 << 16 );
+					x_left = ( x0 << 16 );
+				
+					if ( y2 - y1 )
+					{
+						dx_right = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					}
+				}
+			}
+		//}
+		
+
+
+	
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+
+	//}	// end if ( !local_id )
+	
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	
+	
+//debug << "\nStarting to draw mono triangle top. StartY=" << dec << StartY << " EndY=" << EndY;
+
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	//////////////////////////////////////////////
+	// draw down to y1
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+		
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				StartX = DrawArea_TopLeftX;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			
+			
+			/////////////////////////////////////////////////////
+			// update number of cycles used to draw polygon
+			//NumberOfPixelsDrawn += EndX - StartX + 1;
+			
+//debug << "\nStarting to draw mono triangle across. StartX=" << StartX << " EndX=" << EndX;
+
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+				//DestPixel = ( ! ( DestPixel & PixelMask ) ) ? bgr_temp : DestPixel;
+				// *ptr = DestPixel;
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		
+		/////////////////////////////////////
+		// update x on left and right
+		//x_left += dx_left;
+		//x_right += dx_right;
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+	}
+
+	} // end if ( EndY > StartY )
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	////////////////////////////////////////////////
+	// draw bottom part of triangle
+
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	//if ( !local_id )
+	//{
+	
+		//////////////////////////////////////////////////////
+		// check if y1 is on the left or on the right
+		if ( denominator < 0 )
+		{
+			// y1 is on the left //
+			
+			x_left = ( x1 << 16 );
+			
+			// need to recalculate the other side when doing this in parallel with this algorithm
+			x_right = ( x0 << 16 ) + ( ( y1 - y0 ) * dx_right );
+			
+			if ( y2 - y1 )
+			{
+				dx_left = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+			}
+		}
+		else
+		{
+			// y1 is on the right //
+			
+			x_right = ( x1 << 16 );
+			
+			// need to recalculate the other side when doing this in parallel with this algorithm
+			x_left = ( x0 << 16 ) + ( ( y1 - y0 ) * dx_left );
+			
+			if ( y2 - y1 )
+			{
+				dx_right = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+			}
+		}
+		
+		
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		// the line starts at y1 from here
+		//Line = y1;
+
+		StartY = y1;
+		EndY = y2;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+		
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+//cout << "\nStarting to draw mono triangle bottom";
+	
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	//////////////////////////////////////////////
+	// draw down to y2
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				StartX = DrawArea_TopLeftX;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			
+			
+			/////////////////////////////////////////////////////
+			// update number of cycles used to draw polygon
+			//NumberOfPixelsDrawn += EndX - StartX + 1;
+			
+
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+				//DestPixel = ( ! ( DestPixel & PixelMask ) ) ? bgr_temp : DestPixel;
+				// *ptr = DestPixel;
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		/////////////////////////////////////
+		// update x on left and right
+		//x_left += dx_left;
+		//x_right += dx_right;
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+	}
+	
+	} // end if ( EndY > StartY )
+
+	// return the number of pixels drawn
+	return NumPixels;
+}
+
+
+
+static u64 GPU::DrawTriangle_Gradient_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = 0;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	int group_yoffset = 0;
+//#endif
+
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7: GetBGR0_8 ( Buffer [ 0 ] );
+//8: GetXY0 ( Buffer [ 1 ] );
+//9: GetBGR1_8 ( Buffer [ 2 ] );
+//10: GetXY1 ( Buffer [ 3 ] );
+//11: GetBGR2_8 ( Buffer [ 4 ] );
+//12: GetXY2 ( Buffer [ 5 ] );
+
+	
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	u32 GPU_CTRL_Read_DTD;
+	
+	u16 *ptr;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	s32 StartX, EndX;
+	s32 StartY, EndY;
+
+	//s64 r10, r20, r21;
+	
+	//s32* DitherArray;
+	//s32* DitherLine;
+	s32 DitherValue;
+
+	// new variables
+	s32 x0, x1, x2, y0, y1, y2;
+	s32 dx_left, dx_right;
+	s32 x_left, x_right;
+	s32 x_across;
+	u32 bgr, bgr_temp;
+	s32 Line;
+	s32 t0, t1, denominator;
+
+	// more variables for gradient triangle
+	s32 dR_left, dG_left, dB_left;
+	s32 dR_across, dG_across, dB_across;
+	s32 iR, iG, iB;
+	s32 R_left, G_left, B_left;
+	s32 Roff_left, Goff_left, Boff_left;
+	s32 r0, r1, r2, g0, g1, g2, b0, b1, b2;
+	//s32 gr [ 3 ], gg [ 3 ], gb [ 3 ];
+
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	
+	s32 xoff_left, xoff_right;
+	
+	s32 Red, Green, Blue;
+	u32 DestPixel;
+	u32 PixelMask, SetPixelMask;
+
+	u32 Coord0, Coord1, Coord2;
+	//s32 group_yoffset;
+	
+	u32 NumPixels;
+
+	// setup vars
+	//if ( !local_id )
+	//{
+		
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 11 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 11 ].y << 5 ) >> 5 );
+		gx [ 2 ] = (s32) ( ( inputdata [ 14 ].x << 5 ) >> 5 );
+		gy [ 2 ] = (s32) ( ( inputdata [ 14 ].y << 5 ) >> 5 );
+
+		
+		Coord0 = 0;
+		Coord1 = 1;
+		Coord2 = 2;
+		
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		//if ( y2 < y0 )
+		if ( gy [ Coord2 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y2 );
+			//Swap ( Coord0, Coord2 );
+			Temp = Coord0;
+			Coord0 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		///////////////////////////////////////
+		// put middle coordinates in x1,y1
+		//if ( y2 < y1 )
+		if ( gy [ Coord2 ] < gy [ Coord1 ] )
+		{
+			//Swap ( y1, y2 );
+			//Swap ( Coord1, Coord2 );
+			Temp = Coord1;
+			Coord1 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		x2 = gx [ Coord2 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+		y2 = gy [ Coord2 ];
+		
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		x2 += DrawArea_OffsetX;
+		y2 += DrawArea_OffsetY;
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX <= ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y2 <= ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( _Abs( x2 - x1 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) || ( y2 - y1 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+		
+		
+		
+		/////////////////////////////////////////////////
+		// draw top part of triangle
+		
+		// denominator is negative when x1 is on the left, positive when x1 is on the right
+		t0 = y1 - y2;
+		t1 = y0 - y2;
+		denominator = ( ( x0 - x2 ) * t0 ) - ( ( x1 - x2 ) * t1 );
+
+		NumPixels = _Abs ( denominator ) >> 1;
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		gbgr [ 1 ] = inputdata [ 10 ].Value & 0x00ffffff;
+		gbgr [ 2 ] = inputdata [ 13 ].Value & 0x00ffffff;
+			
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// DTD is bit 9 in GPU_CTRL_Read
+		GPU_CTRL_Read_DTD = ( GPU_CTRL_Read >> 9 ) & 1;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+		
+		
+
+		// get rgb-values
+		//r0 = gr [ Coord0 ];
+		//r1 = gr [ Coord1 ];
+		//r2 = gr [ Coord2 ];
+		//g0 = gg [ Coord0 ];
+		//g1 = gg [ Coord1 ];
+		///g2 = gg [ Coord2 ];
+		//b0 = gb [ Coord0 ];
+		//b1 = gb [ Coord1 ];
+		//b2 = gb [ Coord2 ];
+		r0 = gbgr [ Coord0 ] & 0xff;
+		r1 = gbgr [ Coord1 ] & 0xff;
+		r2 = gbgr [ Coord2 ] & 0xff;
+		g0 = ( gbgr [ Coord0 ] >> 8 ) & 0xff;
+		g1 = ( gbgr [ Coord1 ] >> 8 ) & 0xff;
+		g2 = ( gbgr [ Coord2 ] >> 8 ) & 0xff;
+		b0 = ( gbgr [ Coord0 ] >> 16 ) & 0xff;
+		b1 = ( gbgr [ Coord1 ] >> 16 ) & 0xff;
+		b2 = ( gbgr [ Coord2 ] >> 16 ) & 0xff;
+
+
+		
+		if ( denominator )
+		{
+			//dR_across = ( ( (s32) ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) ) << 6 ) / denominator;
+			//dG_across = ( ( (s32) ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) ) << 6 ) / denominator;
+			//dB_across = ( ( (s32) ( ( ( b0 - b2 ) * t0 ) - ( ( b1 - b2 ) * t1 ) ) ) << 6 ) / denominator;
+			//dR_across <<= 10;
+			//dG_across <<= 10;
+			//dB_across <<= 10;
+			
+			
+			dR_across = ( ( (s32) ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) ) << 8 ) / denominator;
+			dG_across = ( ( (s32) ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) ) << 8 ) / denominator;
+			dB_across = ( ( (s32) ( ( ( b0 - b2 ) * t0 ) - ( ( b1 - b2 ) * t1 ) ) ) << 8 ) / denominator;
+			dR_across <<= 8;
+			dG_across <<= 8;
+			dB_across <<= 8;
+			
+			//printf ( "dR_across=%x top=%i bottom=%i divide=%x", dR_across, ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ), denominator, ( ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) << 16 )/denominator );
+			//printf ( "dG_across=%x top=%i bottom=%i divide=%x", dG_across, ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ), denominator, ( ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) << 16 )/denominator );
+		}
+		
+		
+		
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+			if ( y1 - y0 )
+			{
+				/////////////////////////////////////////////
+				// init x on the left and right
+				x_left = ( x0 << 16 );
+				x_right = x_left;
+				
+				R_left = ( r0 << 16 );
+				G_left = ( g0 << 16 );
+				B_left = ( b0 << 16 );
+				
+				if ( denominator < 0 )
+				{
+					//dx_left = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_left = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					
+					
+					//dx_left = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+					//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+					
+					dR_left = (( r1 - r0 ) << 16 ) / ( y1 - y0 );
+					dG_left = (( g1 - g0 ) << 16 ) / ( y1 - y0 );
+					dB_left = (( b1 - b0 ) << 16 ) / ( y1 - y0 );
+					
+					
+					//dR_left = divide_s32( (( r1 - r0 ) << 16 ), ( y1 - y0 ) );
+					//dG_left = divide_s32( (( g1 - g0 ) << 16 ), ( y1 - y0 ) );
+					//dB_left = divide_s32( (( b1 - b0 ) << 16 ), ( y1 - y0 ) );
+				}
+				else
+				{
+					//dx_right = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_right = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					
+					if ( y2 - y0 )
+					{
+						dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						
+						
+						//dx_right = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+						//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+						dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+						dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+						
+						
+						//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+						//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+						//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+					}
+				}
+			}
+			else
+			{
+				if ( denominator < 0 )
+				{
+					// change x_left and x_right where y1 is on left
+					x_left = ( x1 << 16 );
+					x_right = ( x0 << 16 );
+					
+					R_left = ( r1 << 16 );
+					G_left = ( g1 << 16 );
+					B_left = ( b1 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_left = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						
+						
+						//dx_left = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+
+						dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+						dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+						dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+						
+						
+						//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+						//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+						//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+					}
+				}
+				else
+				{
+					x_right = ( x1 << 16 );
+					x_left = ( x0 << 16 );
+				
+					R_left = ( r0 << 16 );
+					G_left = ( g0 << 16 );
+					B_left = ( b0 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_right = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						
+						
+						//dx_right = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						
+						dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+						dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+						dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+						
+						
+						//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+						//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+						//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+					}
+				}
+			}
+		//}
+		
+
+
+	
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		
+		
+		// r,g,b values are not specified with a fractional part, so there must be an initial fractional part
+		R_left |= ( 1 << 15 );
+		G_left |= ( 1 << 15 );
+		B_left |= ( 1 << 15 );
+		
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			R_left += dR_left * Temp;
+			G_left += dG_left * Temp;
+			B_left += dB_left * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+		
+		//printf( "x_left=%x x_right=%x dx_left=%i dx_right=%i R_left=%x G_left=%x B_left=%x OffsetX=%i OffsetY=%i",x_left,x_right,dx_left,dx_right,R_left,G_left,B_left, DrawArea_OffsetX, DrawArea_OffsetY );
+		//printf( "x0=%i y0=%i x1=%i y1=%i x2=%i y2=%i r0=%i r1=%i r2=%i g0=%i g1=%i g2=%i b0=%i b1=%i b2=%i", x0, y0, x1, y1, x2, y2, r0, r1, r2, g0, g1, g2, b0, b1, b2 );
+		//printf( "dR_across=%x dG_across=%x dB_across=%x", dR_across, dG_across, dB_across );
+
+	//}	// end if ( !local_id )
+	
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+
+
+	
+	
+
+
+
+	
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	
+
+
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	//////////////////////////////////////////////
+	// draw down to y1
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			
+			iR = Roff_left;
+			iG = Goff_left;
+			iB = Boff_left;
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+				//iR += dR_across * Temp;
+				//iG += dG_across * Temp;
+				//iB += dB_across * Temp;
+			}
+			
+			iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			iR += ( dR_across * xid );
+			iG += ( dG_across * xid );
+			iB += ( dB_across * xid );
+
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues16 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					//Red = clamp ( Red, 0, 0x1f );
+					//Green = clamp ( Green, 0, 0x1f );
+					//Blue = clamp ( Blue, 0, 0x1f );
+					Red = Clamp5 ( Red );
+					Green = Clamp5 ( Green );
+					Blue = Clamp5 ( Blue );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+					
+				
+					
+					// if dithering, perform signed clamp to 5 bits
+					//Red = AddSignedClamp<s64,5> ( Red );
+					//Green = AddSignedClamp<s64,5> ( Green );
+					//Blue = AddSignedClamp<s64,5> ( Blue );
+					
+					bgr_temp = ( Blue << 10 ) | ( Green << 5 ) | Red;
+					
+					// shade pixel color
+				
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					
+					//bgr_temp = bgr;
+		
+					
+					// semi-transparency
+					if ( Command_ABE )
+					{
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+					}
+					
+					// check if we should set mask bit when drawing
+					bgr_temp |= SetPixelMask;
+
+					
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+						
+					iR += ( dR_across * xinc );
+					iG += ( dG_across * xinc );
+					iB += ( dB_across * xinc );
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		Roff_left += ( dR_left * yinc );
+		Goff_left += ( dG_left * yinc );
+		Boff_left += ( dB_left * yinc );
+	}
+
+	} // end if ( EndY > StartY )
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	////////////////////////////////////////////////
+	// draw bottom part of triangle
+
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	//if ( !local_id )
+	//{
+		//////////////////////////////////////////////////////
+		// check if y1 is on the left or on the right
+		if ( denominator < 0 )
+		{
+			x_left = ( x1 << 16 );
+
+			x_right = ( x0 << 16 ) + ( dx_right * ( y1 - y0 ) );
+			
+			R_left = ( r1 << 16 );
+			G_left = ( g1 << 16 );
+			B_left = ( b1 << 16 );
+			
+			
+			if ( y2 - y1 )
+			{
+				//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				dx_left = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+			
+			
+				//dx_left = divide_s32( (( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+				
+				//dR_left = ( ((s64)( r2 - r1 )) * r21 ) >> 24;
+				//dG_left = ( ((s64)( g2 - g1 )) * r21 ) >> 24;
+				//dB_left = ( ((s64)( b2 - b1 )) * r21 ) >> 24;
+				dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+				dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+				dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+				
+				
+				//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+				//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+				//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+			}
+		}
+		else
+		{
+			x_right = ( x1 << 16 );
+
+			x_left = ( x0 << 16 ) + ( dx_left * ( y1 - y0 ) );
+			
+			R_left = ( r0 << 16 ) + ( dR_left * ( y1 - y0 ) );
+			G_left = ( g0 << 16 ) + ( dG_left * ( y1 - y0 ) );
+			B_left = ( b0 << 16 ) + ( dB_left * ( y1 - y0 ) );
+			
+			if ( y2 - y1 )
+			{
+				//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				dx_right = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+			
+			
+				//dx_right = divide_s32( (( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+				
+			}
+		}
+
+
+		R_left += ( 1 << 15 );
+		G_left += ( 1 << 15 );
+		B_left += ( 1 << 15 );
+
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+
+		StartY = y1;
+		EndY = y2;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			R_left += dR_left * Temp;
+			G_left += dG_left * Temp;
+			B_left += dB_left * Temp;
+			
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	//////////////////////////////////////////////
+	// draw down to y2
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			iR = Roff_left;
+			iG = Goff_left;
+			iB = Boff_left;
+			
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+				//iR += dR_across * Temp;
+				//iG += dG_across * Temp;
+				//iB += dB_across * Temp;
+			}
+			
+			iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			/////////////////////////////////////////////////////
+			// update number of cycles used to draw polygon
+			//NumberOfPixelsDrawn += EndX - StartX + 1;
+			
+			iR += ( dR_across * xid );
+			iG += ( dG_across * xid );
+			iB += ( dB_across * xid );
+
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues16 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					//Red = clamp ( Red, 0, 0x1f );
+					//Green = clamp ( Green, 0, 0x1f );
+					//Blue = clamp ( Blue, 0, 0x1f );
+					Red = Clamp5 ( Red );
+					Green = Clamp5 ( Green );
+					Blue = Clamp5 ( Blue );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+					
+					bgr = ( Blue << 10 ) | ( Green << 5 ) | Red;
+					
+					// shade pixel color
+				
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					bgr_temp = bgr;
+		
+					// semi-transparency
+					if ( Command_ABE )
+					{
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+					}
+					
+					// check if we should set mask bit when drawing
+					bgr_temp |= SetPixelMask;
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+
+					
+				iR += ( dR_across * xinc );
+				iG += ( dG_across * xinc );
+				iB += ( dB_across * xinc );
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		Roff_left += ( dR_left * yinc );
+		Goff_left += ( dG_left * yinc );
+		Boff_left += ( dB_left * yinc );
+	}
+	
+	} // end if ( EndY > StartY )
+	
+	return NumPixels;
+}
+
+
+
+
+static u64 GPU::DrawTriangle_Texture_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = local_id;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	s32 group_yoffset = 0;
+//#endif
+
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7:GetBGR24 ( Buffer [ 0 ] );
+//8:GetXY0 ( Buffer [ 1 ] );
+//9:GetUV0 ( Buffer [ 2 ] );
+//9:GetCLUT ( Buffer [ 2 ] );
+//10:GetXY1 ( Buffer [ 3 ] );
+//11:GetUV1 ( Buffer [ 4 ] );
+//11:GetTPAGE ( Buffer [ 4 ] );
+//12:GetXY2 ( Buffer [ 5 ] );
+//13:GetUV2 ( Buffer [ 6 ] );
+
+	
+	u32 GPU_CTRL_Read;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	u32 Command_TGE;
+	//u32 GPU_CTRL_Read_ABR;
+	//u32 GPU_CTRL_Read_DTD;
+	
+	u16 *ptr;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	s32 StartX, EndX;
+	s32 StartY, EndY;
+
+	//s64 r10, r20, r21;
+	
+	s32 DitherValue;
+
+	// new variables
+	s32 x0, x1, x2, y0, y1, y2;
+	s32 dx_left, dx_right;
+	s32 x_left, x_right;
+	s32 x_across;
+	u32 bgr, bgr_temp;
+	s32 Line;
+	s32 t0, t1, denominator;
+
+	// more variables for gradient triangle
+	//s32 dR_left, dG_left, dB_left;
+	//s32 dR_across, dG_across, dB_across;
+	//s32 iR, iG, iB;
+	//s32 R_left, G_left, B_left;
+	//s32 Roff_left, Goff_left, Boff_left;
+	//s32 r0, r1, r2, g0, g1, g2, b0, b1, b2;
+	
+	// variables for texture triangle
+	s32 dU_left, dV_left;
+	s32 dU_across, dV_across;
+	s32 iU, iV;
+	s32 U_left, V_left;
+	s32 Uoff_left, Voff_left;
+	s32 u0, u1, u2, v0, v1, v2;
+	s32 gu [ 3 ], gv [ 3 ];
+	
+
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	
+	s32 xoff_left, xoff_right;
+	
+	s32 Red, Green, Blue;
+	u32 DestPixel;
+	u32 PixelMask, SetPixelMask;
+
+	u32 Coord0, Coord1, Coord2;
+	//s32 group_yoffset;
+
+
+	u32 color_add;
+	
+	u16 *ptr_texture, *ptr_clut;
+	u32 clut_xoffset, clut_yoffset;
+	u32 clut_x, clut_y, tpage_tx, tpage_ty, tpage_abr, tpage_tp, command_tge, command_abe, command_abr;
+	
+	u32 TexCoordX, TexCoordY;
+	u32 Shift1, Shift2, And1, And2;
+	u32 TextureOffset;
+
+	u32 TWYTWH, TWXTWW, Not_TWH, Not_TWW;
+	u32 TWX, TWY, TWW, TWH;
+	
+	u32 NumPixels;
+	
+	
+	// setup vars
+	//if ( !local_id )
+	//{
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 11 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 11 ].y << 5 ) >> 5 );
+		gx [ 2 ] = (s32) ( ( inputdata [ 14 ].x << 5 ) >> 5 );
+		gy [ 2 ] = (s32) ( ( inputdata [ 14 ].y << 5 ) >> 5 );
+
+		Coord0 = 0;
+		Coord1 = 1;
+		Coord2 = 2;
+
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		//if ( y2 < y0 )
+		if ( gy [ Coord2 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y2 );
+			//Swap ( Coord0, Coord2 );
+			Temp = Coord0;
+			Coord0 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		///////////////////////////////////////
+		// put middle coordinates in x1,y1
+		//if ( y2 < y1 )
+		if ( gy [ Coord2 ] < gy [ Coord1 ] )
+		{
+			//Swap ( y1, y2 );
+			//Swap ( Coord1, Coord2 );
+			Temp = Coord1;
+			Coord1 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		x2 = gx [ Coord2 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+		y2 = gy [ Coord2 ];
+
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		x2 += DrawArea_OffsetX;
+		y2 += DrawArea_OffsetY;
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX <= ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y2 <= ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( _Abs( x2 - x1 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) || ( y2 - y1 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+
+		/////////////////////////////////////////////////
+		// draw top part of triangle
+		
+		// denominator is negative when x1 is on the left, positive when x1 is on the right
+		t0 = y1 - y2;
+		t1 = y0 - y2;
+		denominator = ( ( x0 - x2 ) * t0 ) - ( ( x1 - x2 ) * t1 );
+
+		NumPixels = _Abs ( denominator ) >> 1;
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+
+		
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		//gbgr [ 1 ] = inputdata [ 9 ].Value & 0x00ffffff;
+		//gbgr [ 2 ] = inputdata [ 11 ].Value & 0x00ffffff;
+
+		gu [ 0 ] = inputdata [ 9 ].u;
+		gu [ 1 ] = inputdata [ 12 ].u;
+		gu [ 2 ] = inputdata [ 15 ].u;
+		gv [ 0 ] = inputdata [ 9 ].v;
+		gv [ 1 ] = inputdata [ 12 ].v;
+		gv [ 2 ] = inputdata [ 15 ].v;
+		
+		//GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		Command_TGE = inputdata [ 7 ].Command & 1;
+		
+
+		// bits 0-5 in upper halfword
+		clut_x = ( inputdata [ 9 ].Value >> ( 16 + 0 ) ) & 0x3f;
+		clut_y = ( inputdata [ 9 ].Value >> ( 16 + 6 ) ) & 0x1ff;
+
+		TWY = ( inputdata [ 4 ].Value >> 15 ) & 0x1f;
+		TWX = ( inputdata [ 4 ].Value >> 10 ) & 0x1f;
+		TWH = ( inputdata [ 4 ].Value >> 5 ) & 0x1f;
+		TWW = inputdata [ 4 ].Value & 0x1f;
+
+		
+		// DTD is bit 9 in GPU_CTRL_Read
+		//GPU_CTRL_Read_DTD = ( GPU_CTRL_Read >> 9 ) & 1;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		// bits 0-3
+		//tpage_tx = GPU_CTRL_Read & 0xf;
+		tpage_tx = ( inputdata [ 12 ].Value >> ( 16 + 0 ) ) & 0xf;
+		
+		// bit 4
+		//tpage_ty = ( GPU_CTRL_Read >> 4 ) & 1
+		tpage_ty = ( inputdata [ 12 ].Value >> ( 16 + 4 ) ) & 1;
+		
+		// bits 5-6
+		//GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		tpage_abr = ( inputdata [ 12 ].Value >> ( 16 + 5 ) ) & 3;
+		
+		// bits 7-8
+		//tpage_tp = ( GPU_CTRL_Read >> 7 ) & 3;
+		tpage_tp = ( inputdata [ 12 ].Value >> ( 16 + 7 ) ) & 3;
+		
+		Shift1 = 0;
+		Shift2 = 0;
+		And1 = 0;
+		And2 = 0;
+
+
+		TWYTWH = ( ( TWY & TWH ) << 3 );
+		TWXTWW = ( ( TWX & TWW ) << 3 );
+		
+		Not_TWH = ~( TWH << 3 );
+		Not_TWW = ~( TWW << 3 );
+
+		
+		
+		/////////////////////////////////////////////////////////
+		// Get offset into texture page
+		TextureOffset = ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 );
+		
+		clut_xoffset = clut_x << 4;
+		
+		if ( tpage_tp == 0 )
+		{
+			And2 = 0xf;
+			
+			Shift1 = 2; Shift2 = 2;
+			And1 = 3; And2 = 0xf;
+		}
+		else if ( tpage_tp == 1 )
+		{
+			And2 = 0xff;
+			
+			Shift1 = 1; Shift2 = 3;
+			And1 = 1; And2 = 0xff;
+		}
+
+		
+		// get uv coords
+		u0 = gu [ Coord0 ];
+		u1 = gu [ Coord1 ];
+		u2 = gu [ Coord2 ];
+		v0 = gv [ Coord0 ];
+		v1 = gv [ Coord1 ];
+		v2 = gv [ Coord2 ];
+
+		// get rgb-values
+		//r0 = gbgr [ Coord0 ] & 0xff;
+		//r1 = gbgr [ Coord1 ] & 0xff;
+		//r2 = gbgr [ Coord2 ] & 0xff;
+		//g0 = ( gbgr [ Coord0 ] >> 8 ) & 0xff;
+		//g1 = ( gbgr [ Coord1 ] >> 8 ) & 0xff;
+		//g2 = ( gbgr [ Coord2 ] >> 8 ) & 0xff;
+		//b0 = ( gbgr [ Coord0 ] >> 16 ) & 0xff;
+		//b1 = ( gbgr [ Coord1 ] >> 16 ) & 0xff;
+		//b2 = ( gbgr [ Coord2 ] >> 16 ) & 0xff;
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		bgr = gbgr [ 0 ];
+		//bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+		if ( ( bgr & 0x00ffffff ) == 0x00808080 ) Command_TGE = 1;
+		
+		color_add = bgr;
+		
+		if ( denominator )
+		{
+			//dR_across = divide_s32 ( ( (s32) ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) ) << 8, denominator );
+			//dG_across = divide_s32 ( ( (s32) ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) ) << 8, denominator );
+			//dB_across = divide_s32 ( ( (s32) ( ( ( b0 - b2 ) * t0 ) - ( ( b1 - b2 ) * t1 ) ) ) << 8, denominator );
+			//dR_across <<= 8;
+			//dG_across <<= 8;
+			//dB_across <<= 8;
+			dU_across = ( ( (s32) ( ( ( u0 - u2 ) * t0 ) - ( ( u1 - u2 ) * t1 ) ) ) << 8 ) / denominator;
+			dV_across = ( ( (s32) ( ( ( v0 - v2 ) * t0 ) - ( ( v1 - v2 ) * t1 ) ) ) << 8 ) / denominator;
+			dU_across <<= 8;
+			dV_across <<= 8;
+			
+			//printf ( "dR_across=%x top=%i bottom=%i divide=%x", dR_across, ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ), denominator, ( ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) << 16 )/denominator );
+			//printf ( "dG_across=%x top=%i bottom=%i divide=%x", dG_across, ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ), denominator, ( ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) << 16 )/denominator );
+		}
+		
+		
+		
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+			if ( y1 - y0 )
+			{
+				/////////////////////////////////////////////
+				// init x on the left and right
+				x_left = ( x0 << 16 );
+				x_right = x_left;
+				
+				//R_left = ( r0 << 16 );
+				//G_left = ( g0 << 16 );
+				//B_left = ( b0 << 16 );
+
+				U_left = ( u0 << 16 );
+				V_left = ( v0 << 16 );
+				
+				if ( denominator < 0 )
+				{
+					//dx_left = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_left = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_left = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+					//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+					
+					//dR_left = (( r1 - r0 ) << 16 ) / ( y1 - y0 );
+					//dG_left = (( g1 - g0 ) << 16 ) / ( y1 - y0 );
+					//dB_left = (( b1 - b0 ) << 16 ) / ( y1 - y0 );
+					//dR_left = divide_s32( (( r1 - r0 ) << 16 ), ( y1 - y0 ) );
+					//dG_left = divide_s32( (( g1 - g0 ) << 16 ), ( y1 - y0 ) );
+					//dB_left = divide_s32( (( b1 - b0 ) << 16 ), ( y1 - y0 ) );
+					
+					dU_left = ( (( u1 - u0 ) << 16 ) ) / ( y1 - y0 );
+					dV_left = ( (( v1 - v0 ) << 16 ) ) / ( y1 - y0 );
+				}
+				else
+				{
+					//dx_right = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_right = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_right = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+					//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+					
+					//dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+					//dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+					//dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+					//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+					//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+					//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+					
+					dU_left = ( (( u2 - u0 ) << 16 ) ) / ( y2 - y0 );
+					dV_left = ( (( v2 - v0 ) << 16 ) ) / ( y2 - y0 );
+				}
+			}
+			else
+			{
+				if ( denominator < 0 )
+				{
+					// change x_left and x_right where y1 is on left
+					x_left = ( x1 << 16 );
+					x_right = ( x0 << 16 );
+					
+					U_left = ( u1 << 16 );
+					V_left = ( v1 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_left = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_left = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						//R_left = ( r1 << 16 );
+						//G_left = ( g1 << 16 );
+						//B_left = ( b1 << 16 );
+
+						
+						//dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+						//dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+						//dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+						//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+						//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+						//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+						
+						dU_left = ( (( u2 - u1 ) << 16 ) ) / ( y2 - y1 );
+						dV_left = ( (( v2 - v1 ) << 16 ) ) / ( y2 - y1 );
+					}
+				}
+				else
+				{
+					x_right = ( x1 << 16 );
+					x_left = ( x0 << 16 );
+				
+					U_left = ( u0 << 16 );
+					V_left = ( v0 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_right = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_right = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						//R_left = ( r0 << 16 );
+						//G_left = ( g0 << 16 );
+						//B_left = ( b0 << 16 );
+						
+						
+						//dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+						//dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+						//dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+						//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+						//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+						//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+						
+						dU_left = ( (( u2 - u0 ) << 16 ) ) / ( y2 - y0 );
+						dV_left = ( (( v2 - v0 ) << 16 ) ) / ( y2 - y0 );
+					}
+				}
+			}
+		//}
+		
+
+
+	
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		
+		
+		// r,g,b values are not specified with a fractional part, so there must be an initial fractional part
+		//R_left |= ( 1 << 15 );
+		//G_left |= ( 1 << 15 );
+		//B_left |= ( 1 << 15 );
+
+		U_left |= ( 1 << 15 );
+		V_left |= ( 1 << 15 );
+		
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			//R_left += dR_left * Temp;
+			//G_left += dG_left * Temp;
+			//B_left += dB_left * Temp;
+			
+			U_left += dU_left * Temp;
+			V_left += dV_left * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+		
+		//printf( "x_left=%x x_right=%x dx_left=%i dx_right=%i R_left=%x G_left=%x B_left=%x OffsetX=%i OffsetY=%i",x_left,x_right,dx_left,dx_right,R_left,G_left,B_left, DrawArea_OffsetX, DrawArea_OffsetY );
+		//printf( "x0=%i y0=%i x1=%i y1=%i x2=%i y2=%i r0=%i r1=%i r2=%i g0=%i g1=%i g2=%i b0=%i b1=%i b2=%i", x0, y0, x1, y1, x2, y2, r0, r1, r2, g0, g1, g2, b0, b1, b2 );
+		//printf( "dR_across=%x dG_across=%x dB_across=%x", dR_across, dG_across, dB_across );
+
+	//}	// end if ( !local_id )
+	
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+
+
+	
+	
+	ptr_clut = & ( _GPU->VRAM [ clut_y << 10 ] );
+	ptr_texture = & ( _GPU->VRAM [ ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 ) ] );
+
+	
+
+
+
+	
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	
+
+
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	//Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	//Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	//Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	Uoff_left = U_left + ( dU_left * (group_yoffset + yid) );
+	Voff_left = V_left + ( dV_left * (group_yoffset + yid) );
+	
+	//xoff_left += 0xffff;
+	//xoff_right -= 1;
+	
+	//////////////////////////////////////////////
+	// draw down to y1
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+//debug << "\r\nStartX=" << dec << StartX << " EndX=" << EndX << " Line=" << Line << " StartY=" << StartY << " EndY=" << EndY;
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			
+			//iR = Roff_left;
+			//iG = Goff_left;
+			//iB = Boff_left;
+			
+			iU = Uoff_left;
+			iV = Voff_left;
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+			}
+			
+			//iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			//iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			//iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			iU += ( dU_across >> 8 ) * ( Temp >> 8 );
+			iV += ( dV_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			//iR += ( dR_across * xid );
+			//iG += ( dG_across * xid );
+			//iB += ( dB_across * xid );
+
+			iU += ( dU_across * xid );
+			iV += ( dV_across * xid );
+			
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				
+				/*
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues24 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					Red = clamp ( Red, 0, 0x1f );
+					Green = clamp ( Green, 0, 0x1f );
+					Blue = clamp ( Blue, 0, 0x1f );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+				
+				color_add = ( Blue << 10 ) | ( Green << 5 ) | Red;
+				*/
+
+				TexCoordY = (u8) ( ( ( iV >> 16 ) & Not_TWH ) | ( TWYTWH ) );
+				TexCoordY <<= 10;
+
+				//TexCoordX = (u8) ( ( iU & ~( TWW << 3 ) ) | ( ( TWX & TWW ) << 3 ) );
+				TexCoordX = (u8) ( ( ( iU >> 16 ) & Not_TWW ) | ( TWXTWW ) );
+				
+				//bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + TexCoordY ];
+				
+				if ( Shift1 )
+				{
+					//bgr = VRAM [ ( ( ( clut_x << 4 ) + TexelIndex ) & FrameBuffer_XMask ) + ( clut_y << 10 ) ];
+					bgr = ptr_clut [ ( clut_xoffset + ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 ) ) & FrameBuffer_XMask ];
+				}
+
+//debug << "\r\nx_across=" << dec << x_across << " TexCoordX=" << TexCoordX << " TexCoordY=" << TexCoordY << " bgr=" << hex << bgr;				
+				
+				if ( bgr )
+				{
+					
+					// shade pixel color
+					
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					
+					bgr_temp = bgr;
+		
+					if ( !Command_TGE )
+					{
+						// brightness calculation
+						//bgr_temp = Color24To16 ( ColorMultiply24 ( Color16To24 ( bgr_temp ), color_add ) );
+						bgr_temp = ColorMultiply1624 ( bgr_temp, color_add );
+					}
+					
+					// semi-transparency
+					if ( Command_ABE && ( bgr & 0x8000 ) )
+					{
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, tpage_abr );
+					}
+					
+					// check if we should set mask bit when drawing
+					bgr_temp |= SetPixelMask | ( bgr & 0x8000 );
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+					
+				}
+						
+				//iR += ( dR_across * xinc );
+				//iG += ( dG_across * xinc );
+				//iB += ( dB_across * xinc );
+			
+				iU += ( dU_across * xinc );
+				iV += ( dV_across * xinc );
+					
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		//Roff_left += ( dR_left * yinc );
+		//Goff_left += ( dG_left * yinc );
+		//Boff_left += ( dB_left * yinc );
+		
+		Uoff_left += ( dU_left * yinc );
+		Voff_left += ( dV_left * yinc );
+	}
+
+	} // end if ( EndY > StartY )
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	////////////////////////////////////////////////
+	// draw bottom part of triangle
+
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	//if ( !local_id )
+	//{
+		//////////////////////////////////////////////////////
+		// check if y1 is on the left or on the right
+		if ( denominator < 0 )
+		{
+			x_left = ( x1 << 16 );
+
+			x_right = ( x0 << 16 ) + ( dx_right * ( y1 - y0 ) );
+			
+			//R_left = ( r1 << 16 );
+			//G_left = ( g1 << 16 );
+			//B_left = ( b1 << 16 );
+			
+			U_left = ( u1 << 16 );
+			V_left = ( v1 << 16 );
+			
+			if ( y2 - y1 )
+			{
+				//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				//dx_left = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				dx_left = ( (( x2 - x1 ) << 16 ) ) / ( y2 - y1 );
+				
+				//dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+				//dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+				//dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+				//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+				//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+				//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+				
+				dU_left = ( (( u2 - u1 ) << 16 ) ) / ( y2 - y1 );
+				dV_left = ( (( v2 - v1 ) << 16 ) ) / ( y2 - y1 );
+			}
+		}
+		else
+		{
+			x_right = ( x1 << 16 );
+
+			x_left = ( x0 << 16 ) + ( dx_left * ( y1 - y0 ) );
+			
+			//R_left = ( r0 << 16 ) + ( dR_left * ( y1 - y0 ) );
+			//G_left = ( g0 << 16 ) + ( dG_left * ( y1 - y0 ) );
+			//B_left = ( b0 << 16 ) + ( dB_left * ( y1 - y0 ) );
+			
+			U_left = ( u0 << 16 ) + ( dU_left * ( y1 - y0 ) );
+			V_left = ( v0 << 16 ) + ( dV_left * ( y1 - y0 ) );
+			
+			if ( y2 - y1 )
+			{
+				//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				//dx_right = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				dx_right = ( (( x2 - x1 ) << 16 ) ) / ( y2 - y1 );
+				
+			}
+		}
+
+
+		//R_left += ( 1 << 15 );
+		//G_left += ( 1 << 15 );
+		//B_left += ( 1 << 15 );
+
+		U_left += ( 1 << 15 );
+		V_left += ( 1 << 15 );
+		
+		//x_left += 0xffff;
+		//x_right -= 1;
+
+		StartY = y1;
+		EndY = y2;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			//R_left += dR_left * Temp;
+			//G_left += dG_left * Temp;
+			//B_left += dB_left * Temp;
+			
+			U_left += dU_left * Temp;
+			V_left += dV_left * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	//Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	//Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	//Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	Uoff_left = U_left + ( dU_left * (group_yoffset + yid) );
+	Voff_left = V_left + ( dV_left * (group_yoffset + yid) );
+	
+	//xoff_left += 0xffff;
+	//xoff_right -= 1;
+	
+	//////////////////////////////////////////////
+	// draw down to y2
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffff ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			//iR = Roff_left;
+			//iG = Goff_left;
+			//iB = Boff_left;
+			
+			iU = Uoff_left;
+			iV = Voff_left;
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+			}
+			
+			//iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			//iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			//iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			iU += ( dU_across >> 8 ) * ( Temp >> 8 );
+			iV += ( dV_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			
+			//iR += ( dR_across * xid );
+			//iG += ( dG_across * xid );
+			//iB += ( dB_across * xid );
+
+			iU += ( dU_across * xid );
+			iV += ( dV_across * xid );
+			
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				
+				/*
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues24 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					Red = clamp ( Red, 0, 0x1f );
+					Green = clamp ( Green, 0, 0x1f );
+					Blue = clamp ( Blue, 0, 0x1f );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+				
+				color_add = ( Blue << 10 ) | ( Green << 5 ) | Red;
+				*/
+
+				TexCoordY = (u8) ( ( ( iV >> 16 ) & Not_TWH ) | ( TWYTWH ) );
+				TexCoordY <<= 10;
+
+				//TexCoordX = (u8) ( ( iU & ~( TWW << 3 ) ) | ( ( TWX & TWW ) << 3 ) );
+				TexCoordX = (u8) ( ( ( iU >> 16 ) & Not_TWW ) | ( TWXTWW ) );
+				
+				//bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + TexCoordY ];
+				
+				if ( Shift1 )
+				{
+					//bgr = VRAM [ ( ( ( clut_x << 4 ) + TexelIndex ) & FrameBuffer_XMask ) + ( clut_y << 10 ) ];
+					bgr = ptr_clut [ ( clut_xoffset + ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 ) ) & FrameBuffer_XMask ];
+				}
+
+				
+				if ( bgr )
+				{
+					
+					// shade pixel color
+					
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					
+					bgr_temp = bgr;
+		
+					if ( !Command_TGE )
+					{
+						// brightness calculation
+						//bgr_temp = Color24To16 ( ColorMultiply24 ( Color16To24 ( bgr_temp ), color_add ) );
+						bgr_temp = ColorMultiply1624 ( bgr_temp, color_add );
+					}
+					
+					// semi-transparency
+					if ( Command_ABE && ( bgr & 0x8000 ) )
+					{
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, tpage_abr );
+					}
+					
+					// check if we should set mask bit when drawing
+					bgr_temp |= SetPixelMask | ( bgr & 0x8000 );
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+					
+				}
+
+					
+				//iR += ( dR_across * xinc );
+				//iG += ( dG_across * xinc );
+				//iB += ( dB_across * xinc );
+				
+				iU += ( dU_across * xinc );
+				iV += ( dV_across * xinc );
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		//Roff_left += ( dR_left * yinc );
+		//Goff_left += ( dG_left * yinc );
+		//Boff_left += ( dB_left * yinc );
+		
+		Uoff_left += ( dU_left * yinc );
+		Voff_left += ( dV_left * yinc );
+	}
+	
+	} // end if ( EndY > StartY )
+		
+	return NumPixels;
+}
+
+
+
+
+static u64 GPU::DrawTriangle_TextureGradient_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = local_id;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	s32 group_yoffset = 0;
+//#endif
+
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7:GetBGR0_8 ( Buffer [ 0 ] );
+//8:GetXY0 ( Buffer [ 1 ] );
+//9:GetCLUT ( Buffer [ 2 ] );
+//9:GetUV0 ( Buffer [ 2 ] );
+//10:GetBGR1_8 ( Buffer [ 3 ] );
+//11:GetXY1 ( Buffer [ 4 ] );
+//12:GetTPAGE ( Buffer [ 5 ] );
+//12:GetUV1 ( Buffer [ 5 ] );
+//13:GetBGR2_8 ( Buffer [ 6 ] );
+//14:GetXY2 ( Buffer [ 7 ] );
+//15:GetUV2 ( Buffer [ 8 ] );
+
+	
+	u32 GPU_CTRL_Read;
+	//u32 GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	u32 Command_TGE;
+	u32 GPU_CTRL_Read_DTD;
+	
+	u16 *ptr;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	s32 StartX, EndX;
+	s32 StartY, EndY;
+
+	s32 DitherValue;
+
+	// new variables
+	s32 x0, x1, x2, y0, y1, y2;
+	s32 dx_left, dx_right;
+	s32 x_left, x_right;
+	s32 x_across;
+	u32 bgr, bgr_temp;
+	s32 Line;
+	s32 t0, t1, denominator;
+
+	// more variables for gradient triangle
+	s32 dR_left, dG_left, dB_left;
+	s32 dR_across, dG_across, dB_across;
+	s32 iR, iG, iB;
+	s32 R_left, G_left, B_left;
+	s32 Roff_left, Goff_left, Boff_left;
+	s32 r0, r1, r2, g0, g1, g2, b0, b1, b2;
+	//s32 gr [ 3 ], gg [ 3 ], gb [ 3 ];
+	
+	// variables for texture triangle
+	s32 dU_left, dV_left;
+	s32 dU_across, dV_across;
+	s32 iU, iV;
+	s32 U_left, V_left;
+	s32 Uoff_left, Voff_left;
+	s32 u0, u1, u2, v0, v1, v2;
+	s32 gu [ 3 ], gv [ 3 ];
+	
+
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	
+	s32 xoff_left, xoff_right;
+	
+	s32 Red, Green, Blue;
+	u32 DestPixel;
+	u32 PixelMask, SetPixelMask;
+
+	u32 Coord0, Coord1, Coord2;
+
+
+	u32 color_add;
+	
+	u16 *ptr_texture, *ptr_clut;
+	u32 clut_xoffset, clut_yoffset;
+	u32 clut_x, clut_y, tpage_tx, tpage_ty, tpage_abr, tpage_tp;
+	
+	u32 TexCoordX, TexCoordY;
+	u32 Shift1, Shift2, And1, And2;
+	u32 TextureOffset;
+
+	u32 TWYTWH, TWXTWW, Not_TWH, Not_TWW;
+	u32 TWX, TWY, TWW, TWH;
+	
+	u32 NumPixels;
+	
+	
+	// setup vars
+	//if ( !local_id )
+	//{
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 11 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 11 ].y << 5 ) >> 5 );
+		gx [ 2 ] = (s32) ( ( inputdata [ 14 ].x << 5 ) >> 5 );
+		gy [ 2 ] = (s32) ( ( inputdata [ 14 ].y << 5 ) >> 5 );
+		
+		Coord0 = 0;
+		Coord1 = 1;
+		Coord2 = 2;
+		
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		//if ( y2 < y0 )
+		if ( gy [ Coord2 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y2 );
+			//Swap ( Coord0, Coord2 );
+			Temp = Coord0;
+			Coord0 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		///////////////////////////////////////
+		// put middle coordinates in x1,y1
+		//if ( y2 < y1 )
+		if ( gy [ Coord2 ] < gy [ Coord1 ] )
+		{
+			//Swap ( y1, y2 );
+			//Swap ( Coord1, Coord2 );
+			Temp = Coord1;
+			Coord1 = Coord2;
+			Coord2 = Temp;
+		}
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		x2 = gx [ Coord2 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+		y2 = gy [ Coord2 ];
+
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		x2 += DrawArea_OffsetX;
+		y2 += DrawArea_OffsetY;
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+		
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX <= ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y2 <= ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( _Abs( x2 - x1 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) || ( y2 - y1 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+		
+		/////////////////////////////////////////////////
+		// draw top part of triangle
+		
+		// denominator is negative when x1 is on the left, positive when x1 is on the right
+		t0 = y1 - y2;
+		t1 = y0 - y2;
+		denominator = ( ( x0 - x2 ) * t0 ) - ( ( x1 - x2 ) * t1 );
+
+		NumPixels = _Abs ( denominator ) >> 1;
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+		
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		gbgr [ 1 ] = inputdata [ 10 ].Value & 0x00ffffff;
+		gbgr [ 2 ] = inputdata [ 13 ].Value & 0x00ffffff;
+		
+		gu [ 0 ] = inputdata [ 9 ].u;
+		gu [ 1 ] = inputdata [ 12 ].u;
+		gu [ 2 ] = inputdata [ 15 ].u;
+		gv [ 0 ] = inputdata [ 9 ].v;
+		gv [ 1 ] = inputdata [ 12 ].v;
+		gv [ 2 ] = inputdata [ 15 ].v;
+		
+		//GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		Command_TGE = inputdata [ 7 ].Command & 1;
+		
+		//if ( ( bgr & 0x00ffffff ) == 0x00808080 ) Command_TGE = 1;
+
+		// bits 0-5 in upper halfword
+		clut_x = ( inputdata [ 9 ].Value >> ( 16 + 0 ) ) & 0x3f;
+		clut_y = ( inputdata [ 9 ].Value >> ( 16 + 6 ) ) & 0x1ff;
+
+		TWY = ( inputdata [ 4 ].Value >> 15 ) & 0x1f;
+		TWX = ( inputdata [ 4 ].Value >> 10 ) & 0x1f;
+		TWH = ( inputdata [ 4 ].Value >> 5 ) & 0x1f;
+		TWW = inputdata [ 4 ].Value & 0x1f;
+
+		
+		// DTD is bit 9 in GPU_CTRL_Read
+		GPU_CTRL_Read_DTD = ( GPU_CTRL_Read >> 9 ) & 1;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		// bits 0-3
+		//tpage_tx = GPU_CTRL_Read & 0xf;
+		tpage_tx = ( inputdata [ 12 ].Value >> ( 16 + 0 ) ) & 0xf;
+		
+		// bit 4
+		//tpage_ty = ( GPU_CTRL_Read >> 4 ) & 1
+		tpage_ty = ( inputdata [ 12 ].Value >> ( 16 + 4 ) ) & 1;
+		
+		// bits 5-6
+		//GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		tpage_abr = ( inputdata [ 12 ].Value >> ( 16 + 5 ) ) & 3;
+		
+		// bits 7-8
+		//tpage_tp = ( GPU_CTRL_Read >> 7 ) & 3;
+		tpage_tp = ( inputdata [ 12 ].Value >> ( 16 + 7 ) ) & 3;
+		
+		Shift1 = 0;
+		Shift2 = 0;
+		And1 = 0;
+		And2 = 0;
+
+
+		TWYTWH = ( ( TWY & TWH ) << 3 );
+		TWXTWW = ( ( TWX & TWW ) << 3 );
+		
+		Not_TWH = ~( TWH << 3 );
+		Not_TWW = ~( TWW << 3 );
+
+		
+		
+		/////////////////////////////////////////////////////////
+		// Get offset into texture page
+		TextureOffset = ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 );
+		
+		clut_xoffset = clut_x << 4;
+		
+		if ( tpage_tp == 0 )
+		{
+			And2 = 0xf;
+			
+			Shift1 = 2; Shift2 = 2;
+			And1 = 3; And2 = 0xf;
+		}
+		else if ( tpage_tp == 1 )
+		{
+			And2 = 0xff;
+			
+			Shift1 = 1; Shift2 = 3;
+			And1 = 1; And2 = 0xff;
+		}
+		
+		
+		// get u,v coords
+		u0 = gu [ Coord0 ];
+		u1 = gu [ Coord1 ];
+		u2 = gu [ Coord2 ];
+		v0 = gv [ Coord0 ];
+		v1 = gv [ Coord1 ];
+		v2 = gv [ Coord2 ];
+
+		// get rgb-values
+		r0 = gbgr [ Coord0 ] & 0xff;
+		r1 = gbgr [ Coord1 ] & 0xff;
+		r2 = gbgr [ Coord2 ] & 0xff;
+		g0 = ( gbgr [ Coord0 ] >> 8 ) & 0xff;
+		g1 = ( gbgr [ Coord1 ] >> 8 ) & 0xff;
+		g2 = ( gbgr [ Coord2 ] >> 8 ) & 0xff;
+		b0 = ( gbgr [ Coord0 ] >> 16 ) & 0xff;
+		b1 = ( gbgr [ Coord1 ] >> 16 ) & 0xff;
+		b2 = ( gbgr [ Coord2 ] >> 16 ) & 0xff;
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		//bgr = gbgr [ 0 ];
+		//bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+		//color_add = bgr;
+		
+		if ( denominator )
+		{
+			dR_across = ( ( (s32) ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) ) << 8 ) / denominator;
+			dG_across = ( ( (s32) ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) ) << 8 ) / denominator;
+			dB_across = ( ( (s32) ( ( ( b0 - b2 ) * t0 ) - ( ( b1 - b2 ) * t1 ) ) ) << 8 ) / denominator;
+			
+			dU_across = ( ( (s32) ( ( ( u0 - u2 ) * t0 ) - ( ( u1 - u2 ) * t1 ) ) ) << 8 ) / denominator;
+			dV_across = ( ( (s32) ( ( ( v0 - v2 ) * t0 ) - ( ( v1 - v2 ) * t1 ) ) ) << 8 ) / denominator;
+			
+			dR_across <<= 8;
+			dG_across <<= 8;
+			dB_across <<= 8;
+			
+			dU_across <<= 8;
+			dV_across <<= 8;
+			
+			//printf ( "dR_across=%x top=%i bottom=%i divide=%x", dR_across, ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ), denominator, ( ( ( ( r0 - r2 ) * t0 ) - ( ( r1 - r2 ) * t1 ) ) << 16 )/denominator );
+			//printf ( "dG_across=%x top=%i bottom=%i divide=%x", dG_across, ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ), denominator, ( ( ( ( g0 - g2 ) * t0 ) - ( ( g1 - g2 ) * t1 ) ) << 16 )/denominator );
+		}
+		
+		
+		
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+			if ( y1 - y0 )
+			{
+				/////////////////////////////////////////////
+				// init x on the left and right
+				x_left = ( x0 << 16 );
+				x_right = x_left;
+				
+				R_left = ( r0 << 16 );
+				G_left = ( g0 << 16 );
+				B_left = ( b0 << 16 );
+
+				U_left = ( u0 << 16 );
+				V_left = ( v0 << 16 );
+				
+				if ( denominator < 0 )
+				{
+					//dx_left = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_left = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_left = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+					//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+					
+					dR_left = (( r1 - r0 ) << 16 ) / ( y1 - y0 );
+					dG_left = (( g1 - g0 ) << 16 ) / ( y1 - y0 );
+					dB_left = (( b1 - b0 ) << 16 ) / ( y1 - y0 );
+					//dR_left = divide_s32( (( r1 - r0 ) << 16 ), ( y1 - y0 ) );
+					//dG_left = divide_s32( (( g1 - g0 ) << 16 ), ( y1 - y0 ) );
+					//dB_left = divide_s32( (( b1 - b0 ) << 16 ), ( y1 - y0 ) );
+					
+					dU_left = ( (( u1 - u0 ) << 16 ) ) / ( y1 - y0 );
+					dV_left = ( (( v1 - v0 ) << 16 ) ) / ( y1 - y0 );
+				}
+				else
+				{
+					//dx_right = ( ((s64)( x1 - x0 )) * r10 ) >> 32;
+					//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+					dx_right = ( ( x1 - x0 ) << 16 ) / ( y1 - y0 );
+					dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+					//dx_right = divide_s32( ( ( x1 - x0 ) << 16 ), ( y1 - y0 ) );
+					//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+					
+					dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+					dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+					dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+					//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+					//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+					//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+					
+					dU_left = ( (( u2 - u0 ) << 16 ) ) / ( y2 - y0 );
+					dV_left = ( (( v2 - v0 ) << 16 ) ) / ( y2 - y0 );
+				}
+			}
+			else
+			{
+				if ( denominator < 0 )
+				{
+					// change x_left and x_right where y1 is on left
+					x_left = ( x1 << 16 );
+					x_right = ( x0 << 16 );
+					
+					R_left = ( r1 << 16 );
+					G_left = ( g1 << 16 );
+					B_left = ( b1 << 16 );
+
+					U_left = ( u1 << 16 );
+					V_left = ( v1 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_right = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_left = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_right = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_left = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_right = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+						dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+						dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+						//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+						//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+						//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+						
+						dU_left = ( (( u2 - u1 ) << 16 ) ) / ( y2 - y1 );
+						dV_left = ( (( v2 - v1 ) << 16 ) ) / ( y2 - y1 );
+					}
+				}
+				else
+				{
+					x_right = ( x1 << 16 );
+					x_left = ( x0 << 16 );
+				
+					R_left = ( r0 << 16 );
+					G_left = ( g0 << 16 );
+					B_left = ( b0 << 16 );
+					
+					U_left = ( u0 << 16 );
+					V_left = ( v0 << 16 );
+					
+					if ( y2 - y1 )
+					{
+						//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+						//dx_left = ( ((s64)( x2 - x0 )) * r20 ) >> 32;
+						dx_right = ( ( x2 - x1 ) << 16 ) / ( y2 - y1 );
+						dx_left = ( ( x2 - x0 ) << 16 ) / ( y2 - y0 );
+						//dx_right = divide_s32( ( ( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+						//dx_left = divide_s32( ( ( x2 - x0 ) << 16 ), ( y2 - y0 ) );
+						
+						dR_left = (( r2 - r0 ) << 16 ) / ( y2 - y0 );
+						dG_left = (( g2 - g0 ) << 16 ) / ( y2 - y0 );
+						dB_left = (( b2 - b0 ) << 16 ) / ( y2 - y0 );
+						//dR_left = divide_s32( (( r2 - r0 ) << 16 ), ( y2 - y0 ) );
+						//dG_left = divide_s32( (( g2 - g0 ) << 16 ), ( y2 - y0 ) );
+						//dB_left = divide_s32( (( b2 - b0 ) << 16 ), ( y2 - y0 ) );
+						
+						dU_left = ( (( u2 - u0 ) << 16 ) ) / ( y2 - y0 );
+						dV_left = ( (( v2 - v0 ) << 16 ) ) / ( y2 - y0 );
+					}
+				}
+			}
+		//}
+		
+
+
+	
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		
+		
+		// r,g,b values are not specified with a fractional part, so there must be an initial fractional part
+		R_left |= ( 1 << 15 );
+		G_left |= ( 1 << 15 );
+		B_left |= ( 1 << 15 );
+
+		U_left |= ( 1 << 15 );
+		V_left |= ( 1 << 15 );
+
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			R_left += dR_left * Temp;
+			G_left += dG_left * Temp;
+			B_left += dB_left * Temp;
+			
+			U_left += dU_left * Temp;
+			V_left += dV_left * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+		
+		//printf( "x_left=%x x_right=%x dx_left=%i dx_right=%i R_left=%x G_left=%x B_left=%x OffsetX=%i OffsetY=%i",x_left,x_right,dx_left,dx_right,R_left,G_left,B_left, DrawArea_OffsetX, DrawArea_OffsetY );
+		//printf( "x0=%i y0=%i x1=%i y1=%i x2=%i y2=%i r0=%i r1=%i r2=%i g0=%i g1=%i g2=%i b0=%i b1=%i b2=%i", x0, y0, x1, y1, x2, y2, r0, r1, r2, g0, g1, g2, b0, b1, b2 );
+		//printf( "dR_across=%x dG_across=%x dB_across=%x", dR_across, dG_across, dB_across );
+
+	//}	// end if ( !local_id )
+	
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+
+
+	
+	
+	ptr_clut = & ( _GPU->VRAM [ clut_y << 10 ] );
+	ptr_texture = & ( _GPU->VRAM [ ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 ) ] );
+
+	
+
+
+
+	
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	
+
+
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	Uoff_left = U_left + ( dU_left * (group_yoffset + yid) );
+	Voff_left = V_left + ( dV_left * (group_yoffset + yid) );
+	
+//debug << "\r\nDrawing Top= " << hex << color_add << " " << Command_TGE;
+	//////////////////////////////////////////////
+	// draw down to y1
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffffLL ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+//debug << "\r\nStartX=" << dec << StartX << " EndX=" << EndX << " Line=" << Line << " StartY=" << StartY << " EndY=" << EndY;
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			iR = Roff_left;
+			iG = Goff_left;
+			iB = Boff_left;
+			
+			iU = Uoff_left;
+			iV = Voff_left;
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+			}
+			
+			iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			iU += ( dU_across >> 8 ) * ( Temp >> 8 );
+			iV += ( dV_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			iR += ( dR_across * xid );
+			iG += ( dG_across * xid );
+			iB += ( dB_across * xid );
+
+			iU += ( dU_across * xid );
+			iV += ( dV_across * xid );
+			
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				TexCoordY = (u8) ( ( ( iV >> 16 ) & Not_TWH ) | ( TWYTWH ) );
+				TexCoordY <<= 10;
+
+				//TexCoordX = (u8) ( ( iU & ~( TWW << 3 ) ) | ( ( TWX & TWW ) << 3 ) );
+				TexCoordX = (u8) ( ( ( iU >> 16 ) & Not_TWW ) | ( TWXTWW ) );
+				
+				//bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + TexCoordY ];
+				
+				if ( Shift1 )
+				{
+					//bgr = VRAM [ ( ( ( clut_x << 4 ) + TexelIndex ) & FrameBuffer_XMask ) + ( clut_y << 10 ) ];
+					bgr = ptr_clut [ ( clut_xoffset + ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 ) ) & FrameBuffer_XMask ];
+				}
+
+//debug << "\r\nx_across=" << dec << x_across << " TexCoordX=" << TexCoordX << " TexCoordY=" << TexCoordY << " bgr=" << hex << bgr;				
+				if ( bgr )
+				{
+					
+					// shade pixel color
+					
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					
+					bgr_temp = bgr;
+		
+					if ( !Command_TGE )
+					{
+						if ( GPU_CTRL_Read_DTD )
+						{
+							DitherValue = c_iDitherValues16 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+							
+							// perform dither
+							Red = iR + DitherValue;
+							Green = iG + DitherValue;
+							Blue = iB + DitherValue;
+							
+							// perform shift
+							Red >>= ( 16 + 0 );
+							Green >>= ( 16 + 0 );
+							Blue >>= ( 16 + 0 );
+							
+							//Red = clamp ( Red, 0, 0x1f );
+							//Green = clamp ( Green, 0, 0x1f );
+							//Blue = clamp ( Blue, 0, 0x1f );
+							Red = Clamp8 ( Red );
+							Green = Clamp8 ( Green );
+							Blue = Clamp8 ( Blue );
+						}
+						else
+						{
+							Red = iR >> ( 16 + 0 );
+							Green = iG >> ( 16 + 0 );
+							Blue = iB >> ( 16 + 0 );
+						}
+						
+						color_add = ( Blue << 16 ) | ( Green << 8 ) | Red;
+//debug << "\r\nColorMultiply1624 Top= " << hex << color_add;
+						// brightness calculation
+						//bgr_temp = Color24To16 ( ColorMultiply24 ( Color16To24 ( bgr_temp ), color_add ) );
+						bgr_temp = ColorMultiply1624 ( bgr_temp, color_add );
+					}
+					
+					// semi-transparency
+					if ( Command_ABE && ( bgr & 0x8000 ) )
+					{
+//debug << "\r\SemiTransparency16 Bottom";
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, tpage_abr );
+					}
+					
+					// check if we should set mask bit when drawing
+					//bgr_temp |= SetPixelMask | ( bgr & 0x8000 );
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp | SetPixelMask | ( bgr & 0x8000 );
+					
+				}
+						
+				iR += ( dR_across * xinc );
+				iG += ( dG_across * xinc );
+				iB += ( dB_across * xinc );
+			
+				iU += ( dU_across * xinc );
+				iV += ( dV_across * xinc );
+					
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		Roff_left += ( dR_left * yinc );
+		Goff_left += ( dG_left * yinc );
+		Boff_left += ( dB_left * yinc );
+		
+		Uoff_left += ( dU_left * yinc );
+		Voff_left += ( dV_left * yinc );
+	}
+
+	} // end if ( EndY > StartY )
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	////////////////////////////////////////////////
+	// draw bottom part of triangle
+
+	/////////////////////////////////////////////
+	// init x on the left and right
+	
+	//if ( !local_id )
+	//{
+		//////////////////////////////////////////////////////
+		// check if y1 is on the left or on the right
+		if ( denominator < 0 )
+		{
+			x_left = ( x1 << 16 );
+
+			x_right = ( x0 << 16 ) + ( dx_right * ( y1 - y0 ) );
+			
+			R_left = ( r1 << 16 );
+			G_left = ( g1 << 16 );
+			B_left = ( b1 << 16 );
+			
+			U_left = ( u1 << 16 );
+			V_left = ( v1 << 16 );
+			
+			if ( y2 - y1 )
+			{
+				//dx_left = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				dx_left = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				//dx_left = divide_s32( (( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+				
+				//dR_left = ( ((s64)( r2 - r1 )) * r21 ) >> 24;
+				//dG_left = ( ((s64)( g2 - g1 )) * r21 ) >> 24;
+				//dB_left = ( ((s64)( b2 - b1 )) * r21 ) >> 24;
+				dR_left = (( r2 - r1 ) << 16 ) / ( y2 - y1 );
+				dG_left = (( g2 - g1 ) << 16 ) / ( y2 - y1 );
+				dB_left = (( b2 - b1 ) << 16 ) / ( y2 - y1 );
+				//dR_left = divide_s32( (( r2 - r1 ) << 16 ), ( y2 - y1 ) );
+				//dG_left = divide_s32( (( g2 - g1 ) << 16 ), ( y2 - y1 ) );
+				//dB_left = divide_s32( (( b2 - b1 ) << 16 ), ( y2 - y1 ) );
+				
+				dU_left = ( (( u2 - u1 ) << 16 ) ) / ( y2 - y1 );
+				dV_left = ( (( v2 - v1 ) << 16 ) ) / ( y2 - y1 );
+			}
+		}
+		else
+		{
+			x_right = ( x1 << 16 );
+
+			x_left = ( x0 << 16 ) + ( dx_left * ( y1 - y0 ) );
+			
+			R_left = ( r0 << 16 ) + ( dR_left * ( y1 - y0 ) );
+			G_left = ( g0 << 16 ) + ( dG_left * ( y1 - y0 ) );
+			B_left = ( b0 << 16 ) + ( dB_left * ( y1 - y0 ) );
+			
+			U_left = ( u0 << 16 ) + ( dU_left * ( y1 - y0 ) );
+			V_left = ( v0 << 16 ) + ( dV_left * ( y1 - y0 ) );
+			
+			if ( y2 - y1 )
+			{
+				//dx_right = ( ((s64)( x2 - x1 )) * r21 ) >> 32;
+				dx_right = (( x2 - x1 ) << 16 ) / ( y2 - y1 );
+				//dx_right = divide_s32( (( x2 - x1 ) << 16 ), ( y2 - y1 ) );
+				
+			}
+		}
+
+
+		R_left += ( 1 << 15 );
+		G_left += ( 1 << 15 );
+		B_left += ( 1 << 15 );
+
+		U_left += ( 1 << 15 );
+		V_left += ( 1 << 15 );
+		
+
+		//x_left += 0xffff;
+		//x_right -= 1;
+		
+		StartY = y1;
+		EndY = y2;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = EndY - StartY;
+				StartY = EndY;
+			}
+			else
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			x_left += dx_left * Temp;
+			x_right += dx_right * Temp;
+			
+			R_left += dR_left * Temp;
+			G_left += dG_left * Temp;
+			B_left += dB_left * Temp;
+			
+			U_left += dU_left * Temp;
+			V_left += dV_left * Temp;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY + 1;
+		}
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	if ( EndY > StartY )
+	{
+	
+	// in opencl, each worker could be on a different line
+	xoff_left = x_left + ( dx_left * (group_yoffset + yid) );
+	xoff_right = x_right + ( dx_right * (group_yoffset + yid) );
+	
+	Roff_left = R_left + ( dR_left * (group_yoffset + yid) );
+	Goff_left = G_left + ( dG_left * (group_yoffset + yid) );
+	Boff_left = B_left + ( dB_left * (group_yoffset + yid) );
+	
+	Uoff_left = U_left + ( dU_left * (group_yoffset + yid) );
+	Voff_left = V_left + ( dV_left * (group_yoffset + yid) );
+	
+//debug << "\r\nDrawing Bottom= " << hex << color_add << " " << Command_TGE;
+	//////////////////////////////////////////////
+	// draw down to y2
+	//for ( Line = StartY; Line < EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line < EndY; Line += yinc )
+	{
+		
+		// left point is included if points are equal
+		StartX = ( xoff_left + 0xffffLL ) >> 16;
+		EndX = ( xoff_right - 1 ) >> 16;
+		//StartX = xoff_left >> 16;
+		//EndX = xoff_right >> 16;
+		
+		
+		if ( StartX <= ((s32)DrawArea_BottomRightX) && EndX >= ((s32)DrawArea_TopLeftX) && EndX >= StartX )
+		{
+			iR = Roff_left;
+			iG = Goff_left;
+			iB = Boff_left;
+			
+			iU = Uoff_left;
+			iV = Voff_left;
+			
+			// get the difference between x_left and StartX
+			Temp = ( StartX << 16 ) - xoff_left;
+			
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp += ( DrawArea_TopLeftX - StartX ) << 16;
+				StartX = DrawArea_TopLeftX;
+				
+			}
+			
+			iR += ( dR_across >> 8 ) * ( Temp >> 8 );
+			iG += ( dG_across >> 8 ) * ( Temp >> 8 );
+			iB += ( dB_across >> 8 ) * ( Temp >> 8 );
+			
+			iU += ( dU_across >> 8 ) * ( Temp >> 8 );
+			iV += ( dV_across >> 8 ) * ( Temp >> 8 );
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				//EndX = DrawArea_BottomRightX + 1;
+				EndX = DrawArea_BottomRightX;
+			}
+			
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			//DitherLine = & ( DitherArray [ ( Line & 0x3 ) << 2 ] );
+			
+			
+			/////////////////////////////////////////////////////
+			// update number of cycles used to draw polygon
+			//NumberOfPixelsDrawn += EndX - StartX + 1;
+			
+			iR += ( dR_across * xid );
+			iG += ( dG_across * xid );
+			iB += ( dB_across * xid );
+
+			iU += ( dU_across * xid );
+			iV += ( dV_across * xid );
+			
+			// draw horizontal line
+			// x_left and x_right need to be rounded off
+			//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				TexCoordY = (u8) ( ( ( iV >> 16 ) & Not_TWH ) | ( TWYTWH ) );
+				TexCoordY <<= 10;
+
+				//TexCoordX = (u8) ( ( iU & ~( TWW << 3 ) ) | ( ( TWX & TWW ) << 3 ) );
+				TexCoordX = (u8) ( ( ( iU >> 16 ) & Not_TWW ) | ( TWXTWW ) );
+				
+				//bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + TexCoordY ];
+				
+				if ( Shift1 )
+				{
+					//bgr = VRAM [ ( ( ( clut_x << 4 ) + TexelIndex ) & FrameBuffer_XMask ) + ( clut_y << 10 ) ];
+					bgr = ptr_clut [ ( clut_xoffset + ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 ) ) & FrameBuffer_XMask ];
+				}
+
+				
+				if ( bgr )
+				{
+					
+					// shade pixel color
+					
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;
+					
+					
+					bgr_temp = bgr;
+		
+					
+					if ( !Command_TGE )
+					{
+						if ( GPU_CTRL_Read_DTD )
+						{
+							DitherValue = c_iDitherValues16 [ ( x_across & 3 ) + ( ( Line & 3 ) << 2 ) ];
+							
+							// perform dither
+							Red = iR + DitherValue;
+							Green = iG + DitherValue;
+							Blue = iB + DitherValue;
+							
+							// perform shift
+							Red >>= ( 16 + 0 );
+							Green >>= ( 16 + 0 );
+							Blue >>= ( 16 + 0 );
+							
+							//Red = clamp ( Red, 0, 0x1f );
+							//Green = clamp ( Green, 0, 0x1f );
+							//Blue = clamp ( Blue, 0, 0x1f );
+							Red = Clamp8 ( Red );
+							Green = Clamp8 ( Green );
+							Blue = Clamp8 ( Blue );
+						}
+						else
+						{
+							Red = iR >> ( 16 + 0 );
+							Green = iG >> ( 16 + 0 );
+							Blue = iB >> ( 16 + 0 );
+						}
+						
+						color_add = ( Blue << 16 ) | ( Green << 8 ) | Red;
+//debug << "\r\nColorMultiply1624 Bottom= " << hex << color_add;
+						// brightness calculation
+						//bgr_temp = Color24To16 ( ColorMultiply24 ( Color16To24 ( bgr_temp ), color_add ) );
+						bgr_temp = ColorMultiply1624 ( bgr_temp, color_add );
+					}
+					
+					// semi-transparency
+					if ( Command_ABE && ( bgr & 0x8000 ) )
+					{
+//debug << "\r\SemiTransparency16 Bottom";
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, tpage_abr );
+					}
+					
+					// check if we should set mask bit when drawing
+					//bgr_temp |= SetPixelMask | ( bgr & 0x8000 );
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp | SetPixelMask | ( bgr & 0x8000 );
+					
+				}
+
+					
+				iR += ( dR_across * xinc );
+				iG += ( dG_across * xinc );
+				iB += ( dB_across * xinc );
+				
+				iU += ( dU_across * xinc );
+				iV += ( dV_across * xinc );
+				
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+			}
+			
+		}
+		
+		/////////////////////////////////////
+		// update x on left and right
+		xoff_left += ( dx_left * yinc );
+		xoff_right += ( dx_right * yinc );
+		
+		Roff_left += ( dR_left * yinc );
+		Goff_left += ( dG_left * yinc );
+		Boff_left += ( dB_left * yinc );
+		
+		Uoff_left += ( dU_left * yinc );
+		Voff_left += ( dV_left * yinc );
+	}
+	
+	} // end if ( EndY > StartY )
+		
+	return NumPixels;
+}
+
+
+
+static u64 GPU::Draw_Rectangle_60_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = local_id;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	s32 group_yoffset = 0;
+//#endif
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_BottomRightX
+//2: DrawArea_TopLeftX
+//3: DrawArea_BottomRightY
+//4: DrawArea_TopLeftY
+//5: DrawArea_OffsetX
+//6: DrawArea_OffsetY
+//----------------
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY ( Buffer [ 1 ] );
+//9: GetCLUT ( Buffer [ 2 ] );
+//9: GetUV ( Buffer [ 2 ] );
+//10: GetHW ( Buffer [ 3 ] );
+
+	//u32 Pixel;
+	
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	
+	s32 StartX, EndX, StartY, EndY;
+	//u32 PixelsPerLine;
+	
+	// new variables
+	s32 x, y;
+	u32 w, h;
+	s32 x0, x1, y0, y1;
+	u32 bgr;
+	
+	u32 PixelMask, SetPixelMask;
+	
+	//s32 group_yoffset;
+	
+	u16 *ptr;
+	
+	u32 DestPixel;
+	u32 bgr_temp;
+	s32 x_across;
+	s32 Line;
+	
+	u64 NumPixels;
+
+
+	// set variables
+	//if ( !local_id )
+	//{
+		// set bgr64
+		//bgr64 = gbgr [ 0 ];
+		//bgr64 |= ( bgr64 << 16 );
+		//bgr64 |= ( bgr64 << 32 );
+		bgr = inputdata [ 7 ].Value;
+		bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+		x = inputdata [ 8 ].x;
+		y = inputdata [ 8 ].y;
+		
+		// x and y are actually 11 bits
+		x = ( x << ( 5 + 16 ) ) >> ( 5 + 16 );
+		y = ( y << ( 5 + 16 ) ) >> ( 5 + 16 );
+		
+		w = inputdata [ 10 ].w;
+		h = inputdata [ 10 ].h;
+	
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		
+		// get top left corner of sprite and bottom right corner of sprite
+		x0 = x + DrawArea_OffsetX;
+		y0 = y + DrawArea_OffsetY;
+		x1 = x0 + w - 1;
+		y1 = y0 + h - 1;
+		
+		//////////////////////////////////////////
+		// get coordinates on screen
+		//x0 = DrawArea_OffsetX + x0;
+		//y0 = DrawArea_OffsetY + y0;
+		//x1 = DrawArea_OffsetX + x1;
+		//y1 = DrawArea_OffsetY + y1;
+		
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( x1 < ((s32)DrawArea_TopLeftX) || x0 > ((s32)DrawArea_BottomRightX) || y1 < ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		
+		StartX = x0;
+		EndX = x1;
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			StartY = DrawArea_TopLeftY;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY;
+		}
+		
+		if ( StartX < ((s32)DrawArea_TopLeftX) )
+		{
+			StartX = DrawArea_TopLeftX;
+		}
+		
+		if ( EndX > ((s32)DrawArea_BottomRightX) )
+		{
+			EndX = DrawArea_BottomRightX;
+		}
+
+		
+		NumPixels = ( EndX - StartX + 1 ) * ( EndY - StartY + 1 );
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+		
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+		// get color(s)
+		//bgr = gbgr [ 0 ];
+		
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		//bgr = ( ( bgr & ( 0xf8 << 0 ) ) >> 3 ) | ( ( bgr & ( 0xf8 << 8 ) ) >> 6 ) | ( ( bgr & ( 0xf8 << 16 ) ) >> 9 );
+
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+		
+		
+		//printf ( "x0=%i y0=%i x1=%i y1=%i StartX=%i StartY=%i EndX=%i EndY=%i", x0, y0, x1, y1, StartX, StartY, EndX, EndY );
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+	
+	
+	// initialize number of pixels drawn
+	//NumberOfPixelsDrawn = 0;
+	
+	
+
+	
+	//NumberOfPixelsDrawn = ( EndX - StartX + 1 ) * ( EndY - StartY + 1 );
+	
+	
+	//for ( Line = StartY; Line <= EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line <= EndY; Line += yinc )
+	{
+		ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+		
+
+		// draw horizontal line
+		//for ( x_across = StartX; x_across <= EndX; x_across += c_iVectorSize )
+		for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+		{
+			// read pixel from frame buffer if we need to check mask bit
+			DestPixel = *ptr;
+			
+			bgr_temp = bgr;
+
+			// semi-transparency
+			if ( Command_ABE )
+			{
+				bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+			}
+			
+			// check if we should set mask bit when drawing
+			bgr_temp |= SetPixelMask;
+
+			// draw pixel if we can draw to mask pixels or mask bit not set
+			//if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+			DestPixel = ( ! ( DestPixel & PixelMask ) ) ? bgr_temp : DestPixel;
+			*ptr = DestPixel;
+			
+			// update pointer for pixel out
+			//ptr += c_iVectorSize;
+			ptr += xinc;
+		}
+	}
+	
+	// set the amount of time drawing used up
+	//BusyCycles = NumberOfPixelsDrawn * 1;
+	return NumPixels;
+}
+
+
+static u64 GPU::DrawSprite_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = local_id;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	s32 group_yoffset = 0;
+//#endif
+
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_BottomRightX
+//2: DrawArea_TopLeftX
+//3: DrawArea_BottomRightY
+//4: DrawArea_TopLeftY
+//5: DrawArea_OffsetX
+//6: DrawArea_OffsetY
+//7: TextureWindow
+//-------------------------
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: TextureWindow
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY ( Buffer [ 1 ] );
+//9: GetCLUT ( Buffer [ 2 ] );
+//9: GetUV ( Buffer [ 2 ] );
+//10: GetHW ( Buffer [ 3 ] );
+
+
+	// notes: looks like sprite size is same as specified by w/h
+
+	//u32 Pixel,
+
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	u32 Command_TGE;
+
+	
+	u32 TexelIndex;
+	
+	
+	u16 *ptr;
+	s32 StartX, EndX, StartY, EndY;
+	s32 x, y, w, h;
+	
+	//s32 group_yoffset;
+	
+	u32 Temp;
+	
+	// new variables
+	s32 x0, x1, y0, y1;
+	s32 u0, v0;
+	s32 u, v;
+	u32 bgr, bgr_temp;
+	s32 iU, iV;
+	s32 x_across;
+	s32 Line;
+	
+	u32 DestPixel;
+	u32 PixelMask, SetPixelMask;
+
+	
+	u32 color_add;
+	
+	u16 *ptr_texture, *ptr_clut;
+	u32 clut_xoffset, clut_yoffset;
+	u32 clut_x, clut_y, tpage_tx, tpage_ty, tpage_abr, tpage_tp, command_tge, command_abe, command_abr;
+	
+	u32 TexCoordX, TexCoordY;
+	u32 Shift1, Shift2, And1, And2;
+	u32 TextureOffset;
+
+	u32 TWYTWH, TWXTWW, Not_TWH, Not_TWW;
+	u32 TWX, TWY, TWW, TWH;
+	
+	u32 NumPixels;
+	
+
+	// set variables
+	//if ( !local_id )
+	//{
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+		
+		x = inputdata [ 8 ].x;
+		y = inputdata [ 8 ].y;
+		
+		// x and y are actually 11 bits
+		x = ( x << ( 5 + 16 ) ) >> ( 5 + 16 );
+		y = ( y << ( 5 + 16 ) ) >> ( 5 + 16 );
+		
+		w = inputdata [ 10 ].w;
+		h = inputdata [ 10 ].h;
+
+		// get top left corner of sprite and bottom right corner of sprite
+		x0 = x + DrawArea_OffsetX;
+		y0 = y + DrawArea_OffsetY;
+		x1 = x0 + w - 1;
+		y1 = y0 + h - 1;
+
+		u = inputdata [ 9 ].u;
+		v = inputdata [ 9 ].v;
+		
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+		
+		// check if sprite is within draw area
+		if ( x1 < ((s32)DrawArea_TopLeftX) || x0 > ((s32)DrawArea_BottomRightX) || y1 < ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+
+		
+		// get texture coords
+		u0 = u;
+		v0 = v;
+		
+		StartX = x0;
+		EndX = x1;
+		StartY = y0;
+		EndY = y1;
+
+		if ( StartY < ((s32)DrawArea_TopLeftY) )
+		{
+			v0 += ( DrawArea_TopLeftY - StartY );
+			StartY = DrawArea_TopLeftY;
+		}
+		
+		if ( EndY > ((s32)DrawArea_BottomRightY) )
+		{
+			EndY = DrawArea_BottomRightY;
+		}
+		
+		if ( StartX < ((s32)DrawArea_TopLeftX) )
+		{
+			u0 += ( DrawArea_TopLeftX - StartX );
+			StartX = DrawArea_TopLeftX;
+		}
+		
+		if ( EndX > ((s32)DrawArea_BottomRightX) )
+		{
+			EndX = DrawArea_BottomRightX;
+		}
+		
+		NumPixels = ( EndX - StartX + 1 ) * ( EndY - StartY + 1 );
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+		// set bgr64
+		//bgr64 = gbgr [ 0 ];
+		//bgr64 |= ( bgr64 << 16 );
+		//bgr64 |= ( bgr64 << 32 );
+		bgr = inputdata [ 7 ].Value & 0x00ffffff;
+		//bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+
+
+		
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		Command_TGE = inputdata [ 7 ].Command & 1;
+		
+		if ( ( bgr & 0x00ffffff ) == 0x00808080 ) Command_TGE = 1;
+
+		
+		
+		
+		// bits 0-5 in upper halfword
+		clut_x = ( inputdata [ 9 ].Value >> ( 16 + 0 ) ) & 0x3f;
+		clut_y = ( inputdata [ 9 ].Value >> ( 16 + 6 ) ) & 0x1ff;
+	
+		
+		
+		TWY = ( inputdata [ 4 ].Value >> 15 ) & 0x1f;
+		TWX = ( inputdata [ 4 ].Value >> 10 ) & 0x1f;
+		TWH = ( inputdata [ 4 ].Value >> 5 ) & 0x1f;
+		TWW = inputdata [ 4 ].Value & 0x1f;
+
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		// bits 0-3
+		tpage_tx = GPU_CTRL_Read & 0xf;
+		
+		// bit 4
+		tpage_ty = ( GPU_CTRL_Read >> 4 ) & 1;
+		
+		// bits 5-6
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		
+		// bits 7-8
+		tpage_tp = ( GPU_CTRL_Read >> 7 ) & 3;
+		
+		Shift1 = 0;
+		Shift2 = 0;
+		And1 = 0;
+		And2 = 0;
+
+
+		TWYTWH = ( ( TWY & TWH ) << 3 );
+		TWXTWW = ( ( TWX & TWW ) << 3 );
+		
+		Not_TWH = ~( TWH << 3 );
+		Not_TWW = ~( TWW << 3 );
+
+		
+		
+		/////////////////////////////////////////////////////////
+		// Get offset into texture page
+		TextureOffset = ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 );
+		
+
+		
+		//////////////////////////////////////////////////////
+		// Get offset into color lookup table
+		//u32 ClutOffset = ( clut_x << 4 ) + ( clut_y << 10 );
+		
+		clut_xoffset = clut_x << 4;
+		
+		if ( tpage_tp == 0 )
+		{
+			And2 = 0xf;
+			
+			Shift1 = 2; Shift2 = 2;
+			And1 = 3; And2 = 0xf;
+		}
+		else if ( tpage_tp == 1 )
+		{
+			And2 = 0xff;
+			
+			Shift1 = 1; Shift2 = 3;
+			And1 = 1; And2 = 0xff;
+		}
+		
+		
+		color_add = bgr;
+		
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+		
+//printf( "StartX= %i EndX= %i StartY= %i EndY= %i x= %i y= %i w= %i h=%i", StartX, EndX, StartY, EndY, x, y, w, h );
+	//}
+
+	
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+	
+
+	// initialize number of pixels drawn
+	//NumberOfPixelsDrawn = 0;
+	
+	
+	
+	//NumberOfPixelsDrawn = ( EndX - StartX + 1 ) * ( EndY - StartY + 1 );
+		
+
+	ptr_clut = & ( _GPU->VRAM [ clut_y << 10 ] );
+	ptr_texture = & ( _GPU->VRAM [ ( tpage_tx << 6 ) + ( ( tpage_ty << 8 ) << 10 ) ] );
+
+	
+	//iV = v0;
+	iV = v0 + group_yoffset + yid;
+
+	//for ( Line = StartY; Line <= EndY; Line++ )
+	for ( Line = StartY + group_yoffset + yid; Line <= EndY; Line += yinc )
+	{
+			// need to start texture coord from left again
+			//iU = u0;
+			iU = u0 + xid;
+
+			TexCoordY = (u8) ( ( iV & Not_TWH ) | ( TWYTWH ) );
+			TexCoordY <<= 10;
+
+			//ptr = & ( VRAM [ StartX + ( Line << 10 ) ] );
+			ptr = & ( _GPU->VRAM [ StartX + xid + ( Line << 10 ) ] );
+			
+
+			// draw horizontal line
+			//for ( x_across = StartX; x_across <= EndX; x_across += xinc )
+			for ( x_across = StartX + xid; x_across <= EndX; x_across += xinc )
+			{
+				//TexCoordX = (u8) ( ( iU & ~( TWW << 3 ) ) | ( ( TWX & TWW ) << 3 ) );
+				TexCoordX = (u8) ( ( iU & Not_TWW ) | ( TWXTWW ) );
+				
+				//bgr = VRAM [ TextureOffset + ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				//bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + ( TexCoordY << 10 ) ];
+				bgr = ptr_texture [ ( TexCoordX >> Shift1 ) + TexCoordY ];
+				
+				if ( Shift1 )
+				{
+					//TexelIndex = ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 );
+					//bgr = VRAM [ ( ( ( clut_x << 4 ) + TexelIndex ) & FrameBuffer_XMask ) + ( clut_y << 10 ) ];
+					bgr = ptr_clut [ ( clut_xoffset + ( ( bgr >> ( ( TexCoordX & And1 ) << Shift2 ) ) & And2 ) ) & FrameBuffer_XMask ];
+				}
+
+				
+				if ( bgr )
+				{
+					// read pixel from frame buffer if we need to check mask bit
+					DestPixel = *ptr;	//VRAM [ x_across + ( Line << 10 ) ];
+					
+					bgr_temp = bgr;
+		
+					if ( !Command_TGE )
+					{
+						// brightness calculation
+						//bgr_temp = Color24To16 ( ColorMultiply24 ( Color16To24 ( bgr_temp ), color_add ) );
+						bgr_temp = ColorMultiply1624 ( bgr_temp, color_add );
+					}
+					
+					// semi-transparency
+					if ( Command_ABE && ( bgr & 0x8000 ) )
+					{
+						bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+					}
+					
+					// check if we should set mask bit when drawing
+					bgr_temp |= SetPixelMask | ( bgr & 0x8000 );
+
+					// draw pixel if we can draw to mask pixels or mask bit not set
+					if ( ! ( DestPixel & PixelMask ) ) *ptr = bgr_temp;
+				}
+					
+				/////////////////////////////////////////////////////////
+				// interpolate texture coords across
+				//iU += c_iVectorSize;
+				iU += xinc;
+				
+				// update pointer for pixel out
+				//ptr += c_iVectorSize;
+				ptr += xinc;
+					
+			}
+		
+		/////////////////////////////////////////////////////////
+		// interpolate texture coords down
+		//iV++;	//+= dV_left;
+		iV += yinc;
+	}
+	
+	return NumPixels;
+}
+
+
+
+static void GPU::Draw_Pixel_68_th ( DATA_Write_Format* inputdata, u32 ulThreadNum = 0 )
+{
+	const int local_id = 0;
+	
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7:GetBGR24 ( Buffer [ 0 ] );
+//8:GetXY ( Buffer [ 1 ] );
+
+
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 Command_ABE;
+	
+	u32 bgr;
+	//s32 Absolute_DrawX, Absolute_DrawY;
+	s32 x, y;
+	
+	u16* ptr16;
+	
+	u32 DestPixel, PixelMask;
+	u32 SetPixelMask;
+	
+	
+	//if ( !local_id )
+	//{
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+
+		x = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		y = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		
+		x += DrawArea_OffsetX;
+		y += DrawArea_OffsetY;
+
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		if ( x < DrawArea_TopLeftX || y < DrawArea_TopLeftY || x > DrawArea_BottomRightX || y > DrawArea_BottomRightY )
+		{
+			return 0;
+		}
+		
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return 1;
+		}
+		
+		
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		bgr = inputdata [ 7 ].Value & 0x00ffffff;
+		bgr = ( ( bgr & ( 0xf8 << 0 ) ) >> 3 ) | ( ( bgr & ( 0xf8 << 8 ) ) >> 6 ) | ( ( bgr & ( 0xf8 << 16 ) ) >> 9 );
+		
+		
+		
+		///////////////////////////////////////////////
+		// set amount of time GPU will be busy for
+		//BusyCycles += 1;
+		
+		/////////////////////////////////////////
+		// Draw the pixel
+
+		// make sure we are putting pixel within draw area
+		//if ( x >= DrawArea_TopLeftX && y >= DrawArea_TopLeftY && x <= DrawArea_BottomRightX && y <= DrawArea_BottomRightY )
+		//{
+			ptr16 = & ( _GPU->VRAM [ x + ( y << 10 ) ] );
+			
+			
+			// read pixel from frame buffer if we need to check mask bit
+			//DestPixel = VRAM [ Absolute_DrawX + ( Absolute_DrawY << 10 ) ];
+			DestPixel = *ptr16;
+			
+			// semi-transparency
+			if ( Command_ABE )
+			{
+				bgr = SemiTransparency16 ( DestPixel, bgr, GPU_CTRL_Read_ABR );
+			}
+			
+			// check if we should set mask bit when drawing
+			//if ( GPU_CTRL_Read.MD ) bgr |= 0x8000;
+
+			// draw pixel if we can draw to mask pixels or mask bit not set
+			if ( ! ( DestPixel & PixelMask ) ) *ptr16 = bgr | SetPixelMask;
+		//}
+	//}
+	
+	return 1;
+}
+
+
+
+static u64 GPU::Draw_FrameBufferRectangle_02_th ( DATA_Write_Format* inputdata, u32 ulThreadNum = 0 )
+{
+	// goes at the top for opencl function
+
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = local_id;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	
+	// the space between consecutive yid's
+	const int yinc = num_global_groups;
+	s32 group_yoffset = 0;
+//#endif
+
+	u32 NumPixels;
+
+//inputdata format:
+//0: -------
+//1: -------
+//2: -------
+//3: -------
+//4: -------
+//5: -------
+//6: -------
+//7: GetBGR ( Buffer [ 0 ] );
+//8: GetXY ( Buffer [ 1 ] );
+//9: GetHW ( Buffer [ 2 ] );
+
+
+	// ptr to vram
+	u16 *ptr;
+	//u16 *ptr16;
+	u16 bgr16;
+	u32 bgr32;
+	
+	u32 w, h, xmax, ymax, ymax2;
+	s32 x, y;
+	
+	//s32 group_yoffset;
+	
+	u32 xoff, yoff;
+	
+	
+	// set variables
+	//if ( !local_id )
+	//{
+		w = inputdata [ 9 ].w;
+		h = inputdata [ 9 ].h;
+		
+		// Xsiz=((Xsiz AND 3FFh)+0Fh) AND (NOT 0Fh)
+		w = ( ( w & 0x3ff ) + 0xf ) & ~0xf;
+		
+		// Ysiz=((Ysiz AND 1FFh))
+		h &= 0x1ff;
+		
+		NumPixels = w * h;
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+		// set bgr64
+		//bgr64 = gbgr [ 0 ];
+		//bgr64 |= ( bgr64 << 16 );
+		//bgr64 |= ( bgr64 << 32 );
+		bgr32 = inputdata [ 7 ].Value;
+		bgr16 = ( ( bgr32 >> 9 ) & 0x7c00 ) | ( ( bgr32 >> 6 ) & 0x3e0 ) | ( ( bgr32 >> 3 ) & 0x1f );
+		
+		x = inputdata [ 8 ].x;
+		y = inputdata [ 8 ].y;
+		
+		// x and y are actually 11 bits
+		// doesn't matter for frame buffer
+		//x = ( x << 5 ) >> 5;
+		//y = ( y << 5 ) >> 5;
+		
+		
+		// Xpos=(Xpos AND 3F0h)
+		x &= 0x3f0;
+		
+		// ypos & 0x1ff
+		y &= 0x1ff;
+		
+	
+		// adding xmax, ymax
+		xmax = x + w;
+		ymax = y + h;
+		
+		//printf( "\ninputdata= %x %x %x %x", inputdata [ 0 ].Value, inputdata [ 1 ].Value, inputdata [ 2 ].Value, inputdata [ 3 ].Value );
+		//printf( "\nvram= %x %x %x %x", VRAM [ 0 ], VRAM [ 1 ], VRAM [ 2 ], VRAM [ 3 ] );
+		
+		ymax2 = 0;
+		if ( ymax > FrameBuffer_Height )
+		{
+			ymax2 = ymax - FrameBuffer_Height;
+			ymax = FrameBuffer_Height;
+		}
+		
+		// offset to get to this compute unit's scanline
+		group_yoffset = group_id - ( y % num_global_groups );
+		if ( group_yoffset < 0 )
+		{
+			group_yoffset += num_global_groups;
+		}
+		
+		//printf ( "local_id= %i num_global_groups= %i group_id= %i group_yoffset= %i yoff= %i", local_id, num_global_groups, group_id, group_yoffset, y + group_yoffset + ( yid * yinc ) );
+	//}
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+	// *** NOTE: coordinates wrap *** //
+	
+	//printf( "\nlocal_id#%i group_id= %i __local_size= %i group_max_size= %i x= %i y= %i w= %i h= %i", local_id, yinit, xinc, yinc, x, y, w, h );
+	//printf( "\n__local_size= %i", xinc );
+	//printf( "\ngroup_max_size= %i", yinc );
+	
+	
+	// need to first make sure there is something to draw
+	if ( h > 0 && w > 0 )
+	{
+		for ( yoff = y + group_yoffset + yid; yoff < ymax; yoff += yinc )
+		{
+			for ( xoff = x + xid; xoff < xmax; xoff += xinc )
+			{
+				_GPU->VRAM [ ( xoff & FrameBuffer_XMask ) + ( yoff << 10 ) ] = bgr16;
+			}
+		}
+		
+		for ( yoff = group_id + yid; yoff < ymax2; yoff += yinc )
+		{
+			for ( xoff = x + xid; xoff < xmax; xoff += xinc )
+			{
+				_GPU->VRAM [ ( xoff & FrameBuffer_XMask ) + ( yoff << 10 ) ] = bgr16;
+			}
+		}
+	}
+	
+	///////////////////////////////////////////////
+	// set amount of time GPU will be busy for
+	//BusyCycles += (u32) ( ( (u64) h * (u64) w * dFrameBufferRectangle_02_CyclesPerPixel ) );
+	
+	return NumPixels;
+}
+
+
+
+static u64 GPU::DrawLine_Mono_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = 0;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	int group_yoffset = group_id;
+//#endif
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY0 ( Buffer [ 1 ] );
+//9: GetXY1 ( Buffer [ 2 ] );
+//10: GetXY2 ( Buffer [ 3 ] );
+
+
+
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	
+	// the y starts and ends at the same place, but the x is different for each line
+	s32 StartY, EndY;
+	
+	
+	//s64 r10, r20, r21;
+	
+	// new variables
+	s32 x0, x1, y0, y1;
+	s32 dx_left, dx_right;
+	u32 bgr;
+	s32 t0, t1, denominator;
+	
+	u32 Coord0, Coord1, Coord2;
+	
+	u32 PixelMask, SetPixelMask;
+	
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	u32 Command_ABE;
+	
+	s32 x_left, x_right;
+	
+	//s32 group_yoffset;
+	
+	
+	s32 StartX, EndX;
+	s32 x_across;
+	u32 xoff, yoff;
+	s32 xoff_left, xoff_right;
+	u32 DestPixel;
+	u32 bgr_temp;
+	s32 Line;
+	u16 *ptr;
+	
+	s32 x_distance, y_distance, line_length, incdec;
+	s32 y_left, dy_left, yoff_left;
+	
+	s32 ix, iy, dx, dy;
+	
+	u32 NumPixels;
+	
+//debug << "\nDrawTriangle_Mono_th";
+
+	// setup vars
+	//if ( !local_id )
+	//{
+		
+		
+		
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 10 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 10 ].y << 5 ) >> 5 );
+		
+		Coord0 = 0;
+		Coord1 = 1;
+		
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+		
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		//LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		//RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX <= ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y1 <= ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+		
+		x_distance = _Abs( x1 - x0 );
+		y_distance = _Abs( y1 - y0 );
+		
+
+		
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+		// get color(s)
+		bgr = gbgr [ 0 ];
+		
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		//bgr = ( ( bgr & ( 0xf8 << 0 ) ) >> 3 ) | ( ( bgr & ( 0xf8 << 8 ) ) >> 6 ) | ( ( bgr & ( 0xf8 << 16 ) ) >> 9 );
+		bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+		
+
+		
+	
+	StartX = x0;
+	EndX = x1;
+	StartY = y0;
+	EndY = y1;
+	
+	// check if line is horizontal
+	if ( x_distance > y_distance )
+	{
+		
+		// get the largest length
+		line_length = x_distance;
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+		//ix = x0;
+		iy = ( y0 << 16 ) + 0x8000;
+		//x_right = x_left;
+		
+		//if ( y1 - y0 )
+		if ( line_length )
+		{
+			/////////////////////////////////////////////
+			// init x on the left and right
+			
+			//dx_left = ( ( x1 - x0 ) << 16 ) / ( ( y1 - y0 ) + 1 );
+			//dx = ( ( x1 - x0 ) << 16 ) / line_length;
+			dy = ( ( y1 - y0 ) << 16 ) / line_length;
+		}
+
+		
+		// check if line is going left or right
+		if ( x1 > x0 )
+		{
+			// line is going to the right
+			incdec = 1;
+			
+			// clip against edge of screen
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp = DrawArea_TopLeftX - StartX;
+				
+				iy += dy * Temp;
+				StartX = DrawArea_TopLeftX;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX + 1;
+			}
+		}
+		else
+		{
+			// line is going to the left from the right
+			incdec = -1;
+			
+			// clip against edge of screen
+			if ( StartX > ((s32)DrawArea_BottomRightX) )
+			{
+				Temp = StartX - DrawArea_BottomRightX;
+				
+				iy += dy * Temp;
+				StartX = DrawArea_BottomRightX;
+			}
+			
+			if ( EndX < ((s32)DrawArea_TopLeftX) )
+			{
+				EndX = DrawArea_TopLeftX - 1;
+			}
+		}
+		
+		
+		if ( dy <= 0 )
+		{
+	
+			if ( ( iy >> 16 ) < ((s32)DrawArea_TopLeftY) )
+			{
+				return 0;
+			}
+			//else
+			//{
+			//	// line is veering onto screen
+			//	
+			//	// get y value it hits screen at
+			//	ix = ( ( ( y0 << 16 ) + 0x8000 ) - ( ((s32)DrawArea_TopLeftY) << 16 ) ) / ( dy >> 8 );
+			//	ix -= ( x0 << 8 ) + 0xff;
+			//	
+			//}
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				// line is going up, so End Y would
+				EndY = DrawArea_TopLeftY - 1;
+			}
+		}
+		
+		if ( dy >= 0 )
+		{
+			if ( ( iy >> 16 ) > ((s32)DrawArea_BottomRightY) )
+			{
+				// line is veering off screen
+				return 0;
+			}
+			
+			if ( EndY > ((s32)DrawArea_BottomRightY) )
+			{
+				// line is going down, so End Y would
+				EndY = DrawArea_BottomRightY + 1;
+			}
+		}
+		
+		
+		NumPixels = _Abs( StartX - EndX );
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		// draw the line horizontally
+		for ( ix = StartX; ix != EndX; ix += incdec )
+		{
+			Line = iy >> 16;
+			
+			if ( Line >= ((s32)DrawArea_TopLeftY) && Line <= ((s32)DrawArea_BottomRightY) )
+			{
+				ptr = & ( _GPU->VRAM [ ix + ( Line << 10 ) ] );
+			
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+			}
+			
+			iy += dy;
+		}
+		
+	}
+	else
+	{
+		// line is vertical //
+
+		// get the largest length
+		line_length = y_distance;
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+		ix = ( x0 << 16 ) + 0x8000;
+		//iy = y0;
+		//x_right = x_left;
+		
+		//if ( y1 - y0 )
+		if ( line_length )
+		{
+			/////////////////////////////////////////////
+			// init x on the left and right
+			
+			//dx_left = ( ( x1 - x0 ) << 16 ) / ( ( y1 - y0 ) + 1 );
+			dx = ( ( x1 - x0 ) << 16 ) / line_length;
+			//dy = ( ( y1 - y0 ) << 16 ) / line_length;,
+		}
+		
+		StartY = y0;
+		EndY = y1;
+		
+		
+		// check if line is going up or down
+		if ( y1 > y0 )
+		{
+			// line is going to the down
+			incdec = 1;
+			
+			// clip against edge of screen
+			if ( StartY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				
+				ix += dx * Temp;
+				StartY = DrawArea_TopLeftY;
+			}
+			
+			if ( EndY > ((s32)DrawArea_BottomRightY) )
+			{
+				EndY = DrawArea_BottomRightY + 1;
+			}
+		}
+		else
+		{
+			// line is going to the left from the up
+			incdec = -1;
+			
+			// clip against edge of screen
+			if ( StartY > ((s32)DrawArea_BottomRightY) )
+			{
+				Temp = StartY - DrawArea_BottomRightY;
+				
+				ix += dx * Temp;
+				StartY = DrawArea_BottomRightY;
+			}
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				EndY = DrawArea_TopLeftY - 1;
+			}
+		}
+	
+		if ( dx <= 0 )
+		{
+			if ( ( ix >> 16 ) < ((s32)DrawArea_TopLeftX) )
+			{
+				// line is veering off screen
+				return 0;
+			}
+			
+			
+			if ( EndX < ((s32)DrawArea_TopLeftX) )
+			{
+				EndX = DrawArea_TopLeftX - 1;
+			}
+		}
+		
+		if ( dx >= 0 )
+		{
+			if ( ( ix >> 16 ) > ((s32)DrawArea_BottomRightX) )
+			{
+				// line is veering off screen
+				return 0;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX + 1;
+			}
+		}
+		
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+
+	//}	// end if ( !local_id )
+	
+		NumPixels = _Abs( StartY - EndY );
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+		// draw the line vertically
+		for ( iy = StartY; iy != EndY; iy += incdec )
+		{
+			Line = ix >> 16;
+			
+			if ( Line >= ((s32)DrawArea_TopLeftX) && Line <= ((s32)DrawArea_BottomRightX) )
+			{
+				ptr = & ( _GPU->VRAM [ Line + ( iy << 10 ) ] );
+			
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+			}
+			
+			ix += dx;
+		}
+
+
+	}
+	
+
+	return NumPixels;
+}
+
+
+
+static u64 GPU::DrawLine_Gradient_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	const int local_id = 0;
+	const int group_id = 0;
+	const int num_local_threads = 1;
+	const int num_global_groups = 1;
+	
+//#ifdef SINGLE_SCANLINE_MODE
+	const int xid = 0;
+	const int yid = 0;
+	
+	const int xinc = num_local_threads;
+	const int yinc = num_global_groups;
+	int group_yoffset = group_id;
+//#endif
+
+//inputdata format:
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: (TextureWindow)(not used here)
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY0 ( Buffer [ 1 ] );
+//9: GetXY1 ( Buffer [ 2 ] );
+//10: GetXY2 ( Buffer [ 3 ] );
+
+
+
+	u32 GPU_CTRL_Read, GPU_CTRL_Read_ABR;
+	s32 DrawArea_BottomRightX, DrawArea_TopLeftX, DrawArea_BottomRightY, DrawArea_TopLeftY;
+	s32 DrawArea_OffsetX, DrawArea_OffsetY;
+	u32 GPU_CTRL_Read_DTD;
+	s32 DitherValue;
+	
+	s32 Temp;
+	s32 LeftMostX, RightMostX;
+	
+	
+	// the y starts and ends at the same place, but the x is different for each line
+	s32 StartY, EndY;
+	
+	
+	//s64 r10, r20, r21;
+	
+	// new variables
+	s32 x0, x1, y0, y1;
+	s32 dx_left, dx_right;
+	u32 bgr;
+	s32 t0, t1, denominator;
+
+	s32 iR, iG, iB;
+	//s32 R_left, G_left, B_left;
+	//s32 Roff_left, Goff_left, Boff_left;
+	s32 r0, r1, r2, g0, g1, g2, b0, b1, b2;
+	s32 Red, Blue, Green;
+	s32 dr, dg, db;
+	
+	u32 Coord0, Coord1, Coord2;
+	
+	u32 PixelMask, SetPixelMask;
+	
+	s32 gx [ 3 ], gy [ 3 ], gbgr [ 3 ];
+	u32 Command_ABE;
+	
+	s32 x_left, x_right;
+	
+	//s32 group_yoffset;
+	
+	
+	s32 StartX, EndX;
+	s32 x_across;
+	u32 xoff, yoff;
+	s32 xoff_left, xoff_right;
+	u32 DestPixel;
+	u32 bgr_temp;
+	s32 Line;
+	u16 *ptr;
+	
+	s32 x_distance, y_distance, line_length, incdec;
+	s32 y_left, dy_left, yoff_left;
+	
+	s32 ix, iy, dx, dy;
+	
+	u32 NumPixels;
+	
+//debug << "\nDrawTriangle_Mono_th";
+
+	// setup vars
+	//if ( !local_id )
+	//{
+		
+		// no bitmaps in opencl ??
+		GPU_CTRL_Read = inputdata [ 0 ].Value;
+		DrawArea_TopLeftX = inputdata [ 1 ].Value & 0x3ff;
+		DrawArea_TopLeftY = ( inputdata [ 1 ].Value >> 10 ) & 0x3ff;
+		DrawArea_BottomRightX = inputdata [ 2 ].Value & 0x3ff;
+		DrawArea_BottomRightY = ( inputdata [ 2 ].Value >> 10 ) & 0x3ff;
+		DrawArea_OffsetX = ( ( (s32) inputdata [ 3 ].Value ) << 21 ) >> 21;
+		DrawArea_OffsetY = ( ( (s32) inputdata [ 3 ].Value ) << 10 ) >> 21;
+
+		gx [ 0 ] = (s32) ( ( inputdata [ 8 ].x << 5 ) >> 5 );
+		gy [ 0 ] = (s32) ( ( inputdata [ 8 ].y << 5 ) >> 5 );
+		gx [ 1 ] = (s32) ( ( inputdata [ 10 ].x << 5 ) >> 5 );
+		gy [ 1 ] = (s32) ( ( inputdata [ 10 ].y << 5 ) >> 5 );
+		//gx [ 2 ] = (s32) ( ( inputdata [ 10 ].x << 5 ) >> 5 );
+		//gy [ 2 ] = (s32) ( ( inputdata [ 10 ].y << 5 ) >> 5 );
+		
+		Coord0 = 0;
+		Coord1 = 1;
+		//Coord2 = 2;
+
+		///////////////////////////////////
+		// put top coordinates in x0,y0
+		//if ( y1 < y0 )
+		if ( gy [ Coord1 ] < gy [ Coord0 ] )
+		{
+			//Swap ( y0, y1 );
+			//Swap ( Coord0, Coord1 );
+			Temp = Coord0;
+			Coord0 = Coord1;
+			Coord1 = Temp;
+		}
+		
+		// get x-values
+		x0 = gx [ Coord0 ];
+		x1 = gx [ Coord1 ];
+		
+		// get y-values
+		y0 = gy [ Coord0 ];
+		y1 = gy [ Coord1 ];
+
+		//////////////////////////////////////////
+		// get coordinates on screen
+		x0 += DrawArea_OffsetX;
+		y0 += DrawArea_OffsetY;
+		x1 += DrawArea_OffsetX;
+		y1 += DrawArea_OffsetY;
+		
+		// get the left/right most x
+		LeftMostX = ( ( x0 < x1 ) ? x0 : x1 );
+		//LeftMostX = ( ( x2 < LeftMostX ) ? x2 : LeftMostX );
+		RightMostX = ( ( x0 > x1 ) ? x0 : x1 );
+		//RightMostX = ( ( x2 > RightMostX ) ? x2 : RightMostX );
+
+		// check for some important conditions
+		if ( DrawArea_BottomRightX < DrawArea_TopLeftX )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightX < DrawArea_TopLeftX.\n";
+			return 0;
+		}
+		
+		if ( DrawArea_BottomRightY < DrawArea_TopLeftY )
+		{
+			//cout << "\nhps1x64 ALERT: GPU: DrawArea_BottomRightY < DrawArea_TopLeftY.\n";
+			return 0;
+		}
+
+		// check if sprite is within draw area
+		if ( RightMostX < ((s32)DrawArea_TopLeftX) || LeftMostX > ((s32)DrawArea_BottomRightX) || y1 < ((s32)DrawArea_TopLeftY) || y0 > ((s32)DrawArea_BottomRightY) ) return 0;
+		
+		// skip drawing if distance between vertices is greater than max allowed by GPU
+		if ( ( _Abs( x1 - x0 ) > c_MaxPolygonWidth ) || ( y1 - y0 > c_MaxPolygonHeight ) )
+		{
+			// skip drawing polygon
+			return 0;
+		}
+		
+		x_distance = _Abs( x1 - x0 );
+		y_distance = _Abs( y1 - y0 );
+
+		if ( x_distance > y_distance )
+		{
+			NumPixels = x_distance;
+			
+			if ( LeftMostX < ((s32)DrawArea_TopLeftX) )
+			{
+				NumPixels -= ( DrawArea_TopLeftX - LeftMostX );
+			}
+			
+			if ( RightMostX > ((s32)DrawArea_BottomRightX) )
+			{
+				NumPixels -= ( RightMostX - DrawArea_BottomRightX );
+			}
+		}
+		else
+		{
+			NumPixels = y_distance;
+			
+			if ( y0 < ((s32)DrawArea_TopLeftY) )
+			{
+				NumPixels -= ( DrawArea_TopLeftY - y0 );
+			}
+			
+			if ( y1 > ((s32)DrawArea_BottomRightY) )
+			{
+				NumPixels -= ( y1 - DrawArea_BottomRightY );
+			}
+		}
+		
+		if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+		{
+			return NumPixels;
+		}
+		
+		gbgr [ 0 ] = inputdata [ 7 ].Value & 0x00ffffff;
+		gbgr [ 1 ] = inputdata [ 9 ].Value & 0x00ffffff;
+		
+		GPU_CTRL_Read_ABR = ( GPU_CTRL_Read >> 5 ) & 3;
+		Command_ABE = inputdata [ 7 ].Command & 2;
+		
+		// DTD is bit 9 in GPU_CTRL_Read
+		GPU_CTRL_Read_DTD = ( GPU_CTRL_Read >> 9 ) & 1;
+		
+		// ME is bit 12
+		//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+		PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+		
+		// MD is bit 11
+		//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+		SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+		
+		
+		// initialize number of pixels drawn
+		//NumberOfPixelsDrawn = 0;
+		
+		
+		// get color(s)
+		//bgr = gbgr [ 0 ];
+		
+		// ?? convert to 16-bit ?? (or should leave 24-bit?)
+		//bgr = ( ( bgr & ( 0xf8 << 0 ) ) >> 3 ) | ( ( bgr & ( 0xf8 << 8 ) ) >> 6 ) | ( ( bgr & ( 0xf8 << 16 ) ) >> 9 );
+		//bgr = ( ( bgr >> 9 ) & 0x7c00 ) | ( ( bgr >> 6 ) & 0x3e0 ) | ( ( bgr >> 3 ) & 0x1f );
+		
+		
+
+		// get rgb-values
+		r0 = gbgr [ Coord0 ] & 0xff;
+		r1 = gbgr [ Coord1 ] & 0xff;
+
+		g0 = ( gbgr [ Coord0 ] >> 8 ) & 0xff;
+		g1 = ( gbgr [ Coord1 ] >> 8 ) & 0xff;
+
+		b0 = ( gbgr [ Coord0 ] >> 16 ) & 0xff;
+		b1 = ( gbgr [ Coord1 ] >> 16 ) & 0xff;
+
+		
+
+		
+		
+		
+		/////////////////////////////////////////////////
+		// draw top part of triangle
+		
+		// denominator is negative when x1 is on the left, positive when x1 is on the right
+		//t0 = y1 - y2;
+		//t1 = y0 - y2;
+		//denominator = ( ( x0 - x2 ) * t0 ) - ( ( x1 - x2 ) * t1 );
+
+		// get reciprocals
+		// *** todo ***
+		//if ( y1 - y0 ) r10 = ( 1LL << 48 ) / ((s64)( y1 - y0 ));
+		//if ( y2 - y0 ) r20 = ( 1LL << 48 ) / ((s64)( y2 - y0 ));
+		//if ( y2 - y1 ) r21 = ( 1LL << 48 ) / ((s64)( y2 - y1 ));
+		
+		///////////////////////////////////////////
+		// start at y0
+		//Line = y0;
+		
+	
+	iR = ( r0 << 16 ) + 0x8000;
+	iG = ( g0 << 16 ) + 0x8000;
+	iB = ( b0 << 16 ) + 0x8000;
+	
+	StartX = x0;
+	EndX = x1;
+	StartY = y0;
+	EndY = y1;
+	
+	// check if line is horizontal
+	if ( x_distance > y_distance )
+	{
+		
+		// get the largest length
+		line_length = x_distance;
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+		//ix = x0;
+		iy = ( y0 << 16 ) + 0x8000;
+		//x_right = x_left;
+		
+		
+		//if ( y1 - y0 )
+		if ( line_length )
+		{
+			/////////////////////////////////////////////
+			// init x on the left and right
+			
+			//dx_left = ( ( x1 - x0 ) << 16 ) / ( ( y1 - y0 ) + 1 );
+			//dx = ( ( x1 - x0 ) << 16 ) / line_length;
+			dy = ( ( y1 - y0 ) << 16 ) / line_length;
+			
+			dr = ( ( r1 - r0 ) << 16 ) / line_length;
+			dg = ( ( g1 - g0 ) << 16 ) / line_length;
+			db = ( ( b1 - b0 ) << 16 ) / line_length;
+		}
+
+		
+		// check if line is going left or right
+		if ( x1 > x0 )
+		{
+			// line is going to the right
+			incdec = 1;
+			
+			// clip against edge of screen
+			if ( StartX < ((s32)DrawArea_TopLeftX) )
+			{
+				Temp = DrawArea_TopLeftX - StartX;
+				StartX = DrawArea_TopLeftX;
+				
+				iy += dy * Temp;
+				iR += dr * Temp;
+				iG += dg * Temp;
+				iB += db * Temp;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX + 1;
+			}
+		}
+		else
+		{
+			// line is going to the left from the right
+			incdec = -1;
+			
+			// clip against edge of screen
+			if ( StartX > ((s32)DrawArea_BottomRightX) )
+			{
+				Temp = StartX - DrawArea_BottomRightX;
+				StartX = DrawArea_BottomRightX;
+				
+				iy += dy * Temp;
+				iR += dr * Temp;
+				iG += dg * Temp;
+				iB += db * Temp;
+			}
+			
+			if ( EndX < ((s32)DrawArea_TopLeftX) )
+			{
+				EndX = DrawArea_TopLeftX - 1;
+			}
+		}
+		
+		
+		if ( dy <= 0 )
+		{
+	
+			if ( ( iy >> 16 ) < ((s32)DrawArea_TopLeftY) )
+			{
+				return NumPixels;
+			}
+			//else
+			//{
+			//	// line is veering onto screen
+			//	
+			//	// get y value it hits screen at
+			//	ix = ( ( ( y0 << 16 ) + 0x8000 ) - ( ((s32)DrawArea_TopLeftY) << 16 ) ) / ( dy >> 8 );
+			//	ix -= ( x0 << 8 ) + 0xff;
+			//	
+			//}
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				// line is going down, so End Y would
+				EndY = DrawArea_TopLeftY - 1;
+			}
+		}
+		
+		if ( dy >= 0 )
+		{
+			if ( ( iy >> 16 ) > ((s32)DrawArea_BottomRightY) )
+			{
+				// line is veering off screen
+				return NumPixels;
+			}
+			
+			if ( EndY > ((s32)DrawArea_BottomRightY) )
+			{
+				// line is going down, so End Y would
+				EndY = DrawArea_BottomRightY + 1;
+			}
+		}
+		
+		
+		////////////////
+		// *** TODO *** at this point area of full triangle can be calculated and the rest of the drawing can be put on another thread *** //
+		
+		// draw the line horizontally
+		for ( ix = StartX; ix != EndX; ix += incdec )
+		{
+			Line = iy >> 16;
+			
+			if ( Line >= ((s32)DrawArea_TopLeftY) && Line <= ((s32)DrawArea_BottomRightY) )
+			{
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues16 [ ( ix & 3 ) + ( ( Line & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					//Red = clamp ( Red, 0, 0x1f );
+					//Green = clamp ( Green, 0, 0x1f );
+					//Blue = clamp ( Blue, 0, 0x1f );
+					Red = Clamp5 ( Red );
+					Green = Clamp5 ( Green );
+					Blue = Clamp5 ( Blue );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+					
+					
+				bgr_temp = ( Blue << 10 ) | ( Green << 5 ) | Red;
+				
+				
+				ptr = & ( _GPU->VRAM [ ix + ( Line << 10 ) ] );
+			
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				//bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+			}
+			
+			iy += dy;
+			
+			iR += dr;
+			iG += dg;
+			iB += db;
+		}
+		
+	}
+	else
+	{
+		// line is vertical //
+
+		// get the largest length
+		line_length = y_distance;
+		
+		//if ( denominator < 0 )
+		//{
+			// x1 is on the left and x0 is on the right //
+			
+			////////////////////////////////////
+			// get slopes
+			
+		ix = ( x0 << 16 ) + 0x8000;
+		//iy = y0;
+		//x_right = x_left;
+		
+		//if ( y1 - y0 )
+		if ( line_length )
+		{
+			/////////////////////////////////////////////
+			// init x on the left and right
+			
+			//dx_left = ( ( x1 - x0 ) << 16 ) / ( ( y1 - y0 ) + 1 );
+			dx = ( ( x1 - x0 ) << 16 ) / line_length;
+			//dy = ( ( y1 - y0 ) << 16 ) / line_length;,
+			
+			dr = ( ( r1 - r0 ) << 16 ) / line_length;
+			dg = ( ( g1 - g0 ) << 16 ) / line_length;
+			db = ( ( b1 - b0 ) << 16 ) / line_length;
+		}
+		
+		
+		
+		// check if line is going up or down
+		if ( y1 > y0 )
+		{
+			// line is going to the down
+			incdec = 1;
+			
+			// clip against edge of screen
+			if ( StartY < ((s32)DrawArea_TopLeftY) )
+			{
+				Temp = DrawArea_TopLeftY - StartY;
+				StartY = DrawArea_TopLeftY;
+				
+				ix += dx * Temp;
+				iR += dr * Temp;
+				iG += dg * Temp;
+				iB += db * Temp;
+			}
+			
+			if ( EndY > ((s32)DrawArea_BottomRightY) )
+			{
+				EndY = DrawArea_BottomRightY + 1;
+			}
+		}
+		else
+		{
+			// line is going to the left from the up
+			incdec = -1;
+			
+			// clip against edge of screen
+			if ( StartY > ((s32)DrawArea_BottomRightY) )
+			{
+				Temp = StartY - DrawArea_BottomRightY;
+				StartY = DrawArea_BottomRightY;
+				
+				ix += dx * Temp;
+				iR += dr * Temp;
+				iG += dg * Temp;
+				iB += db * Temp;
+			}
+			
+			if ( EndY < ((s32)DrawArea_TopLeftY) )
+			{
+				EndY = DrawArea_TopLeftY - 1;
+			}
+		}
+	
+		if ( dx <= 0 )
+		{
+			if ( ( ix >> 16 ) < ((s32)DrawArea_TopLeftX) )
+			{
+				// line is veering off screen
+				return NumPixels;
+			}
+			
+			if ( EndX < ((s32)DrawArea_TopLeftX) )
+			{
+				EndX = DrawArea_TopLeftX - 1;
+			}
+		}
+		
+		if ( dx >= 0 )
+		{
+			if ( ( ix >> 16 ) > ((s32)DrawArea_BottomRightX) )
+			{
+				// line is veering off screen
+				return NumPixels;
+			}
+			
+			if ( EndX > ((s32)DrawArea_BottomRightX) )
+			{
+				EndX = DrawArea_BottomRightX + 1;
+			}
+		}
+		
+		
+		// offset to get to this compute unit's scanline
+		//group_yoffset = group_id - ( StartY % num_global_groups );
+		//if ( group_yoffset < 0 )
+		//{
+		//	group_yoffset += num_global_groups;
+		//}
+
+	//}	// end if ( !local_id )
+	
+	
+
+	// synchronize variables across workers
+	//barrier ( CLK_LOCAL_MEM_FENCE );
+
+	
+		// draw the line vertically
+		for ( iy = StartY; iy != EndY; iy += incdec )
+		{
+			Line = ix >> 16;
+			
+			if ( Line >= ((s32)DrawArea_TopLeftX) && Line <= ((s32)DrawArea_BottomRightX) )
+			{
+				if ( GPU_CTRL_Read_DTD )
+				{
+					//bgr = ( _Round( iR ) >> 32 ) | ( ( _Round( iG ) >> 32 ) << 8 ) | ( ( _Round( iB ) >> 32 ) << 16 );
+					//bgr = ( _Round( iR ) >> 35 ) | ( ( _Round( iG ) >> 35 ) << 5 ) | ( ( _Round( iB ) >> 35 ) << 10 );
+					//DitherValue = DitherLine [ x_across & 0x3 ];
+					DitherValue = c_iDitherValues16 [ ( Line & 3 ) + ( ( iy & 3 ) << 2 ) ];
+					
+					// perform dither
+					//Red = iR + DitherValue;
+					//Green = iG + DitherValue;
+					//Blue = iB + DitherValue;
+					Red = iR + DitherValue;
+					Green = iG + DitherValue;
+					Blue = iB + DitherValue;
+					
+					//Red = Clamp5 ( ( iR + DitherValue ) >> 27 );
+					//Green = Clamp5 ( ( iG + DitherValue ) >> 27 );
+					//Blue = Clamp5 ( ( iB + DitherValue ) >> 27 );
+					
+					// perform shift
+					Red >>= ( 16 + 3 );
+					Green >>= ( 16 + 3 );
+					Blue >>= ( 16 + 3 );
+					
+					//Red = clamp ( Red, 0, 0x1f );
+					//Green = clamp ( Green, 0, 0x1f );
+					//Blue = clamp ( Blue, 0, 0x1f );
+					Red = Clamp5 ( Red );
+					Green = Clamp5 ( Green );
+					Blue = Clamp5 ( Blue );
+				}
+				else
+				{
+					Red = iR >> ( 16 + 3 );
+					Green = iG >> ( 16 + 3 );
+					Blue = iB >> ( 16 + 3 );
+				}
+					
+					
+				bgr_temp = ( Blue << 10 ) | ( Green << 5 ) | Red;
+				
+				
+				ptr = & ( _GPU->VRAM [ Line + ( iy << 10 ) ] );
+			
+				// read pixel from frame buffer if we need to check mask bit
+				DestPixel = *ptr;
+				
+				//bgr_temp = bgr;
+	
+				// semi-transparency
+				if ( Command_ABE )
+				{
+					bgr_temp = SemiTransparency16 ( DestPixel, bgr_temp, GPU_CTRL_Read_ABR );
+				}
+				
+				// check if we should set mask bit when drawing
+				//bgr_temp |= SetPixelMask;
+
+				// draw pixel if we can draw to mask pixels or mask bit not set
+				if ( ! ( DestPixel & PixelMask ) ) *ptr = ( bgr_temp | SetPixelMask );
+			}
+			
+			ix += dx;
+			
+			iR += dr;
+			iG += dg;
+			iB += db;
+		}
+
+
+	}
+	
+	return NumPixels;
+}
+
+
+
+
+static u64 GPU::Transfer_MoveImage_80_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	u32 SrcPixel, DstPixel;
+	u32 DestPixel, PixelMask, SetPixelMask;
+	
+	u32 SrcStartX, SrcStartY, DstStartX, DstStartY, Height, Width, SrcXRun, DstXRun, Width1, Width2, CurX, CurY;
+	u16 *SrcPtr, *DstPtr, *SrcLinePtr, *DstLinePtr;
+	
+	u32 GPU_CTRL_Read, sX, dX, sY, dY, w, h;
+	
+	u32 NumPixels;
+	
+	///////////////////////////////////////////////
+	// set amount of time GPU will be busy for
+	//BusyCycles += h * w * dMoveImage_80_CyclesPerPixel;	//CyclesPerPixelMove;
+	
+	GPU_CTRL_Read = inputdata [ 0 ].Value;
+	w = inputdata [ 10 ].w;
+	h = inputdata [ 10 ].h;
+	
+	// Xsiz=((Xsiz-1) AND 3FFh)+1
+	Width = ( ( w - 1 ) & 0x3ff ) + 1;
+	
+	// Ysiz=((Ysiz-1) AND 1FFh)+1
+	Height = ( ( h - 1 ) & 0x1ff ) + 1;
+
+	NumPixels = Width * Height;
+	if ( ( !ulThreadNum ) && _GPU->ulNumberOfThreads )
+	{
+		return NumPixels;
+	}
+	
+	sX = inputdata [ 8 ].x;
+	sY = inputdata [ 8 ].y;
+	dX = inputdata [ 9 ].x;
+	dY = inputdata [ 9 ].y;
+
+	// nocash psx specifications: transfer/move vram-to-vram use masking
+	// ME is bit 12
+	//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+	PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+	
+	// MD is bit 11
+	//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+	SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+	
+	// xpos & 0x3ff
+	//sX &= 0x3ff;
+	SrcStartX = sX & 0x3ff;
+	//dX &= 0x3ff;
+	DstStartX = dX & 0x3ff;
+	
+	// ypos & 0x1ff
+	//sY &= 0x1ff;
+	SrcStartY = sY & 0x1ff;
+	//dY &= 0x1ff;
+	DstStartY = dY & 0x1ff;
+	
+	
+	// *** NOTE: coordinates wrap *** //
+	
+	SrcXRun = FrameBuffer_Width - SrcStartX;
+	SrcXRun = ( Width <= SrcXRun ) ? Width : SrcXRun;
+	
+	DstXRun = FrameBuffer_Width - DstStartX;
+	DstXRun = ( Width <= DstXRun ) ? Width : DstXRun;
+	
+	Width1 = ( SrcXRun < DstXRun ) ? SrcXRun : DstXRun;
+	Width2 = ( SrcXRun > DstXRun ) ? SrcXRun : DstXRun;
+	
+	for ( CurY = 0; CurY < Height; CurY++ )
+	{
+		// start Src/Dst pointers for line
+		SrcLinePtr = & ( _GPU->VRAM [ ( ( SrcStartY + CurY ) & FrameBuffer_YMask ) << 10 ] );
+		DstLinePtr = & ( _GPU->VRAM [ ( ( DstStartY + CurY ) & FrameBuffer_YMask ) << 10 ] );
+		
+		SrcPtr = & ( SrcLinePtr [ ( SrcStartX ) & FrameBuffer_XMask ] );
+		DstPtr = & ( DstLinePtr [ ( DstStartX ) & FrameBuffer_XMask ] );
+		
+		// should always transfer this first block, since the width is always at least 1
+		for ( CurX = 0; CurX < Width1; CurX++ )
+		{
+			SrcPixel = *SrcPtr++;
+			DstPixel = *DstPtr;
+			
+			//SrcPixel |= SetPixelMask;
+			
+			if ( ! ( DstPixel & PixelMask ) ) *DstPtr++ = ( SrcPixel | SetPixelMask );
+		}
+		
+		if ( CurX < Width2 )
+		{
+		
+		SrcPtr = & ( SrcLinePtr [ ( SrcStartX + CurX ) & FrameBuffer_XMask ] );
+		DstPtr = & ( DstLinePtr [ ( DstStartX + CurX ) & FrameBuffer_XMask ] );
+
+		for ( ; CurX < Width2; CurX++ )
+		{
+			SrcPixel = *SrcPtr++;
+			DstPixel = *DstPtr;
+			
+			//SrcPixel |= SetPixelMask;
+			
+			if ( ! ( DstPixel & PixelMask ) ) *DstPtr++ = ( SrcPixel | SetPixelMask );
+		}
+		
+		} // end if ( CurX < Width2 )
+	
+		if ( CurX < Width )
+		{
+		
+		SrcPtr = & ( SrcLinePtr [ ( SrcStartX + CurX ) & FrameBuffer_XMask ] );
+		DstPtr = & ( DstLinePtr [ ( DstStartX + CurX ) & FrameBuffer_XMask ] );
+		
+		for ( ; CurX < Width; CurX++ )
+		{
+			SrcPixel = *SrcPtr++;
+			DstPixel = *DstPtr;
+			
+			//SrcPixel |= SetPixelMask;
+			
+			if ( ! ( DstPixel & PixelMask ) ) *DstPtr++ = ( SrcPixel | SetPixelMask );
+		}
+		
+		} // end if ( CurX < Width )
+	}
+	
+	return NumPixels;
+}
+
+
+
+
+static void GPU::TransferPixelPacketIn_th ( DATA_Write_Format* inputdata, u32 ulThreadNum )
+{
+	u32 bgr2;
+	u32 pix0, pix1;
+	u32 DestPixel, PixelMask = 0, SetPixelMask = 0;
+	u32 Data, BS, Count = 0;
+	
+	u32 GPU_CTRL_Read, dX, dY, iX, iY, w, h;
+	
+	u32 *pData;
+	
+#ifdef INLINE_DEBUG_PIX_WRITE
+	debug << "; TRANSFER PIX IN; h = " << dec << h << " w = " << w << " iX = " << iX << " iY = " << iY << " dX=" << dX << " dY=" << dY;
+#endif
+
+
+	
+	///////////////////////////////////////////////
+	// set amount of time GPU will be busy for
+	//BusyCycles += h * w * dMoveImage_80_CyclesPerPixel;	//CyclesPerPixelMove;
+	
+	GPU_CTRL_Read = inputdata [ 0 ].Value;
+	dX = inputdata [ 1 ].Value;
+	dY = inputdata [ 2 ].Value;
+	w = inputdata [ 3 ].Value;
+	h = inputdata [ 4 ].Value;
+	iX = inputdata [ 5 ].Value;
+	iY = inputdata [ 6 ].Value;
+	
+	BS = inputdata [ 7 ].Value & 0xffffff;
+	
+	pData = & ( inputdata [ 8 ].Value );
+
+	// nocash psx specifications: transfer/move vram-to-vram use masking
+	// ME is bit 12
+	//if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
+	PixelMask = ( GPU_CTRL_Read & 0x1000 ) << 3;
+	
+	// MD is bit 11
+	//if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
+	SetPixelMask = ( GPU_CTRL_Read & 0x0800 ) << 4;
+	
+	while ( Count < BS )
+	{
+		Data = *pData++;
+		Count++;
+		
+	//////////////////////////////////////////////////////
+	// transfer pixel of image to VRAM
+	pix0 = Data & 0xffff;
+	pix1 = ( Data >> 16 );
+	
+	// transfer pix0
+	//if ( ( dX + iX ) < FrameBuffer_Width && ( dY + iY ) < FrameBuffer_Height )
+	//{
+		bgr2 = pix0;
+		
+		// read pixel from frame buffer if we need to check mask bit
+		DestPixel = _GPU->VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ];
+		
+		//VRAM [ (dX + iX) + ( (dY + iY) << 10 ) ] = pix0;
+		
+		// check if we should set mask bit when drawing
+		//if ( GPU_CTRL_Read.MD ) bgr2 |= 0x8000;
+		//bgr2 |= SetPixelMask;
+
+		// draw pixel if we can draw to mask pixels or mask bit not set
+		if ( ! ( DestPixel & PixelMask ) ) _GPU->VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ] = ( bgr2 | SetPixelMask );
+		//VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ] = bgr2;
+	//}
+	//else
+	//{
+		//cout << "\nGPU::TransferPixelPacketIn: Error: Transferring pix0 outside of VRAM bounds. x=" << dec << (dX+iX) << " y=" << (dY+iY) << " DrawArea_OffsetX=" << DrawArea_OffsetX << " DrawArea_OffsetY=" << DrawArea_OffsetY;
+	//}
+
+	
+	// update x
+	iX++;
+	
+	// if it is at width then go to next line
+	if ( iX == w )
+	{
+		iX = 0;
+		iY++;
+		
+		// if this was the last pixel, then we are done
+		if ( iY == h )
+		{
+			/////////////////////////////////////
+			// set buffer mode back to normal
+			//BufferMode = MODE_NORMAL;
+			
+			////////////////////////////////////////
+			// done
+			return;
+		}
+	}
+	
+	
+	// transfer pix 1
+	//if ( ( dX + iX ) < FrameBuffer_Width && ( dY + iY ) < FrameBuffer_Height )
+	//{
+		//VRAM [ (dX + iX) + ( (dY + iY) << 10 ) ] = pix1;
+		bgr2 = pix1;
+		
+		// read pixel from frame buffer if we need to check mask bit
+		DestPixel = _GPU->VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ];
+		
+		//VRAM [ (dX + iX) + ( (dY + iY) << 10 ) ] = pix0;
+		
+		// check if we should set mask bit when drawing
+		//if ( GPU_CTRL_Read.MD ) bgr2 |= 0x8000;
+		//bgr2 |= SetPixelMask;
+
+		// draw pixel if we can draw to mask pixels or mask bit not set
+		if ( ! ( DestPixel & PixelMask ) ) _GPU->VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ] = ( bgr2 | SetPixelMask );
+		//VRAM [ ( (dX + iX) & 0x3ff ) + ( ( (dY + iY) & 0x1ff ) << 10 ) ] = bgr2;
+	//}
+	//else
+	//{
+		//cout << "\nGPU::TransferPixelPacketIn: Error: Transferring pix1 outside of VRAM bounds. x=" << dec << (dX+iX) << " y=" << (dY+iY) << " DrawArea_OffsetX=" << DrawArea_OffsetX << " DrawArea_OffsetY=" << DrawArea_OffsetY;
+	//}
+
+	
+	// update x
+	iX++;
+	
+	// if it is at width then go to next line
+	if ( iX == w )
+	{
+		iX = 0;
+		iY++;
+		
+		// if this was the last pixel, then we are done
+		if ( iY == h )
+		{
+			/////////////////////////////////////
+			// set buffer mode back to normal
+			//BufferMode = MODE_NORMAL;
+			
+			////////////////////////////////////////
+			// done
+			return;
+		}
+	}
+	
+	}
+	
+	
+}
+
+
+static void GPU::Start_Frame ( void )
+{
+	if ( ulNumberOfThreads )
+	{
+		// ***todo*** reset write index
+		ulInputBuffer_WriteIndex = 0;
+		
+		// clear read index
+		ulInputBuffer_ReadIndex = 0;
+		
+		// transfer to target index
+		Lock_Exchange32 ( (long&) ulInputBuffer_TargetIndex, ulInputBuffer_WriteIndex );
+
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			//cout << "\nCreating GPU thread#" << dec << i;
+			
+			// create thread
+			GPUThreads [ i ] = new Api::Thread( Start_GPUThread, (void*) inputdata, false );
+			
+			//cout << "\nCreated GPU thread#" << dec << i << " ThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			// reset index into buffer
+			ullInputBuffer_Index = 0;
+		}
+	}
+}
+
+static void GPU::End_Frame ( void )
+{
+	int iRet;
+	u32 *inputdata_ptr;
+	
+	if ( ulNumberOfThreads )
+	{
+		inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+		// send command to kill the threads
+		Select_KillGpuThreads_t ( inputdata_ptr, 0 );
+		
+		Flush ();
+		
+		for ( int i = 0; i < ulNumberOfThreads; i++ )
+		{
+			//cout << "\nKilling GPU thread#" << dec << i << " ThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			// create thread
+			iRet = GPUThreads [ i ]->Join();
+			
+			//cout << "\nThreadStarted=" << GPUThreads[ i ]->ThreadStarted;
+			
+			if ( iRet )
+			{
+				cout << "\nhps1x64: GPU: ALERT: Problem with completion of GPU thread#" << dec << i << " iRet=" << iRet;
+			}
+			
+			delete GPUThreads [ i ];
+			
+			//cout << "\nKilled GPU thread#" << dec << i << " iRet=" << iRet;
+		}
+	}
+}
+
+
+static int GPU::Start_GPUThread( void* Param )
+{
+	u32 ulTBufferIndex = 0;
+	DATA_Write_Format *circularlist, *p_inputdata;
+	
+	//circularlist = (DATA_Write_Format*) Param;
+	circularlist = (DATA_Write_Format*) _GPU->inputdata;
+	
+	// infinite loop
+	while ( 1 )
+	{
+		// wait for data to appear in the input buffers
+		while ( ulTBufferIndex == ulInputBuffer_TargetIndex );
+		
+		while ( ulTBufferIndex != ulInputBuffer_TargetIndex )
+		{
+		
+		p_inputdata = & ( circularlist [ ( ulTBufferIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+//debug << "\nulInputBuffer_Count=" << dec << _GPU->ulInputBuffer_Count;
+//debug << "\nulInputBuffer_WriteIndex=" << dec << _GPU->ulInputBuffer_WriteIndex;
+//debug << "\nulTBufferIndex=" << dec << ulTBufferIndex;
+		
+		// get the command
+		switch ( p_inputdata [ 7 ].Command )
+		{
+			case 0x01:
+				draw_screen_th( p_inputdata, 1 );
+				
+				// command is now complete
+				//Lock_ExchangeAdd32 ( (long&) _GPU->ulInputBuffer_Count, -1 );
+				//ulTBufferIndex++;
+				
+				//return 0;
+				break;
+				
+				
+			
+			case 0x02:
+				Draw_FrameBufferRectangle_02_th( p_inputdata, 1 );
+				break;
+				
+			
+			case 5:
+				// Kill GPU Thread
+				ulTBufferIndex++;
+				Lock_Exchange32 ( (long&) ulInputBuffer_ReadIndex, ulTBufferIndex );
+				
+				return 0;
+				break;
+				
+				
+			// monochrome triangle
+			case 0x20:
+			case 0x21:
+			case 0x22:
+			case 0x23:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Mono_th( p_inputdata, 1 );
+#endif
+				break;
+				
+			
+			// textured triangle
+			case 0x24:
+			case 0x25:
+			case 0x26:
+			case 0x27:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Texture_th ( p_inputdata, 1 );
+#endif
+				break;
+			
+			
+			
+			//7:GetBGR24 ( Buffer [ 0 ] );
+			//8:GetXY0 ( Buffer [ 1 ] );
+			//9:GetXY1 ( Buffer [ 2 ] );
+			//10:GetXY2 ( Buffer [ 3 ] );
+			//11:GetXY3 ( Buffer [ 4 ] );
+			// monochrome rectangle
+			case 0x28:
+			case 0x29:
+			case 0x2a:
+			case 0x2b:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Mono_th( p_inputdata, 1 );
+#endif
+				
+				//if ( !local_id )
+				//{
+				//	p_inputdata [ 8 ].Value = p_inputdata [ 11 ].Value;
+				//}
+				//
+				//DrawTriangle_Mono_th( p_inputdata, 1 );
+				break;
+				
+			
+			//7:GetBGR24 ( Buffer [ 0 ] );
+			//8:GetXY0 ( Buffer [ 1 ] );
+			//9:GetCLUT ( Buffer [ 2 ] );
+			//9:GetUV0 ( Buffer [ 2 ] );
+			//10:GetXY1 ( Buffer [ 3 ] );
+			//11:GetTPAGE ( Buffer [ 4 ] );
+			//11:GetUV1 ( Buffer [ 4 ] );
+			//12:GetXY2 ( Buffer [ 5 ] );
+			//13:GetUV2 ( Buffer [ 6 ] );
+			//14:GetXY3 ( Buffer [ 7 ] );
+			//15:GetUV3 ( Buffer [ 8 ] );
+			// textured rectangle
+			case 0x2c:
+			case 0x2d:
+			case 0x2e:
+			case 0x2f:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Texture_th ( p_inputdata, 1 );
+#endif
+				
+				//if ( !local_id )
+				//{
+				//	p_inputdata [ 8 ].Value = p_inputdata [ 14 ].Value;
+				//	p_inputdata [ 9 ].Value = ( p_inputdata [ 9 ].Value & ~0xffff ) | ( p_inputdata [ 15 ].Value & 0xffff );
+				//}
+				//
+				//DrawTriangle_Texture_th ( p_inputdata, 1 );
+				break;
+			
+				
+			case 0x30:
+			case 0x31:
+			case 0x32:
+			case 0x33:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Gradient_th ( p_inputdata, 1 );
+#endif
+				break;
+				
+			
+			// texture gradient triangle
+			case 0x34:
+			case 0x35:
+			case 0x36:
+			case 0x37:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_TextureGradient_th ( p_inputdata, 1 );
+#endif
+				break;
+			
+				
+			//7:GetBGR0_8 ( Buffer [ 0 ] );
+			//8:GetXY0 ( Buffer [ 1 ] );
+			//9:GetBGR1_8 ( Buffer [ 2 ] );
+			//10:GetXY1 ( Buffer [ 3 ] );
+			//11:GetBGR2_8 ( Buffer [ 4 ] );
+			//12:GetXY2 ( Buffer [ 5 ] );
+			//13:GetBGR3_8 ( Buffer [ 6 ] );
+			//14:GetXY3 ( Buffer [ 7 ] );
+			// gradient rectangle
+			case 0x38:
+			case 0x39:
+			case 0x3a:
+			case 0x3b:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_Gradient_th( p_inputdata, 1 );
+#endif
+				
+				//if ( !local_id )
+				//{
+				//	p_inputdata [ 7 ].Value = ( p_inputdata [ 7 ].Value & ~0xffffff ) | ( p_inputdata [ 13 ].Value & 0xffffff );
+				//	p_inputdata [ 8 ].Value = p_inputdata [ 14 ].Value;
+				//}
+				//
+				//DrawTriangle_Gradient_th( p_inputdata, 1 );
+				break;
+
+
+			
+			//7:GetBGR0_8 ( Buffer [ 0 ] );
+			//8:GetXY0 ( Buffer [ 1 ] );
+			//9:GetCLUT ( Buffer [ 2 ] );
+			//9:GetUV0 ( Buffer [ 2 ] );
+			//10:GetBGR1_8 ( Buffer [ 3 ] );
+			//11:GetXY1 ( Buffer [ 4 ] );
+			//12:GetTPAGE ( Buffer [ 5 ] );
+			//12:GetUV1 ( Buffer [ 5 ] );
+			//13:GetBGR2_8 ( Buffer [ 6 ] );
+			//14:GetXY2 ( Buffer [ 7 ] );
+			//15:GetUV2 ( Buffer [ 8 ] );
+			//GetBGR3_8 ( Buffer [ 9 ] );
+			//GetXY3 ( Buffer [ 10 ] );
+			//GetUV3 ( Buffer [ 11 ] );
+			// texture gradient rectangle
+			case 0x3c:
+			case 0x3d:
+			case 0x3e:
+			case 0x3f:
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+				Select_Triangle_Renderer_t( p_inputdata, 1 );
+#else
+				DrawTriangle_TextureGradient_th ( p_inputdata, 1 );
+#endif
+				
+				// I'll fit this in by putting the uv3 into uv2 and the rest in slots 5 and 6
+				//p_inputdata [ 7 ].Value = ( p_inputdata [ 7 ].Value & ~0xffffff ) | ( ( p_inputdata [ 5 ].Value ) & 0xffffff );
+				//p_inputdata [ 8 ].Value = p_inputdata [ 6 ].Value;
+				//p_inputdata [ 9 ].Value = ( p_inputdata [ 9 ].Value & ~0xffff ) | ( ( p_inputdata [ 15 ].Value >> 16 ) & 0xffff );
+				//
+				//DrawTriangle_TextureGradient_th ( p_inputdata, 1 );
+				break;
+				
+				
+			
+			// monochrome line
+			case 0x40:
+			case 0x41:
+			case 0x42:
+			case 0x43:
+			case 0x44:
+			case 0x45:
+			case 0x46:
+			case 0x47:
+#ifdef USE_TEMPLATES_PS1_LINE
+				Select_Line_Renderer_t( p_inputdata, 1 );
+#else
+				DrawLine_Mono_th ( p_inputdata, 1 );
+#endif
+				break;
+				
+				
+			// monochrome polyline
+			case 0x48:
+			case 0x49:
+			case 0x4a:
+			case 0x4b:
+			case 0x4c:
+			case 0x4d:
+			case 0x4e:
+			case 0x4f:
+#ifdef USE_TEMPLATES_PS1_LINE
+				Select_Line_Renderer_t( p_inputdata, 1 );
+#else
+				DrawLine_Mono_th ( p_inputdata, 1 );
+#endif
+				break;
+			
+			
+			// gradient line
+			case 0x50:
+			case 0x51:
+			case 0x52:
+			case 0x53:
+			case 0x54:
+			case 0x55:
+			case 0x56:
+			case 0x57:
+#ifdef USE_TEMPLATES_PS1_LINE
+				Select_Line_Renderer_t( p_inputdata, 1 );
+#else
+				DrawLine_Gradient_th ( p_inputdata, 1 );
+#endif
+				break;
+
+				
+			// gradient polyline
+			case 0x58:
+			case 0x59:
+			case 0x5c:
+			case 0x5d:
+			case 0x5a:
+			case 0x5b:
+			case 0x5e:
+			case 0x5f:
+#ifdef USE_TEMPLATES_PS1_LINE
+				Select_Line_Renderer_t( p_inputdata, 1 );
+#else
+				DrawLine_Gradient_th ( p_inputdata, 1 );
+#endif
+				break;
+			
+
+				
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY ( Buffer [ 1 ] );
+			//GetHW ( Buffer [ 2 ] );
+			// x by y rectangle
+			case 0x60:
+			case 0x61:
+			case 0x62:
+			case 0x63:
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				Draw_Rectangle_60_th( p_inputdata, 1 );
+#endif
+				break;
+				
+				
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY ( Buffer [ 1 ] );
+			//GetCLUT ( Buffer [ 2 ] );
+			//GetUV ( Buffer [ 2 ] );
+			//GetHW ( Buffer [ 3 ] );
+			// x by y sprite
+			case 0x64:
+			case 0x65:
+			case 0x66:
+			case 0x67:
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				DrawSprite_th( p_inputdata, 1 );
+#endif
+				break;
+
+				
+			case 0x68:
+			case 0x69:
+			case 0x6a:
+			case 0x6b:
+				Draw_Pixel_68_th( p_inputdata, 1 );
+				break;
+
+
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY ( Buffer [ 1 ] );
+			// 8x8 rectangle
+			case 0x70:
+			case 0x71:
+			case 0x72:
+			case 0x73:
+				p_inputdata [ 10 ].w = 8;
+				p_inputdata [ 10 ].h = 8;
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				Draw_Rectangle_60_th( p_inputdata, 1 );
+#endif
+				break;
+				
+				
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY ( Buffer [ 1 ] );
+			//GetCLUT ( Buffer [ 2 ] );
+			//GetUV ( Buffer [ 2 ] );
+			// 8x8 sprite
+			case 0x74:
+			case 0x75:
+			case 0x76:
+			case 0x77:
+				p_inputdata [ 10 ].w = 8;
+				p_inputdata [ 10 ].h = 8;
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				DrawSprite_th( p_inputdata, 1 );
+#endif
+				break;
+				
+
+
+			// 16x16 rectangle
+			case 0x78:
+			case 0x79:
+			case 0x7a:
+			case 0x7b:
+				p_inputdata [ 10 ].w = 16;
+				p_inputdata [ 10 ].h = 16;
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				Draw_Rectangle_60_th( p_inputdata, 1 );
+#endif
+				break;
+
+					
+			// 16x16 sprite
+			case 0x7c:
+			case 0x7d:
+			case 0x7e:
+			case 0x7f:
+				p_inputdata [ 10 ].w = 16;
+				p_inputdata [ 10 ].h = 16;
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+				Select_Sprite_Renderer_t( p_inputdata, 1 );
+#else
+				DrawSprite_th( p_inputdata, 1 );
+#endif
+				break;
+			
+
+			////////////////////////////////////////
+			// Transfer commands
+			
+			// MoveImage
+			case 0x80:
+			case 0x81:
+			case 0x82:
+			case 0x83:
+			case 0x84:
+			case 0x85:
+			case 0x86:
+			case 0x87:
+			case 0x88:
+			case 0x89:
+			case 0x8a:
+			case 0x8b:
+			case 0x8c:
+			case 0x8d:
+			case 0x8e:
+			case 0x8f:
+			case 0x90:
+			case 0x91:
+			case 0x92:
+			case 0x93:
+			case 0x94:
+			case 0x95:
+			case 0x96:
+			case 0x97:
+			case 0x98:
+			case 0x99:
+			case 0x9a:
+			case 0x9b:
+			case 0x9c:
+			case 0x9d:
+			case 0x9e:
+			case 0x9f:
+				Transfer_MoveImage_80_th ( p_inputdata, 1 );
+				break;
+			
+			case 0xa0:
+			case 0xa1:
+			case 0xa2:
+			case 0xa3:
+			case 0xa4:
+			case 0xa5:
+			case 0xa6:
+			case 0xa7:
+			case 0xa8:
+			case 0xa9:
+			case 0xaa:
+			case 0xab:
+			case 0xac:
+			case 0xad:
+			case 0xae:
+			case 0xaf:
+			case 0xb0:
+			case 0xb1:
+			case 0xb2:
+			case 0xb3:
+			case 0xb4:
+			case 0xb5:
+			case 0xb6:
+			case 0xb7:
+			case 0xb8:
+			case 0xb9:
+			case 0xba:
+			case 0xbb:
+			case 0xbc:
+			case 0xbd:
+			case 0xbe:
+			case 0xbf:
+				TransferPixelPacketIn_th ( p_inputdata, 1 );
+				break;
+		
+			default:
+				break;
+		}
+		
+		ulTBufferIndex++;
+		
+		}	// end while ( ulTBufferIndex != ulInputBuffer_TargetIndex )
+			
+		Lock_Exchange32 ( (long&) ulInputBuffer_ReadIndex, ulTBufferIndex );
+		
+	}	// while ( 1 )
+}
+
+
+
 
 
 
@@ -584,7 +8104,10 @@ void GPU::Run ()
 			
 			if ( DebugWindow_Enabled )
 			{
-				Draw_FrameBuffer ();
+				if ( !ulNumberOfThreads )
+				{
+					Draw_FrameBuffer ();
+				}
 			}
 		}
 		
@@ -600,6 +8123,10 @@ void GPU::Run ()
 #ifdef INLINE_DEBUG_RASTER_SCANLINE
 	debug << "\r\n\r\n***SCANLINE*** " << hex << setw( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount << "; (after) LCF=" << GPU_CTRL_Read.LCF << "; CTRL=" << hex << GPU_CTRL_Read.Value << "; BusyCycles=" << dec << BusyCycles << " Scanline_Number=" << Y_Pixel << " VBlank_Y=" << VBlank_Y << " CyclesPerScanline=" << dCyclesPerScanline;
 #endif
+
+
+	// flush pending drawing commands
+	Flush ();
 	
 	
 	// update timers //
@@ -905,7 +8432,7 @@ static u32 GPU::Read ( u32 Address )
 #ifdef USE_DIVIDE_GCC
 					// *** divide ***
 					// modulo the number of scanlines to get scanline offset from start of the full frame
-					Scanline_Offset = Scanline_Number % PAL_ScanlinesPerFrame;
+					Scanline_Offset = Scanline_Number % PAL_Scanline PerFrame;
 #else
 					Scanline_Offset = RMOD ( Scanline_Number, PAL_ScanlinesPerFrame, PAL_FramesPerScanline );
 #endif
@@ -1025,7 +8552,8 @@ static void GPU::Write ( u32 Address, u32 Data, u32 Mask )
 
 			// incoming write to DATA register from bus
 			
-			_GPU->ProcessDataRegWrite ( Data );
+			//_GPU->ProcessDataRegWrite ( Data );
+			_GPU->ProcessDataRegWrite ( & Data, 1 );
 			
 			break;
 			
@@ -1098,6 +8626,8 @@ static void GPU::Write ( u32 Address, u32 Data, u32 Mask )
 			debug << "\r\n; DisplayArea";
 #endif
 
+					_GPU->ScreenArea_TopLeft = Data & 0x7ffff;
+					
 					//DrawArea_TopLeftX = Data & 0x3ff;
 					//DrawArea_TopLeftY = ( Data >> 10 ) & 0x1ff;
 					_GPU->ScreenArea_TopLeftX = Data & 0x3ff;
@@ -1978,7 +9508,8 @@ void GPU::Draw_Screen ()
 	
 	s32 TopBorder_Height, BottomBorder_Height, LeftBorder_Width, RightBorder_Width;
 	s32 current_x, current_y, current_width, current_height, current_size, current_xmax, current_ymax;
-	
+
+	u32* inputdata_ptr;
 	
 	// ***TESTING*** //
 	//bEnableScanline = false;
@@ -2027,6 +9558,50 @@ void GPU::Draw_Screen ()
 		
 		Source_Height <<= 1;
 	}
+
+	
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		//while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+		
+		// get pointer into inputdata
+		inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+		inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+		inputdata_ptr [ 1 ] = DisplayRange_Horizontal;
+		inputdata_ptr [ 2 ] = DisplayRange_Vertical;
+		inputdata_ptr [ 3 ] = ScreenArea_TopLeft;
+		inputdata_ptr [ 4 ] = bEnableScanline;
+		inputdata_ptr [ 5 ] = Y_Pixel;
+		inputdata_ptr [ 7 ] = 1 << 24;
+		
+		/*
+		////ctx->EnqueueNDRangeKernel ( total_compute_units );
+		//ctx->EnqueueNDRangeKernel ( num_local_workers );
+		//ctx->Flush();
+		//ctx->clWaitForEvents ( 1 );
+		*/
+		
+		//debug << "\r\ndraw_screen";
+		
+		// send the command to the other thread
+		ulInputBuffer_WriteIndex++;
+		
+		//debug << "\r\nulInputBuffer_Count=" << ulInputBuffer_Count;
+		
+		// for now, wait to finish
+		//while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+		
+		return;
+		
+		//debug << "\r\nulInputBuffer_Count=" << ulInputBuffer_Count;
+	}
+	else
+	{
+	
+	
+	
 	
 #ifdef INLINE_DEBUG_DRAW_SCREEN
 	debug << "\r\nGPU::Draw_Screen; GPU_CyclesPerPixel=" << dec << GPU_CyclesPerPixel << " Draw_StartX=" << Draw_StartX << " Draw_EndX=" << Draw_EndX;
@@ -2389,6 +9964,8 @@ void GPU::Draw_Screen ()
 		}
 
 	}
+	
+	} // end if ( bEnable_OpenCL )
 
 	
 #ifdef INLINE_DEBUG_DRAW_SCREEN
@@ -2989,7 +10566,8 @@ void GPU::DMA_Write ( u32* Data, int ByteWriteCount )
 	debug << "\r\n\r\nDMA_Write " << hex << setw ( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount << "; Data = " << hex << Data [ 0 ];
 #endif
 
-	ProcessDataRegWrite ( Data [ 0 ] );
+	//ProcessDataRegWrite ( Data [ 0 ] );
+	ProcessDataRegWrite ( Data, 1 );
 }
 
 
@@ -3007,10 +10585,13 @@ static u32 GPU::DMA_WriteBlock ( u32* pMemory, u32 Address, u32 BS )
 #endif
 
 
-	for ( int i = 0; i < BS; i++ )
-	{
-		_GPU->ProcessDataRegWrite ( Data [ i ] );
-	}
+
+	//for ( int i = 0; i < BS; i++ )
+	//{
+	//	_GPU->ProcessDataRegWrite ( Data [ i ] );
+	//}
+	_GPU->ProcessDataRegWrite ( Data, BS );
+	
 	
 	/*
 #ifdef ENABLE_DRAW_OVERHEAD
@@ -3035,11 +10616,19 @@ void GPU::ExecuteGPUBuffer ()
 {
 	static const u32 CyclesPerSpritePixel = 2;
 	
+	s32 tri_area;
+	u32 *inputdata_ptr;
+	u32 *inputdata_ptr2;
+	u64 NumPixels;
+	
 	command_tge = Buffer [ 0 ].Command & 1;
 	command_abe = ( Buffer [ 0 ].Command >> 1 ) & 1;
 	
 	// clear busy cycles
 	BusyCycles = 0;
+	
+	
+	
 
 	////////////////////////////////////////
 	// Check what the command is
@@ -3070,16 +10659,28 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			///////////////////////////////////////////
 			// frame buffer rectangle draw
-			GetBGR ( Buffer [ 0 ] );
-			GetXY ( Buffer [ 1 ] );
-			GetHW ( Buffer [ 2 ] );
+			//GetBGR ( Buffer [ 0 ] );
+			//GetXY ( Buffer [ 1 ] );
+			//GetHW ( Buffer [ 2 ] );
+			
+			
 			
 #if defined INLINE_DEBUG_EXECUTE
 			debug << dec << " x=" << x << " y=" << y << " h=" << h << " w=" << w << hex << " bgr=" << gbgr[0];
 #endif
 
-			Draw_FrameBufferRectangle_02 ();
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				
+			NumPixels = Draw_FrameBufferRectangle_02_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			BusyCycles += ( NumPixels * dFrameBufferRectangle_02_CyclesPerPixel );
 
+				ulInputBuffer_WriteIndex++;
+			
 #if defined INLINE_DEBUG_EXECUTE
 			debug << ";BusyCycles=" << BusyCycles;
 #endif
@@ -3160,21 +10761,36 @@ void GPU::ExecuteGPUBuffer ()
 			///////////////////////////////////////////////
 			// monochrome 3-point polygon
 			// *** TODO *** BGR should be passed as 24-bit color value, not 15-bit
-			GetBGR24 ( Buffer [ 0 ] );
-			GetXY0 ( Buffer [ 1 ] );
-			GetXY1 ( Buffer [ 2 ] );
-			GetXY2 ( Buffer [ 3 ] );
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY0 ( Buffer [ 1 ] );
+			//GetXY1 ( Buffer [ 2 ] );
+			//GetXY2 ( Buffer [ 3 ] );
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
 			debug << "\r\n" << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1] << " x2=" << gx[2] << " y2=" << gy[2] << hex << " bgr=" << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 3 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_TRIANGLE_MONO
 			Draw_MonoTriangle_20_t <0> ( 0, 1, 2 );
 #else
-			//Draw_MonoTriangle_20 ();
-			Draw_MonoTriangle_20 ( 0, 1, 2 );
+			//Draw_MonoTriangle_20 ( 0, 1, 2 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
@@ -3192,21 +10808,36 @@ void GPU::ExecuteGPUBuffer ()
 		
 			///////////////////////////////////////////////
 			// monochrome 3-point polygon
-			GetBGR24 ( Buffer [ 0 ] );
-			GetXY0 ( Buffer [ 1 ] );
-			GetXY1 ( Buffer [ 2 ] );
-			GetXY2 ( Buffer [ 3 ] );
+			//GetBGR24 ( Buffer [ 0 ] );
+			//GetXY0 ( Buffer [ 1 ] );
+			//GetXY1 ( Buffer [ 2 ] );
+			//GetXY2 ( Buffer [ 3 ] );
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
 			debug << "\r\n" << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1] << " x2=" << gx[2] << " y2=" << gy[2] << hex << " bgr=" << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+				
 #ifdef USE_TEMPLATES_TRIANGLE_MONO
 			Draw_MonoTriangle_20_t <1> ( 0, 1, 2 );
 #else
-			//Draw_MonoTriangle_20 ();
-			Draw_MonoTriangle_20 ( 0, 1, 2 );
+			//Draw_MonoTriangle_20 ( 0, 1, 2 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
@@ -3242,14 +10873,32 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\n" << dec << "clut_x=" << clut_x << " clut_y=" << clut_y << " tx=" << tpage_tx << " ty=" << tpage_ty << " tp=" << tpage_tp << " abr=" << tpage_abr;
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+			
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTURE
 			Draw_TextureTriangle_24_t <0,0> ( 0, 1, 2 );
 #else
-			//Draw_TextureTriangle_24 ();
-			Draw_TextureTriangle_24 ( 0, 1, 2 );
+			//Draw_TextureTriangle_24 ( 0, 1, 2 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3280,16 +10929,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\n" << dec << "clut_x=" << clut_x << " clut_y=" << clut_y << " tx=" << tpage_tx << " ty=" << tpage_ty << " tp=" << tpage_tp << " abr=" << tpage_abr;
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
-
+			
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTURE
 			Draw_TextureTriangle_24_t <0,1> ( 0, 1, 2 );
 #else
-			//Draw_TextureTriangle_24 ();
-			Draw_TextureTriangle_24 ( 0, 1, 2 );
+			//Draw_TextureTriangle_24 ( 0, 1, 2 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
-			// *** testing busy cycles ***
-			//BusyCycles = 100;
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3319,16 +10985,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\n" << dec << "clut_x=" << clut_x << " clut_y=" << clut_y << " tx=" << tpage_tx << " ty=" << tpage_ty << " tp=" << tpage_tp << " abr=" << tpage_abr;
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+			
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTURE
 			Draw_TextureTriangle_24_t <1,0> ( 0, 1, 2 );
 #else
-			//Draw_TextureTriangle_24 ();
-			Draw_TextureTriangle_24 ( 0, 1, 2 );
+			//Draw_TextureTriangle_24 ( 0, 1, 2 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
-			// *** testing busy cycles ***
-			//BusyCycles = 100;
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3359,14 +11042,32 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\n" << dec << "clut_x=" << clut_x << " clut_y=" << clut_y << " tx=" << tpage_tx << " ty=" << tpage_ty << " tp=" << tpage_tp << " abr=" << tpage_abr;
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
-
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTURE
 			Draw_TextureTriangle_24_t <1,1> ( 0, 1, 2 );
 #else
-			//Draw_TextureTriangle_24 ();
-			Draw_TextureTriangle_24 ( 0, 1, 2 );
+			//Draw_TextureTriangle_24 ( 0, 1, 2 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3394,12 +11095,44 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 3 ].Value;
+				//inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 3 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_MONO
 			Draw_MonoRectangle_28_t <0> ();
 #else
-			Draw_MonoRectangle_28 ();
+			//Draw_MonoRectangle_28 ();
+			//Draw_MonoRectangle_28 ( inputdata_ptr, 0 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
 			debug << ";BusyCycles=" << BusyCycles << ";DrawArea_TopLeftX=" << DrawArea_TopLeftX << ";DrawArea_OffsetX=" << DrawArea_OffsetX << ";DrawArea_TopLeftY=" << DrawArea_TopLeftY << ";DrawArea_OffsetY=" << DrawArea_OffsetY;
@@ -3427,22 +11160,49 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1] << " x2=" << gx[2] << " y2=" << gy[2] << " x3=" << gx[3] << " y3=" << gy[3] << " bgr=" << hex << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 3 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 2 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_MONO
 			Draw_MonoRectangle_28_t <1> ();
 #else
-			Draw_MonoRectangle_28 ();
+			//Draw_MonoRectangle_28 ();
+			//Draw_MonoRectangle_28 ( inputdata_ptr, 0 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_MonoTriangle_20 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-			
-			// *** testing busy cycles ***
-			//BusyCycles = 100;
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_MONO
 			debug << ";BusyCycles=" << BusyCycles;
 #endif
 			break;
-		
-		
 		
 		
 			
@@ -3472,15 +11232,54 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\ntpage_tx=" << tpage_tx << " tpage_ty=" << tpage_ty << " tpage_abr=" << tpage_abr << " tpage_tp=" << tpage_tp << " clut_x=" << clut_x << " clut_y=" << clut_y << " bgr=" << hex << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				//inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+				
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 8 ].Value & 0xffff );
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTURE
 			Draw_TextureRectangle_2c_t <0,0> ();
 #else
-			Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ( inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-
-			// *** testing busy cycles ***
-			//BusyCycles = 100;
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3514,14 +11313,53 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				//inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+				
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 8 ].Value & 0xffff );
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 6 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTURE
 			Draw_TextureRectangle_2c_t <0,1> ();
 #else
-			Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ( inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-
-			// *** testing busy cycles ***
-			//BusyCycles = 100;
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3556,12 +11394,53 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				//inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+				
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 8 ].Value & 0xffff );
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTURE
 			Draw_TextureRectangle_2c_t <1,0> ();
 #else
-			Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ( inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3596,12 +11475,54 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				//inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+				
+				inputdata_ptr2 [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 8 ].Value & 0xffff );
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 6 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTURE
 			Draw_TextureRectangle_2c_t <1,1> ();
 #else
-			Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ();
+			//Draw_TextureRectangle_2c ( inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureTriangle_24 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
-
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3633,13 +11554,29 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_TRIANGLE_GRADIENT
 			Draw_GradientTriangle_30_t <0> ( 0, 1, 2 );
 #else
-			//Draw_GradientTriangle_30 ();
-			Draw_GradientTriangle_30 ( 0, 1, 2 );
+			//Draw_GradientTriangle_30 ( 0, 1, 2 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SHADED
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3672,14 +11609,31 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_TRIANGLE_GRADIENT
 			Draw_GradientTriangle_30_t <1> ( 0, 1, 2 );
 #else
-			//Draw_GradientTriangle_30 ();
-			Draw_GradientTriangle_30 ( 0, 1, 2 );
+			//Draw_GradientTriangle_30 ( 0, 1, 2 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
-			
+
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SHADED
 			debug << ";BusyCycles=" << BusyCycles;
 #endif
@@ -3718,11 +11672,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
 
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientTriangle_34_t <0,0> ( 0, 1, 2 );
 #else
-			//Draw_TextureGradientTriangle_34 ();
-			Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			//Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
@@ -3759,14 +11735,34 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientTriangle_34_t <0,1> ( 0, 1, 2 );
 #else
-			//Draw_TextureGradientTriangle_34 ();
-			Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			//Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3802,14 +11798,34 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientTriangle_34_t <1,0> ( 0, 1, 2 );
 #else
-			//Draw_TextureGradientTriangle_34 ();
-			Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			//Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3845,14 +11861,34 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_TRIANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientTriangle_34_t <1,1> ( 0, 1, 2 );
 #else
-			//Draw_TextureGradientTriangle_34 ();
-			Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			//Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -3889,15 +11925,56 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				//inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 6 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_RECTANGLE_GRADIENT
 			Draw_GradientRectangle_38_t <0> ();
 #else
-			Draw_GradientRectangle_38 ();
+			//Draw_GradientRectangle_38 ();
+			//Draw_GradientRectangle_38 ( inputdata_ptr, 0 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
+
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SHADED
 			debug << ";BusyCycles=" << BusyCycles;
 #endif
+
 			break;
 			
 		
@@ -3930,10 +12007,49 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 5 ].Value;
+				//inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				//inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 6 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 10 ] = Buffer [ 2 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 5 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_RECTANGLE_GRADIENT
-			Draw_GradientRectangle_38_t <1> ();
+			Draw_GradientRectangle_38_t <0> ();
 #else
-			Draw_GradientRectangle_38 ();
+			//Draw_GradientRectangle_38 ();
+			//Draw_GradientRectangle_38 ( inputdata_ptr, 0 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_GradientTriangle_30 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SHADED
@@ -3977,10 +12093,57 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				//inputdata_ptr [ 5 ] = Buffer [ 9 ].Value;
+				//inputdata_ptr [ 6 ] = Buffer [ 10 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 9 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 10 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 11 ].Value & 0xffff );
+				inputdata_ptr2 [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientRectangle_3c_t <0,0> ();
 #else
-			Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ( inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
@@ -4021,11 +12184,58 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				//inputdata_ptr [ 5 ] = Buffer [ 9 ].Value;
+				//inputdata_ptr [ 6 ] = Buffer [ 10 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
 
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 9 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 10 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 11 ].Value & 0xffff );
+				inputdata_ptr2 [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientRectangle_3c_t <0,1> ();
 #else
-			Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ( inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
@@ -4067,10 +12277,57 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				//inputdata_ptr [ 5 ] = Buffer [ 9 ].Value;
+				//inputdata_ptr [ 6 ] = Buffer [ 10 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 9 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 10 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 11 ].Value & 0xffff );
+				inputdata_ptr2 [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientRectangle_3c_t <1,0> ();
 #else
-			Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ( inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
@@ -4111,11 +12368,58 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 			debug << dec << " X=" << TextureWindow_X << " Y=" << TextureWindow_Y << " Height=" << TextureWindow_Height << " Width=" << TextureWindow_Width;
 #endif
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				inputdata_ptr2 = & ( inputdata [ ( ( ulInputBuffer_WriteIndex + 1 ) & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				//inputdata_ptr [ 5 ] = Buffer [ 9 ].Value;
+				//inputdata_ptr [ 6 ] = Buffer [ 10 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+			
+
+				inputdata_ptr2 [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr2 [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr2 [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr2 [ 3 ] = DrawArea_Offset;
+				inputdata_ptr2 [ 4 ] = TextureWindow;
+
+				inputdata_ptr2 [ 7 ] = ( Buffer [ 0 ].Value & ~0xffffff ) | ( Buffer [ 9 ].Value & 0xffffff );
+				inputdata_ptr2 [ 8 ] = Buffer [ 10 ].Value;
+				inputdata_ptr2 [ 9 ] = ( Buffer [ 2 ].Value & ~0xffff ) | ( Buffer [ 11 ].Value & 0xffff );
+				inputdata_ptr2 [ 10 ] = Buffer [ 3 ].Value;
+				inputdata_ptr2 [ 11 ] = Buffer [ 4 ].Value;
+				inputdata_ptr2 [ 12 ] = Buffer [ 5 ].Value;
+				inputdata_ptr2 [ 13 ] = Buffer [ 6 ].Value;
+				inputdata_ptr2 [ 14 ] = Buffer [ 7 ].Value;
+				inputdata_ptr2 [ 15 ] = Buffer [ 8 ].Value;	// & 0xffff ) | ( Buffer [ 11 ].Value << 16 );
+				
+				ulInputBuffer_WriteIndex++;
 
 #ifdef USE_TEMPLATES_RECTANGLE_TEXTUREGRADIENT
 			Draw_TextureGradientRectangle_3c_t <1,1> ();
 #else
-			Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ();
+			//Draw_TextureGradientRectangle_3c ( inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			Draw_TextureGradientTriangle_34 ( (DATA_Write_Format*) inputdata_ptr2, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TEXTURE
@@ -4146,12 +12450,35 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1] << " bgr=" << hex << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
 			
 #ifdef USE_TEMPLATES_LINE_MONO
 			Select_MonoLine_t <0> ();
 #else
-			Draw_MonoLine_40 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+			NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_MonoLine_40 ();
+			NumPixels = DrawLine_Mono_th( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
+
+			BusyCycles += NumPixels;
+#endif
+			
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -4175,11 +12502,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1] << " bgr=" << hex << gbgr[0];
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+			
+				ulInputBuffer_WriteIndex++;
 			
 #ifdef USE_TEMPLATES_LINE_MONO
 			Select_MonoLine_t <1> ();
 #else
-			Draw_MonoLine_40 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+			NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_MonoLine_40 ();
+			NumPixels = DrawLine_Mono_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
@@ -4205,6 +12554,7 @@ void GPU::ExecuteGPUBuffer ()
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
 			debug << " bgr=" << hex << gbgr[0];
 #endif
+
 			
 			// draw until termination code is reached
 			for ( int i = 1; ( Buffer [ i + 1 ].Value & 0xf000f000 ) != 0x50005000; i++ )
@@ -4215,12 +12565,35 @@ void GPU::ExecuteGPUBuffer ()
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
 			debug << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1];
 #endif
+
+					// get pointer into inputdata
+					inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+					
+					inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+					inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+					inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+					inputdata_ptr [ 3 ] = DrawArea_Offset;
+					
+					inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+					inputdata_ptr [ 8 ] = Buffer [ i ].Value;
+					inputdata_ptr [ 10 ] = Buffer [ i + 1 ].Value;
+					
+				ulInputBuffer_WriteIndex++;
 				
 #ifdef USE_TEMPLATES_POLYLINE_MONO
 				Select_MonoLine_t <0> ();
 #else
-				Draw_MonoLine_40 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+				NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+				//Draw_MonoLine_40 ();
+				NumPixels = DrawLine_Mono_th( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
+
+				BusyCycles += NumPixels;
+#endif
+
 			}
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
@@ -4249,6 +12622,7 @@ void GPU::ExecuteGPUBuffer ()
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
 			debug << " bgr=" << hex << gbgr[0];
 #endif
+
 			
 			// draw until termination code is reached
 			for ( int i = 1; ( Buffer [ i + 1 ].Value & 0xf000f000 ) != 0x50005000; i++ )
@@ -4260,10 +12634,32 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x0=" << gx[0] << " y0=" << gy[0] << " x1=" << gx[1] << " y1=" << gy[1];
 #endif
 				
+					// get pointer into inputdata
+					inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+					
+					inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+					inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+					inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+					inputdata_ptr [ 3 ] = DrawArea_Offset;
+					
+					inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+					inputdata_ptr [ 8 ] = Buffer [ i ].Value;
+					inputdata_ptr [ 10 ] = Buffer [ i + 1 ].Value;
+					
+				ulInputBuffer_WriteIndex++;
+				
 #ifdef USE_TEMPLATES_POLYLINE_MONO
 				Select_MonoLine_t <1> ();
 #else
-				Draw_MonoLine_40 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+				NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+				//Draw_MonoLine_40 ();
+				NumPixels = DrawLine_Mono_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+				BusyCycles += NumPixels;
 #endif
 			}
 
@@ -4300,10 +12696,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_LINE_SHADED
 			Select_ShadedLine_t <0> ();
 #else
-			Draw_ShadedLine_50 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+			NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_ShadedLine_50 ();
+			NumPixels = DrawLine_Gradient_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
@@ -4334,10 +12753,33 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << "\r\nDrawArea: OffsetX=" << DrawArea_OffsetX << " OffsetY=" << DrawArea_OffsetY << " TopLeftX=" << DrawArea_TopLeftX << " TopLeftY=" << DrawArea_TopLeftY << " BottomRightX=" << DrawArea_BottomRightX << " BottomRightY=" << DrawArea_BottomRightY;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_LINE_SHADED
 			Select_ShadedLine_t <1> ();
 #else
-			Draw_ShadedLine_50 ();
+	
+#ifdef USE_TEMPLATES_PS1_LINE
+			NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_ShadedLine_50 ();
+			NumPixels = DrawLine_Gradient_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_LINE
@@ -4355,6 +12797,7 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			/////////////////////////////////////////////////
 			// gradated line polyline
+
 			
 			// draw until termination code is reached
 			for ( int i = 0; ( Buffer [ i + 2 ].Value & 0xf000f000 ) != 0x50005000; i += 2 )
@@ -4371,12 +12814,38 @@ void GPU::ExecuteGPUBuffer ()
 				GetBGR1_8 ( Buffer [ i + 2 ] );
 
 				// get coord
-				GetXY1 ( Buffer [ i + 3 ] );
+				GetXY1 ( Buffer [ i + 3	] );
+				
+					// get pointer into inputdata
+					inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+					
+					inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+					inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+					inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+					inputdata_ptr [ 3 ] = DrawArea_Offset;
+					
+					inputdata_ptr [ 7 ] = Buffer [ i ].Value;
+					inputdata_ptr [ 8 ] = Buffer [ i + 1 ].Value;
+					inputdata_ptr [ 9 ] = Buffer [ i + 2 ].Value;
+					inputdata_ptr [ 10 ] = Buffer [ i + 3 ].Value;
+					
+					// use command 0x58 here
+					inputdata_ptr [ 7 ] = ( 0x58 << 24 ) | ( inputdata_ptr [ 7 ] & 0xffffff );
+					
+				ulInputBuffer_WriteIndex++;
 				
 #ifdef USE_TEMPLATES_POLYLINE_SHADED
 				Select_ShadedLine_t <0> ();
 #else
-				Draw_ShadedLine_50 ();
+
+#ifdef USE_TEMPLATES_PS1_LINE
+				NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+				//Draw_ShadedLine_50 ();
+				NumPixels = DrawLine_Gradient_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+				BusyCycles += NumPixels;
 #endif
 			}
 			
@@ -4396,6 +12865,7 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			/////////////////////////////////////////////////
 			// gradated line polyline
+
 			
 			// draw until termination code is reached
 			for ( int i = 0; ( Buffer [ i + 2 ].Value & 0xf000f000 ) != 0x50005000; i += 2 )
@@ -4414,10 +12884,36 @@ void GPU::ExecuteGPUBuffer ()
 				// get coord
 				GetXY1 ( Buffer [ i + 3 ] );
 				
+					// get pointer into inputdata
+					inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+					
+					inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+					inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+					inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+					inputdata_ptr [ 3 ] = DrawArea_Offset;
+					
+					inputdata_ptr [ 7 ] = Buffer [ i ].Value;
+					inputdata_ptr [ 8 ] = Buffer [ i + 1 ].Value;
+					inputdata_ptr [ 9 ] = Buffer [ i + 2 ].Value;
+					inputdata_ptr [ 10 ] = Buffer [ i + 3 ].Value;
+					
+					// use command 0x5a here
+					inputdata_ptr [ 7 ] = ( 0x5a << 24 ) | ( inputdata_ptr [ 7 ] & 0xffffff );
+					
+				ulInputBuffer_WriteIndex++;
+				
 #ifdef USE_TEMPLATES_POLYLINE_SHADED
 				Select_ShadedLine_t <1> ();
 #else
-				Draw_ShadedLine_50 ();
+
+#ifdef USE_TEMPLATES_PS1_LINE
+				NumPixels = Select_Line_Renderer_t( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+				//Draw_ShadedLine_50 ();
+				NumPixels = DrawLine_Gradient_th( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+				BusyCycles += NumPixels;
 #endif
 			}
 			
@@ -4446,11 +12942,34 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x=" << x << " y=" << y << " h=" << h << " w=" << w << hex << " bgr=" << gbgr[0];
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE
 			Draw_Rectangle_60_t <0> ();
 #else
-			Draw_Rectangle_60 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle_60 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
+
+			BusyCycles += NumPixels;
+#endif
+
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -4473,12 +12992,35 @@ void GPU::ExecuteGPUBuffer ()
 			debug << dec << " x=" << x << " y=" << y << " h=" << h << " w=" << w << hex << " bgr=" << gbgr[0];
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 2 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_RECTANGLE
 			Draw_Rectangle_60_t <1> ();
 #else
-			Draw_Rectangle_60 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle_60 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
+
+			BusyCycles += NumPixels;
+#endif
+
+
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
 			debug << ";BusyCycles=" << BusyCycles;
 #endif
@@ -4502,12 +13044,43 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+
+//0: GPU_CTRL_Read
+//1: DrawArea_TopLeft
+//2: DrawArea_BottomRight
+//3: DrawArea_Offset
+//4: TextureWindow
+//5: ------------
+//6: ------------
+//7: GetBGR24 ( Buffer [ 0 ] );
+//8: GetXY ( Buffer [ 1 ] );
+//9: GetCLUT ( Buffer [ 2 ] );
+//9: GetUV ( Buffer [ 2 ] );
+//10: GetHW ( Buffer [ 3 ] );
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				
+				ulInputBuffer_WriteIndex++;
+				
 #ifdef USE_TEMPLATES_SPRITE
 			Draw_Sprite_64_t <0,0> ();
 #else
-			Draw_Sprite_64 ();
+			//Draw_Sprite_64 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
-			
+
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -4531,10 +13104,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE
 			Draw_Sprite_64_t <0,1> ();
 #else
-			Draw_Sprite_64 ();
+			//Draw_Sprite_64 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4559,10 +13149,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE
 			Draw_Sprite_64_t <1,0> ();
 #else
-			Draw_Sprite_64 ();
+			//Draw_Sprite_64 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4588,10 +13195,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE
 			Draw_Sprite_64_t <1,1> ();
 #else
-			Draw_Sprite_64 ();
+			//Draw_Sprite_64 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4611,8 +13235,28 @@ void GPU::ExecuteGPUBuffer ()
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
 			
+				BusyCycles += 1;
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				
+			if ( ulNumberOfThreads )
+			{
+				ulInputBuffer_WriteIndex++;
+				
+			}
+			else
+			{
 			Draw_Pixel_68 ();
-			
+			}
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -4630,8 +13274,28 @@ void GPU::ExecuteGPUBuffer ()
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
 			
+				BusyCycles += 1;
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				
+			if ( ulNumberOfThreads )
+			{
+				ulInputBuffer_WriteIndex++;
+				
+			}
+			else
+			{
 			Draw_Pixel_68 ();
-			
+			}
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
 			debug << ";BusyCycles=" << BusyCycles;
@@ -4683,10 +13347,32 @@ void GPU::ExecuteGPUBuffer ()
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
 			
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE8
 			Draw_Rectangle8x8_70_t <0> ();
 #else
-			Draw_Rectangle8x8_70 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle8x8_70 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4705,10 +13391,32 @@ void GPU::ExecuteGPUBuffer ()
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
 			
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_RECTANGLE8
 			Draw_Rectangle8x8_70_t <1> ();
 #else
-			Draw_Rectangle8x8_70 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle8x8_70 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4735,10 +13443,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE8
 			Draw_Sprite8x8_74_t <0,0> ();
 #else
-			Draw_Sprite8x8_74 ();
+			//Draw_Sprite8x8_74 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4765,11 +13490,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
 
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE8
 			Draw_Sprite8x8_74_t <0,1> ();
 #else
-			Draw_Sprite8x8_74 ();
+			//Draw_Sprite8x8_74 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4795,10 +13536,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE8
 			Draw_Sprite8x8_74_t <1,0> ();
 #else
-			Draw_Sprite8x8_74 ();
+			//Draw_Sprite8x8_74 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4825,10 +13583,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00080008;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_SPRITE8
 			Draw_Sprite8x8_74_t <1,1> ();
 #else
-			Draw_Sprite8x8_74 ();
+			//Draw_Sprite8x8_74 ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4847,11 +13622,33 @@ void GPU::ExecuteGPUBuffer ()
 			// 16x16 rectangle
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
 			
 #ifdef USE_TEMPLATES_RECTANGLE16
 			Draw_Rectangle16x16_78_t <0> ();
 #else
-			Draw_Rectangle16x16_78 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle16x16_78 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4869,11 +13666,33 @@ void GPU::ExecuteGPUBuffer ()
 			// 16x16 rectangle
 			GetBGR24 ( Buffer [ 0 ] );
 			GetXY ( Buffer [ 1 ] );
+
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
 			
 #ifdef USE_TEMPLATES_RECTANGLE16
 			Draw_Rectangle16x16_78_t <1> ();
 #else
-			Draw_Rectangle16x16_78 ();
+	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+			NumPixels = Select_Sprite_Renderer_t ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#else
+			//Draw_Rectangle16x16_78 ();
+			NumPixels = Draw_Rectangle_60_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+#endif
+
+			BusyCycles += NumPixels;
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4899,10 +13718,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR << " CycleCount=" << dec << *_DebugCycleCount;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_SPRITE16
 			Draw_Sprite16x16_7c_t <0,0> ();
 #else
-			Draw_Sprite16x16_7c ();
+			//Draw_Sprite16x16_7c ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4927,10 +13763,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR << " CycleCount=" << dec << *_DebugCycleCount;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_SPRITE16
 			Draw_Sprite16x16_7c_t <0,1> ();
 #else
-			Draw_Sprite16x16_7c ();
+			//Draw_Sprite16x16_7c ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4955,10 +13808,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR << " CycleCount=" << dec << *_DebugCycleCount;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
+
 #ifdef USE_TEMPLATES_SPRITE16
 			Draw_Sprite16x16_7c_t <1,0> ();
 #else
-			Draw_Sprite16x16_7c ();
+			//Draw_Sprite16x16_7c ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -4984,10 +13854,27 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nTP=" << GPU_CTRL_Read.TP << " ABR=" << GPU_CTRL_Read.ABR << " CycleCount=" << dec << *_DebugCycleCount;
 #endif
 
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				inputdata_ptr [ 1 ] = DrawArea_TopLeft;
+				inputdata_ptr [ 2 ] = DrawArea_BottomRight;
+				inputdata_ptr [ 3 ] = DrawArea_Offset;
+				inputdata_ptr [ 4 ] = TextureWindow;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = 0x00100010;
+				
+				ulInputBuffer_WriteIndex++;
+			
 #ifdef USE_TEMPLATES_SPRITE16
 			Draw_Sprite16x16_7c_t <1,1> ();
 #else
-			Draw_Sprite16x16_7c ();
+			//Draw_Sprite16x16_7c ();
+			Draw_Sprite_64 ( (DATA_Write_Format*) inputdata_ptr, 0 );
 #endif
 
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_SPRITE
@@ -5030,22 +13917,51 @@ void GPU::ExecuteGPUBuffer ()
 		case 0x9c:
 		case 0x9d:
 		case 0x9e:
-		case 0x9f:
+		case 0x9f:		
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_EXECUTE_NAME || defined INLINE_DEBUG_RUN_TRANSFER
 			debug << "\r\nMoveImage";
 			debug << " " << hex << setw ( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount;
 #endif
+
 			
 			///////////////////////////////////////////
 			// move image in frame buffer
+
+			
+			/*
 			sX = Buffer [ 1 ].x;
 			sY = Buffer [ 1 ].y;
 			dX = Buffer [ 2 ].x;
 			dY = Buffer [ 2 ].y;
 			h = Buffer [ 3 ].h;
 			w = Buffer [ 3 ].w;
-			
-			Transfer_MoveImage_80 ();
+			*/
+
+			//if ( ulNumberOfThreads )
+			//{
+				
+				// get pointer into inputdata
+				inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+				
+				inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+				
+				inputdata_ptr [ 7 ] = Buffer [ 0 ].Value;
+				inputdata_ptr [ 8 ] = Buffer [ 1 ].Value;
+				inputdata_ptr [ 9 ] = Buffer [ 2 ].Value;
+				inputdata_ptr [ 10 ] = Buffer [ 3 ].Value;
+				
+				// send the command to the other thread
+				ulInputBuffer_WriteIndex++;
+				
+				//BusyCycles += ( ( ( h - 1 ) & 0x1ff ) + 1 ) * ( ( ( w - 1 ) & 0x3ff ) + 1 ) * dMoveImage_80_CyclesPerPixel;
+				BusyCycles += ( ( ( Buffer [ 3 ].h - 1 ) & 0x1ff ) + 1 ) * ( ( ( Buffer [ 3 ].w - 1 ) & 0x3ff ) + 1 ) * dMoveImage_80_CyclesPerPixel;
+			//}
+			//else
+			//{
+				
+				//Transfer_MoveImage_80 ();
+				Transfer_MoveImage_80_th ( (DATA_Write_Format*) inputdata_ptr, 0 );
+			//}
 			
 #if defined INLINE_DEBUG_EXECUTE || defined INLINE_DEBUG_RUN_TRANSFER
 	debug << "; COMMAND: IMAGE MOVE; h = " << dec << h << "; w = " << w << "; sX=" << sX << "; sY=" << sY << "; dX=" << dX << "; dY=" << dY;
@@ -5088,6 +14004,16 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nImportImage";
 			debug << " " << hex << setw ( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount;
 #endif
+			
+			if ( ulNumberOfThreads )
+			{
+				// for now, wait to finish
+				//while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+				//while ( ulInputBuffer_Count );
+				Finish ();
+			}
+			
+
 			//////////////////////////////////////////
 			// send image to frame buffer
 			dX = Buffer [ 1 ].x;
@@ -5110,6 +14036,9 @@ void GPU::ExecuteGPUBuffer ()
 			h = ( ( h - 1 ) & 0x1ff ) + 1;
 			
 			BufferMode = MODE_IMAGEIN;
+			
+			iCurrentCount = 0;
+			iTotalCount = ( ( w * h ) + 1 ) >> 1;
 			
 			// set busy cycles to 1 so that we get debug info
 			BusyCycles = 1;
@@ -5155,6 +14084,15 @@ void GPU::ExecuteGPUBuffer ()
 			debug << "\r\nExportImage";
 			debug << " " << hex << setw ( 8 ) << *_DebugPC << " " << dec << *_DebugCycleCount;
 #endif
+
+			if ( ulNumberOfThreads )
+			{
+				// for now, wait to finish
+				//while ( ulInputBuffer_Count );
+				Finish ();
+			}
+
+
 			/////////////////////////////////////////
 			// copy image from frame buffer
 			sX = Buffer [ 1 ].x;
@@ -5230,6 +14168,8 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			////////////////////////////////////////////
 			// texture window setting
+			TextureWindow = Buffer [ 0 ].Value;
+			
 			TWX = ( Buffer [ 0 ].Value >> 10 ) & 0x1f;
 			TWY = ( Buffer [ 0 ].Value >> 15 ) & 0x1f;
 			TWH = ( Buffer [ 0 ].Value >> 5 ) & 0x1f;
@@ -5255,6 +14195,9 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			////////////////////////////////////////////
 			// set drawing area top left
+			
+			DrawArea_TopLeft = Buffer [ 0 ].Value & 0xfffff;
+			
 			//DrawArea_TopLeftX = Buffer [ 0 ].Value & 0x3ff;
 			//DrawArea_TopLeftY = ( Buffer [ 0 ].Value >> 10 ) & 0x3ff;
 			iREG_DrawArea_TopLeftX = Buffer [ 0 ].Value & 0x3ff;
@@ -5280,6 +14223,9 @@ void GPU::ExecuteGPUBuffer ()
 #endif
 			/////////////////////////////////////////////
 			// set drawing area bottom right
+			
+			DrawArea_BottomRight = Buffer [ 0 ].Value & 0xfffff;
+			
 			iREG_DrawArea_BottomRightX = Buffer [ 0 ].Value & 0x3ff;
 			iREG_DrawArea_BottomRightY = ( Buffer [ 0 ].Value >> 10 ) & 0x3ff;
 			
@@ -5306,6 +14252,8 @@ void GPU::ExecuteGPUBuffer ()
 			// drawing offset
 			// *note* draw offset is signed and both x and y go from -1024 to +1023 (11 bits)
 			s32 sTemp;
+			
+			DrawArea_Offset = Buffer [ 0 ].Value & 0x3fffff;
 			
 			// get x offset
 			sTemp = Buffer [ 0 ].Value & 0x7ff;
@@ -5436,19 +14384,91 @@ void GPU::ExecuteGPUBuffer ()
 }
 
 
-void GPU::TransferPixelPacketIn ( u32 Data )
+// returns count of pixels transferred in
+u32 GPU::TransferPixelPacketIn ( u32* pData, s32 BS )
 {
 	u32 bgr2;
 	u32 pix0, pix1;
 	u32 DestPixel, PixelMask = 0, SetPixelMask = 0;
+	u32 Data, Count = 0;
+	u32 *inputdata_ptr;
 	
 #ifdef INLINE_DEBUG_PIX_WRITE
 	debug << "; TRANSFER PIX IN; h = " << dec << h << "; w = " << w << "; iX = " << iX << "; iY = " << iY;
 #endif
 
+	if ( ulNumberOfThreads )
+	{
+		// for now, wait to finish
+		//while ( ulInputBuffer_Count & c_ulInputBuffer_Size );
+		
+		//BusyCycles += 16 * 16 * 1;
+		
+		// get pointer into inputdata
+		inputdata_ptr = & ( inputdata [ ( ulInputBuffer_WriteIndex & c_ulInputBuffer_Mask ) << c_ulInputBuffer_Shift ] );
+		
+		inputdata_ptr [ 0 ] = GPU_CTRL_Read.Value;
+		inputdata_ptr [ 1 ] = dX;
+		inputdata_ptr [ 2 ] = dY;
+		inputdata_ptr [ 3 ] = w;
+		inputdata_ptr [ 4 ] = h;
+		inputdata_ptr [ 5 ] = iX;
+		inputdata_ptr [ 6 ] = iY;
+		
+		// get up to 8 pixels
+		Count = ( BS > 8 ) ? 8 : BS;
+		
+		iCurrentCount += Count;
+		if ( iCurrentCount > iTotalCount )
+		{
+			Count -= ( iCurrentCount - iTotalCount );
+			iCurrentCount = iTotalCount;
+		}
+		
+		
+		// put in command and count here
+		inputdata_ptr [ 7 ] = ( 0xa0 << 24 ) | Count;
+		
+		for ( int i = 0; i < Count; i++ )
+		{
+			inputdata_ptr [ 8 + i ] = pData [ i ];
+		}
+		
+		// send the command to the other thread
+		ulInputBuffer_WriteIndex++;
+		
+		
+		// get the count
+		iX += ( Count << 1 );
+		while ( iX >= w )
+		{
+			iX -= w;
+			iY++;
+			
+			if ( iY >= h )
+			{
+				/////////////////////////////////////
+				// set buffer mode back to normal
+				BufferMode = MODE_NORMAL;
+				
+				////////////////////////////////////////
+				// done
+				return Count;
+			}
+		}
+		
+		// need to do this for each send
+		return Count;
+	}
+
 	if ( GPU_CTRL_Read.ME ) PixelMask = 0x8000;
 	if ( GPU_CTRL_Read.MD ) SetPixelMask = 0x8000;
 	
+	while ( Count < BS )
+	{
+		Data = *pData++;
+		Count++;
+		
 	//////////////////////////////////////////////////////
 	// transfer pixel of image to VRAM
 	pix0 = Data & 0xffff;
@@ -5496,7 +14516,7 @@ void GPU::TransferPixelPacketIn ( u32 Data )
 			
 			////////////////////////////////////////
 			// done
-			return;
+			return Count;
 		}
 	}
 	
@@ -5544,9 +14564,13 @@ void GPU::TransferPixelPacketIn ( u32 Data )
 			
 			////////////////////////////////////////
 			// done
-			return;
+			return Count;
 		}
 	}
+	
+	}
+	
+	return Count;
 	
 }
 
@@ -5641,21 +14665,28 @@ u32 GPU::TransferPixelPacketOut ()
 }
 
 
-void GPU::ProcessDataRegWrite ( u32 Data )
+//void GPU::ProcessDataRegWrite ( u32 Data )
+void GPU::ProcessDataRegWrite ( u32* pData, s32 BS )
 {
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << "; DataRegWrite";
 #endif
 
 	u32 pix0, pix1;
+	u32 Data, Count;
 
+	while ( BS )
+	{
+		
 	// make sure we are not sending or receiving images
-	//if ( BufferMode != MODE_IMAGEIN )
 	if ( BufferMode == MODE_NORMAL )
 	{
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << "; NORMAL; Data = " << hex << Data << ";(Before) BufferSize=" << dec << BufferSize;
 #endif
+
+		Data = *pData++;
+		BS--;
 
 		// add data into buffer
 		if ( BufferSize < 16 )
@@ -5707,14 +14738,19 @@ void GPU::ProcessDataRegWrite ( u32 Data )
 #endif
 
 		// receive a pixel from bus
-		TransferPixelPacketIn ( Data );
-
+		Count = TransferPixelPacketIn ( pData, BS );
+		pData += Count;
+		BS -= Count;
 	}
 	else
 	{
 #ifdef INLINE_DEBUG_DMA_WRITE
 	debug << "; InvalidBufferMode; BufferMode=" << dec << BufferMode << " w=" << w << " h=" << h;
 #endif
+
+		BS = 0;
+	}
+	
 	}
 }
 
@@ -6252,44 +15288,6 @@ void GPU::Transfer_MoveImage_80 ()
 		} // end if ( CurX < Width )
 	}
 	
-	/*
-	////////////////////////////////////////////////
-	// transfer pixels in frame buffer
-	for ( yy = 0; yy < h; yy++ )
-	{
-		// set total number of pixels to transfer on line
-		XSizeLeft = XSize;
-		
-		while ( XSizeLeft )
-		{
-			SrcEndX = SrcX + XSizeLeft;
-			DstEndX = SrcX + XSizeLeft;
-			
-			// get the 
-			RunXSize = XSizeLeft;
-			
-			
-			// check MIN how many pixels before you need to wrap coords
-			if ( SrcEndX > FrameBuffer_XSize ) XSizeLeft = FrameBuffer_XSize - SrcX;
-			
-			// check number of pixels left
-		}
-		
-		
-		for ( xx = 0; xx < w; xx++ )
-		{
-			bgr2 = VRAM [ ( (xx + sX) & 0x3ff ) + ( ( (xx + sY) & 0x1ff ) << 10 ) ];
-			
-			DestPixel = VRAM [ ( (yy + dX) & 0x3ff ) + ( ( (yy + dY) & 0x1ff ) << 10 ) ];
-			
-			// check if we should set mask bit when drawing
-			//if ( GPU_CTRL_Read.MD ) bgr2 |= 0x8000;
-			bgr2 |= SetPixelMask;
-			
-			if ( ! ( DestPixel & PixelMask ) ) VRAM [ ( (xx + dX) & 0x3ff ) + ( ( (yy + dY) & 0x1ff ) << 10 ) ] = bgr2;
-		}
-	}
-	*/
 }
 
 
@@ -10656,57 +19654,62 @@ void GPU::DrawSprite ()
 
 #ifndef EXCLUDE_TRIANGLE_MONO_NONTEMPLATE
 
-void GPU::Draw_MonoTriangle_20 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+//void GPU::Draw_MonoTriangle_20 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+void GPU::Draw_MonoTriangle_20 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
-	//DrawTriangle_Mono ();
-	DrawTriangle_Mono ( Coord0, Coord1, Coord2 );
+	u64 NumPixels;
 	
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+	NumPixels = Select_Triangle_Renderer_t ( p_inputdata, ulThreadNum );
+#else
+	//DrawTriangle_Mono ( Coord0, Coord1, Coord2 );
+	NumPixels = DrawTriangle_Mono_th ( p_inputdata, ulThreadNum );
+#endif
+	
+	if ( !ulThreadNum )
+	{
+		
 	// *** TODO *** calculate cycles to draw here
 	// check for alpha blending - add in an extra cycle for this for now
 	if ( command_abe )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		//BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		BusyCycles += NumPixels * dAlphaBlending_CyclesPerPixel;
 	}
 	
 	// add in cycles to draw mono-triangle
-	BusyCycles += NumberOfPixelsDrawn * dMonoTriangle_20_CyclesPerPixel;
+	//BusyCycles += NumberOfPixelsDrawn * dMonoTriangle_20_CyclesPerPixel;
+	BusyCycles += NumPixels * dMonoTriangle_20_CyclesPerPixel;
 	
 #ifdef ENABLE_DRAW_OVERHEAD
 	BusyCycles += DrawOverhead_Cycles;
 #endif
+	}	// end if ( !ulThreadNum )
 }
 
 void GPU::Draw_MonoRectangle_28 ()
+//void GPU::Draw_MonoRectangle_28 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
-	//x_save [ 0 ] = x0; x_save [ 1 ] = x1; x_save [ 2 ] = x2; x_save [ 3 ] = x3;
-	//y_save [ 0 ] = y0; y_save [ 1 ] = y1; y_save [ 2 ] = y2; y_save [ 3 ] = y3;
-	//bgr_save [ 0 ] = bgr;
+	//Draw_MonoTriangle_20 ( 0, 1, 2 );
+	//Draw_MonoTriangle_20 ( p_inputdata, ulThreadNum );
 	
-	//Draw_MonoTriangle_20 ();
-	Draw_MonoTriangle_20 ( 0, 1, 2 );
+	//p_inputdata [ 8 ].Value = p_inputdata [ 11 ].Value;
 	
-	//x0 = x_save [ 1 ];
-	//y0 = y_save [ 1 ];
-	//x1 = x_save [ 2 ];
-	//y1 = y_save [ 2 ];
-	//x2 = x_save [ 3 ];
-	//y2 = y_save [ 3 ];
-	
-	//bgr = bgr_save [ 0 ];
-	
-	//Draw_MonoTriangle_20 ();
-	Draw_MonoTriangle_20 ( 1, 2, 3 );
-	
+	//Draw_MonoTriangle_20 ( 1, 2, 3 );
+	//Draw_MonoTriangle_20 ( p_inputdata, ulThreadNum );
 }
-
+//
 #endif
 
 
 #ifndef EXCLUDE_TRIANGLE_GRADIENT_NONTEMPLATE
 
-void GPU::Draw_GradientTriangle_30 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+//void GPU::Draw_GradientTriangle_30 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+void GPU::Draw_GradientTriangle_30 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
+	u64 NumPixels;
 	
+	/*
 	//if ( ( bgr0 & 0x00ffffff ) == ( bgr1 & 0x00ffffff ) && ( bgr0 & 0x00ffffff ) == ( bgr2 & 0x00ffffff ) )
 	if ( gbgr [ Coord0 ] == gbgr [ Coord1 ] && gbgr [ Coord0 ] == gbgr [ Coord2 ] )
 	{
@@ -10717,48 +19720,49 @@ void GPU::Draw_GradientTriangle_30 ( u32 Coord0, u32 Coord1, u32 Coord2 )
 	}
 	else
 	{
-		//DrawTriangle_Gradient ();
-		DrawTriangle_Gradient ( Coord0, Coord1, Coord2 );
-	}
+	*/
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+	NumPixels = Select_Triangle_Renderer_t ( p_inputdata, ulThreadNum );
+#else
+		//DrawTriangle_Gradient ( Coord0, Coord1, Coord2 );
+		NumPixels = DrawTriangle_Gradient_th ( p_inputdata, ulThreadNum );
+#endif
+	//}
 	
+	if ( !ulThreadNum )
+	{
+		
 	// *** TODO *** calculate cycles to draw here
 	// check for alpha blending - add in an extra cycle for this for now
 	if ( command_abe )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		//BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		BusyCycles += NumPixels * dAlphaBlending_CyclesPerPixel;
 	}
 	
 	// add in cycles to draw mono-triangle
-	BusyCycles += NumberOfPixelsDrawn * dGradientTriangle_30_CyclesPerPixel;
+	//BusyCycles += NumberOfPixelsDrawn * dGradientTriangle_30_CyclesPerPixel;
+	BusyCycles += NumPixels * dGradientTriangle_30_CyclesPerPixel;
 	
 #ifdef ENABLE_DRAW_OVERHEAD
 	BusyCycles += DrawOverhead_Cycles;
 #endif
+	}	// end if ( !ulThreadNum )
 }
 
 
 void GPU::Draw_GradientRectangle_38 ()
+//void GPU::Draw_GradientRectangle_38 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
-	//x_save [ 0 ] = x0; x_save [ 1 ] = x1; x_save [ 2 ] = x2; x_save [ 3 ] = x3;
-	//y_save [ 0 ] = y0; y_save [ 1 ] = y1; y_save [ 2 ] = y2; y_save [ 3 ] = y3;
-	//bgr_save [ 0 ] = bgr0; bgr_save [ 1 ] = bgr1; bgr_save [ 2 ] = bgr2; bgr_save [ 3 ] = bgr3;
 	
-	//Draw_GradientTriangle_30 ();
-	Draw_GradientTriangle_30 ( 0, 1, 2 );
+	//Draw_GradientTriangle_30 ( 0, 1, 2 );
+	//Draw_GradientTriangle_30 ( p_inputdata, ulThreadNum );
 	
-	//x0 = x_save [ 1 ];
-	//y0 = y_save [ 1 ];
-	//x1 = x_save [ 2 ];
-	//y1 = y_save [ 2 ];
-	//x2 = x_save [ 3 ];
-	//y2 = y_save [ 3 ];
+	//p_inputdata [ 7 ].Value = ( p_inputdata [ 7 ].Value & ~0xffffff ) | ( p_inputdata [ 13 ].Value & 0xffffff );
+	//p_inputdata [ 8 ].Value = p_inputdata [ 14 ].Value;
 	
-	//bgr0 = bgr_save [ 1 ];
-	//bgr1 = bgr_save [ 2 ];
-	//bgr2 = bgr_save [ 3 ];
-	
-	//Draw_GradientTriangle_30 ();
-	Draw_GradientTriangle_30 ( 1, 2, 3 );
+	//Draw_GradientTriangle_30 ( 1, 2, 3 );
+	//Draw_GradientTriangle_30 ( p_inputdata, ulThreadNum );
 
 }
 
@@ -10767,15 +19771,11 @@ void GPU::Draw_GradientRectangle_38 ()
 
 #ifndef EXCLUDE_TRIANGLE_TEXTURE_NONTEMPLATE
 
-void GPU::Draw_TextureTriangle_24 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+//void GPU::Draw_TextureTriangle_24 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+void GPU::Draw_TextureTriangle_24 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
 
-	//static const double dTextureTriangle4_CyclesPerPixel = 3.38688;
-	//static const double dTextureTriangle8_CyclesPerPixel = 6.77376;
-	//static const double dTextureTriangle16_CyclesPerPixel = 11.2896;
-	//static const double dTextureTriangle4_Gradient_CyclesPerPixel = 4.8384;
-	//static const double dTextureTriangle8_Gradient_CyclesPerPixel = 9.6768;
-	//static const double dTextureTriangle16_Gradient_CyclesPerPixel = 18.816;
+	u64 NumPixelsDrawn;
 	
 	u32 tge;
 	tge = command_tge;
@@ -10786,77 +19786,68 @@ void GPU::Draw_TextureTriangle_24 ( u32 Coord0, u32 Coord1, u32 Coord2 )
 		command_tge = 1;
 	}
 	
-	//DrawTriangle_Texture ();
-	DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+	NumPixelsDrawn = Select_Triangle_Renderer_t ( p_inputdata, ulThreadNum );
+#else
+	//DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+	//NumPixelsDrawn = DrawTriangle_Texture_th ( p_inputdata, 0 );
+	NumPixelsDrawn = DrawTriangle_Texture_th ( p_inputdata, ulThreadNum );
+#endif
 	
+	if ( !ulThreadNum )
+	{
 	// restore tge
 	command_tge = tge;
 	
 	// check for alpha blending - add in an extra cycle for this for now
 	if ( command_abe )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		//BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		BusyCycles += NumPixelsDrawn * dAlphaBlending_CyclesPerPixel;
 	}
 	
 	// check for brightness calculation
 	if ( !command_tge )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dBrightnessCalculation_CyclesPerPixel;
+		//BusyCycles += NumberOfPixelsDrawn * dBrightnessCalculation_CyclesPerPixel;
+		BusyCycles += NumPixelsDrawn * dBrightnessCalculation_CyclesPerPixel;
 	}
 	
 	//switch ( tpage_tp )
 	switch ( GPU_CTRL_Read.TP )
 	{
 		case 0:		// 4-bit clut
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle4_24_CyclesPerPixel;	//dTextureTriangle4_CyclesPerPixel;
+			//BusyCycles += NumberOfPixelsDrawn * dTextureTriangle4_24_CyclesPerPixel;
+			BusyCycles += NumPixelsDrawn * dTextureTriangle4_24_CyclesPerPixel;
 			break;
 			
 		case 1:		// 8-bit clut
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle8_24_CyclesPerPixel;	//dTextureTriangle8_CyclesPerPixel;
+			//BusyCycles += NumberOfPixelsDrawn * dTextureTriangle8_24_CyclesPerPixel;
+			BusyCycles += NumPixelsDrawn * dTextureTriangle8_24_CyclesPerPixel;
 			break;
 			
 		case 2:		// 15-bit color
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle16_24_CyclesPerPixel;	//dTextureTriangle16_CyclesPerPixel;
+			//BusyCycles += NumberOfPixelsDrawn * dTextureTriangle16_24_CyclesPerPixel;
+			BusyCycles += NumPixelsDrawn * dTextureTriangle16_24_CyclesPerPixel;
 			break;
 	}
 	
 #ifdef ENABLE_DRAW_OVERHEAD
 	BusyCycles += DrawOverhead_Cycles;
 #endif
+	}	// end if ( !ulThreadNum )
 }
 
 void GPU::Draw_TextureRectangle_2c ()
 {
-	
-	//x_save [ 0 ] = x0; x_save [ 1 ] = x1; x_save [ 2 ] = x2; x_save [ 3 ] = x3;
-	//y_save [ 0 ] = y0; y_save [ 1 ] = y1; y_save [ 2 ] = y2; y_save [ 3 ] = y3;
-	//bgr_save [ 0 ] = bgr; bgr_save [ 1 ] = bgr0; bgr_save [ 2 ] = bgr1; bgr_save [ 3 ] = bgr2; bgr_save [ 4 ] = bgr3;
-	//u_save [ 0 ] = u0; u_save [ 1 ] = u1; u_save [ 2 ] = u2; u_save [ 3 ] = u3;
-	//v_save [ 0 ] = v0; v_save [ 1 ] = v1; v_save [ 2 ] = v2; v_save [ 3 ] = v3;
-	
-	//Draw_TextureTriangle_24 ();
-	Draw_TextureTriangle_24 ( 0, 1, 2 );
+	//Draw_TextureTriangle_24 ( 0, 1, 2 );
+	//Draw_TextureTriangle_24 ( p_inputdata, ulThreadNum );
 
+	//p_inputdata [ 7 ].Value = ( p_inputdata [ 7 ].Value & ~0xffffff ) | ( p_inputdata [ 13 ].Value & 0xffffff );
+	//p_inputdata [ 8 ].Value = p_inputdata [ 14 ].Value;
 	
-	//x0 = x_save [ 1 ];
-	//y0 = y_save [ 1 ];
-	//x1 = x_save [ 2 ];
-	//y1 = y_save [ 2 ];
-	//x2 = x_save [ 3 ];
-	//y2 = y_save [ 3 ];
-
-
-	//bgr = bgr_save [ 0 ];
-	
-	//u0 = u_save [ 1 ];
-	//v0 = v_save [ 1 ];
-	//u1 = u_save [ 2 ];
-	//v1 = v_save [ 2 ];
-	//u2 = u_save [ 3 ];
-	//v2 = v_save [ 3 ];
-	
-	//Draw_TextureTriangle_24 ();
-	Draw_TextureTriangle_24 ( 1, 2, 3 );
+	//Draw_TextureTriangle_24 ( 1, 2, 3 );
+	//Draw_TextureTriangle_24 ( p_inputdata, ulThreadNum );
 
 }
 
@@ -10866,19 +19857,14 @@ void GPU::Draw_TextureRectangle_2c ()
 
 #ifndef EXCLUDE_TRIANGLE_TEXTUREGRADIENT_NONTEMPLATE
 
-//void GPU::Draw_TextureGradientTriangle_34 ()
-void GPU::Draw_TextureGradientTriangle_34 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+//void GPU::Draw_TextureGradientTriangle_34 ( u32 Coord0, u32 Coord1, u32 Coord2 )
+void GPU::Draw_TextureGradientTriangle_34 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
-	//static const double dTextureTriangle4_CyclesPerPixel = 3.38688;
-	//static const double dTextureTriangle8_CyclesPerPixel = 6.77376;
-	//static const double dTextureTriangle16_CyclesPerPixel = 11.2896;
-	//static const double dTextureTriangle4_Gradient_CyclesPerPixel = 4.8384;
-	//static const double dTextureTriangle8_Gradient_CyclesPerPixel = 9.6768;
-	//static const double dTextureTriangle16_Gradient_CyclesPerPixel = 18.816;
-	
+	u64 NumPixels;
 	u32 tge;
 	tge = command_tge;
 	
+	/*
 	//if ( ( bgr0 & 0x00ffffff ) == ( bgr1 & 0x00ffffff ) && ( bgr0 & 0x00ffffff ) == ( bgr2 & 0x00ffffff ) )
 	if ( gbgr [ Coord0 ] == gbgr [ Coord1 ] && gbgr [ Coord0 ] == gbgr [ Coord2 ] )
 	{
@@ -10893,98 +19879,84 @@ void GPU::Draw_TextureGradientTriangle_34 ( u32 Coord0, u32 Coord1, u32 Coord2 )
 			gbgr [ 0 ] = gbgr [ Coord0 ];
 		}
 		
-		//DrawTriangle_Texture ();
-		DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+		//DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+		NumPixels = DrawTriangle_Texture_th ( p_inputdata, ulThreadNum );
 	}
 	else
 	{
 		if ( command_tge )
 		{
-			//DrawTriangle_Texture ();
-			DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+			//DrawTriangle_Texture ( Coord0, Coord1, Coord2 );
+			NumPixels = DrawTriangle_Texture_th ( p_inputdata, ulThreadNum );
 		}
 		else
 		{
-			//DrawTriangle_TextureGradient ();
-			DrawTriangle_TextureGradient ( Coord0, Coord1, Coord2 );
+		*/
+		
+#ifdef USE_TEMPLATES_PS1_TRIANGLE
+	NumPixels = Select_Triangle_Renderer_t ( p_inputdata, ulThreadNum );
+#else
+			//DrawTriangle_TextureGradient ( Coord0, Coord1, Coord2 );
+			NumPixels = DrawTriangle_TextureGradient_th ( p_inputdata, ulThreadNum );
+#endif
+	
+		/*
 		}
 	}
+	*/
 	
+	if ( !ulThreadNum )
+	{
 	// restore tge
 	command_tge = tge;
 
-	
 	// check for alpha blending - add in an extra cycle for this for now
 	if ( command_abe )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dAlphaBlending_CyclesPerPixel;
+		BusyCycles += NumPixels * dAlphaBlending_CyclesPerPixel;
 	}
 	
 	// check for brightness calculation
 	if ( !command_tge )
 	{
-		BusyCycles += NumberOfPixelsDrawn * dBrightnessCalculation_CyclesPerPixel;
+		BusyCycles += NumPixels * dBrightnessCalculation_CyclesPerPixel;
 	}
 
 	//switch ( tpage_tp )
 	switch ( GPU_CTRL_Read.TP )
 	{
 		case 0:		// 4-bit clut
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle4_34_Gradient_CyclesPerPixel;	//dTextureTriangle4_CyclesPerPixel;
+			BusyCycles += NumPixels * dTextureTriangle4_34_Gradient_CyclesPerPixel;
 			break;
 			
 		case 1:		// 8-bit clut
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle8_34_Gradient_CyclesPerPixel;	//dTextureTriangle8_CyclesPerPixel;
+			BusyCycles += NumPixels * dTextureTriangle8_34_Gradient_CyclesPerPixel;
 			break;
 			
 		case 2:		// 15-bit color
-			BusyCycles += NumberOfPixelsDrawn * dTextureTriangle16_34_Gradient_CyclesPerPixel;	//dTextureTriangle16_CyclesPerPixel;
+			BusyCycles += NumPixels * dTextureTriangle16_34_Gradient_CyclesPerPixel;
 			break;
 	}
 	
 #ifdef ENABLE_DRAW_OVERHEAD
 	BusyCycles += DrawOverhead_Cycles;
 #endif
+	}	// end if ( !ulThreadNum )
 }
 
 
 void GPU::Draw_TextureGradientRectangle_3c ()
+//void GPU::Draw_TextureGradientRectangle_3c ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
+	//Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
+	//Draw_TextureGradientTriangle_34 ( p_inputdata, ulThreadNum );
 	
-	//x_save [ 0 ] = x0; x_save [ 1 ] = x1; x_save [ 2 ] = x2; x_save [ 3 ] = x3;
-	//y_save [ 0 ] = y0; y_save [ 1 ] = y1; y_save [ 2 ] = y2; y_save [ 3 ] = y3;
-	//bgr_save [ 0 ] = bgr; bgr_save [ 1 ] = bgr0; bgr_save [ 2 ] = bgr1; bgr_save [ 3 ] = bgr2; bgr_save [ 4 ] = bgr3;
-	//u_save [ 0 ] = u0; u_save [ 1 ] = u1; u_save [ 2 ] = u2; u_save [ 3 ] = u3;
-	//v_save [ 0 ] = v0; v_save [ 1 ] = v1; v_save [ 2 ] = v2; v_save [ 3 ] = v3;
+	//p_inputdata [ 7 ].Value = ( p_inputdata [ 7 ].Value & ~0xffffff ) | ( ( p_inputdata [ 5 ].Value ) & 0xffffff );
+	//p_inputdata [ 8 ].Value = p_inputdata [ 6 ].Value;
+	//p_inputdata [ 9 ].Value = ( p_inputdata [ 9 ].Value & ~0xffff ) | ( ( p_inputdata [ 15 ].Value >> 16 ) & 0xffff );
 	
-	//bgr = 0x808080;
-	
-	//Draw_TextureGradientTriangle_34 ();
-	Draw_TextureGradientTriangle_34 ( 0, 1, 2 );
-	
-	
-	//x0 = x_save [ 1 ];
-	//y0 = y_save [ 1 ];
-	//x1 = x_save [ 2 ];
-	//y1 = y_save [ 2 ];
-	//x2 = x_save [ 3 ];
-	//y2 = y_save [ 3 ];
-
-
-	//bgr = 0x808080;
-	//bgr0 = bgr_save [ 2 ];
-	//bgr1 = bgr_save [ 3 ];
-	//bgr2 = bgr_save [ 4 ];
-	
-	//u0 = u_save [ 1 ];
-	//v0 = v_save [ 1 ];
-	//u1 = u_save [ 2 ];
-	//v1 = v_save [ 2 ];
-	//u2 = u_save [ 3 ];
-	//v2 = v_save [ 3 ];
-	
-	//Draw_TextureGradientTriangle_34 ();
-	Draw_TextureGradientTriangle_34 ( 1, 2, 3 );
+	//Draw_TextureGradientTriangle_34 ( 1, 2, 3 );
+	//Draw_TextureGradientTriangle_34 ( p_inputdata, ulThreadNum );
 
 }
 
@@ -10995,34 +19967,43 @@ void GPU::Draw_TextureGradientRectangle_3c ()
 
 #ifndef EXCLUDE_SPRITE_NONTEMPLATE
 
-void GPU::Draw_Sprite_64 ()
+void GPU::Draw_Sprite_64 ( DATA_Write_Format* p_inputdata, u32 ulThreadNum )
 {
-	//static const double dSprite4_Cycles = 1.2027;
-	//static const double dSprite8_Cycles = 1.89;
-	//static const double dSprite16_Cycles = 3.3075;
+	u64 NumPixels;
 	
+#ifdef USE_TEMPLATES_PS1_RECTANGLE
+	NumPixels = Select_Sprite_Renderer_t ( p_inputdata, ulThreadNum );
+#else
+	//DrawSprite ();
+	NumPixels = DrawSprite_th ( p_inputdata, ulThreadNum );
+#endif
+
+	if ( !ulThreadNum )
+	{
 	tpage_tx = GPU_CTRL_Read.TX;
 	tpage_ty = GPU_CTRL_Read.TY;
 	tpage_tp = GPU_CTRL_Read.TP;
 	
-	DrawSprite ();
-
 	// set number of cycles it takes to draw sprite
 	switch ( tpage_tp )
 	{
 		case 0:		// 4-bit clut
-			BusyCycles = NumberOfPixelsDrawn * dSprite4_64_Cycles;
+			//BusyCycles = NumberOfPixelsDrawn * dSprite4_64_Cycles;
+			BusyCycles = NumPixels * dSprite4_64_Cycles;
 			break;
 			
 		case 1:		// 8-bit clut
-			BusyCycles = NumberOfPixelsDrawn * dSprite8_64_Cycles;
+			//BusyCycles = NumberOfPixelsDrawn * dSprite8_64_Cycles;
+			BusyCycles = NumPixels * dSprite8_64_Cycles;
 			break;
 			
 		case 2:		// 15-bit color
-			BusyCycles = NumberOfPixelsDrawn * dSprite16_64_Cycles;
+			//BusyCycles = NumberOfPixelsDrawn * dSprite16_64_Cycles;
+			BusyCycles = NumPixels * dSprite16_64_Cycles;
 			break;
 	}
 
+	}	// end if ( !ulThreadNum )
 }
 
 #endif
@@ -11044,10 +20025,10 @@ void GPU::Draw_Sprite8x8_74 ()
 	//static const int TextureSizeY = 32;
 
 
-	tpage_tx = GPU_CTRL_Read.TX;
-	tpage_ty = GPU_CTRL_Read.TY;
+	//tpage_tx = GPU_CTRL_Read.TX;
+	//tpage_ty = GPU_CTRL_Read.TY;
 	tpage_tp = GPU_CTRL_Read.TP;
-	tpage_abr = GPU_CTRL_Read.ABR;
+	//tpage_abr = GPU_CTRL_Read.ABR;
 	
 	w = 8; h = 8;
 	DrawSprite ();
@@ -11087,10 +20068,10 @@ void GPU::Draw_Sprite16x16_7c ()
 	//static const int TextureSizeX = 256;
 	//static const int TextureSizeY = 32;
 
-	tpage_tx = GPU_CTRL_Read.TX;
-	tpage_ty = GPU_CTRL_Read.TY;
+	//tpage_tx = GPU_CTRL_Read.TX;
+	//tpage_ty = GPU_CTRL_Read.TY;
 	tpage_tp = GPU_CTRL_Read.TP;
-	tpage_abr = GPU_CTRL_Read.ABR;
+	//tpage_abr = GPU_CTRL_Read.ABR;
 	
 	w = 16; h = 16;
 	DrawSprite ();
@@ -12208,5 +21189,4 @@ static void GPU::DebugWindow_Update ()
 #endif
 
 }
-
 

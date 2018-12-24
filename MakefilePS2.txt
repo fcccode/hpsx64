@@ -55,14 +55,14 @@ DIR_PS2_IPU = $(DIR_PS2)/ipu/src
 DIR_PS2_BUS = $(DIR_PS2)/databus/src
 DIR_PS2_SYSTEM = $(DIR_PS2)/system/src
 
-INC_PS2_R5900 = -I$(DIR_PS2_R5900) -I$(DIR_PS2_R5900)/execute -I$(DIR_PS2_R5900)/lookup -I$(DIR_PS2_R5900)/print -I$(DIR_PS2_R5900)/recompile
+INC_PS2_R5900 = -I$(DIR_PS2_R5900) -I$(DIR_PS2_R5900)/execute -I$(DIR_PS2_R5900)/lookup -I$(DIR_PS2_R5900)/print -I$(DIR_PS2_R5900)/recompile  -I$(DIR_PS2_R5900)/cache
 INC_PS2_GPU = -I$(DIR_PS2_GPU)
 INC_PS2_TIMER = -I$(DIR_PS2_TIMER)
 INC_PS2_SIO = -I$(DIR_PS2_SIO)
 INC_PS2_INTC = -I$(DIR_PS2_INTC)
 INC_PS2_DMA = -I$(DIR_PS2_DMA)
 INC_PS2_SIF = -I$(DIR_PS2_SIF)
-INC_PS2_VU = -I$(DIR_PS2_VU) -I$(DIR_PS2_VU)/execute -I$(DIR_PS2_VU)/lookup -I$(DIR_PS2_VU)/print
+INC_PS2_VU = -I$(DIR_PS2_VU) -I$(DIR_PS2_VU)/execute -I$(DIR_PS2_VU)/lookup -I$(DIR_PS2_VU)/print -I$(DIR_PS2_VU)/recompile
 INC_PS2_IPU = -I$(DIR_PS2_IPU) -I$(DIR_PS2_IPU)/mpeg2lib
 INC_PS2_BUS = -I$(DIR_PS2_BUS)
 INC_PS2_SYSTEM = -I$(DIR_PS2_SYSTEM)
@@ -97,7 +97,7 @@ SRC_PS2_SIO = $(wildcard $(DIR_PS2_SIO)/*.cpp)
 SRC_PS2_INTC = $(wildcard $(DIR_PS2_INTC)/*.cpp)
 SRC_PS2_DMA = $(wildcard $(DIR_PS2_DMA)/*.cpp)
 SRC_PS2_SIF = $(wildcard $(DIR_PS2_SIF)/*.cpp)
-SRC_PS2_VU = $(wildcard $(DIR_PS2_VU)/*.cpp) $(wildcard $(DIR_PS2_VU)/execute/*.cpp) $(wildcard $(DIR_PS2_VU)/lookup/*.cpp) $(wildcard $(DIR_PS2_VU)/print/*.cpp)
+SRC_PS2_VU = $(wildcard $(DIR_PS2_VU)/*.cpp) $(wildcard $(DIR_PS2_VU)/execute/*.cpp) $(wildcard $(DIR_PS2_VU)/lookup/*.cpp) $(wildcard $(DIR_PS2_VU)/print/*.cpp) $(wildcard $(DIR_PS2_VU)/recompile/*.cpp)
 SRC_PS2_IPU = $(wildcard $(DIR_PS2_IPU)/*.cpp)
 SRC_PS2_BUS = $(wildcard $(DIR_PS2_BUS)/*.cpp)
 SRC_PS2_SYSTEM = $(wildcard $(DIR_PS2_SYSTEM)/*.cpp)
@@ -111,8 +111,8 @@ SRC_MPEGLIB2 = $(wildcard $(DIR_PS2_IPU)/mpeg2lib/Mpeg.cpp)
 INC = $(INC_PS2) $(INC_COMMON) $(INC_PLATFORM) $(INC_PS1)
 SRC = $(SRC_PS2) $(SRC_COMMON) $(SRC_PLATFORM) $(SRC_PS1)
 LIBS = -Wl,-subsystem,console -lopengl32 -lComctl32 -lwinmm
-CFLAGS = -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -O3 -DENABLE_GUI_DEBUGGER -DPS2_COMPILE
-CFLAGS2 = -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -O2 -DENABLE_GUI_DEBUGGER -DPS2_COMPILE
+CFLAGS = -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -O3 -DENABLE_GUI_DEBUGGER -DPS2_COMPILE -DUSE_PS2_GPU_TEMPLATES
+CFLAGS2 = -w -mwindows -fpermissive -static-libgcc -static-libstdc++ -O2 -DENABLE_GUI_DEBUGGER -DPS2_COMPILE -DUSE_PS2_GPU_TEMPLATES
 #-Wuninitialized
 #-Wmaybe-uninitialized
 #-Wl,--stack,33554432
@@ -120,11 +120,14 @@ MPEGOBJ1 = Idct.o
 MPEGOBJ2 = Mpeg.o
 OBJ = hps2x64
 
-$(OBJ): $(SRC) $(MPEGOBJ1) $(MPEGOBJ2)
+$(OBJ): $(SRC) $(SRC_MPEGLIB1) $(SRC_MPEGLIB2)
 	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS)
 
-$(MPEGOBJ1): $(SRC_MPEGLIB1)
-	g++ $(CFLAGS2) $(INC) -c $^ $(LIBS)
+#$(OBJ): $(SRC) $(MPEGOBJ1) $(MPEGOBJ2)
+#	g++ $(CFLAGS) $(INC) -o $@ $^ $(LIBS)
 
-$(MPEGOBJ2): $(SRC_MPEGLIB2)
-	g++ $(CFLAGS2) $(INC) -c $^ $(LIBS)
+#$(MPEGOBJ1): $(SRC_MPEGLIB1)
+#	g++ $(CFLAGS2) $(INC) -c $^ $(LIBS)
+
+#$(MPEGOBJ2): $(SRC_MPEGLIB2)
+#	g++ $(CFLAGS2) $(INC) -c $^ $(LIBS)

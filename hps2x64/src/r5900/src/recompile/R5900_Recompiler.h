@@ -203,6 +203,41 @@ namespace R5900
 		static long Generate_Normal_Load ( R5900::Instruction::Format i, u32 Address, u32 BitTest, void* LoadFunctionToCall );
 		static long Generate_Normal_Branch ( R5900::Instruction::Format i, u32 Address, void* BranchFunctionToCall );
 		static long Generate_Normal_Trap ( R5900::Instruction::Format i, u32 Address );
+
+
+		static long Generate_VABSp ( R5900::Instruction::Format i );
+		static long Generate_VMAXp ( R5900::Instruction::Format i, u32 *pFt = NULL, u32 FtComponent = 4 );
+		static long Generate_VMINp ( R5900::Instruction::Format i, u32 *pFt = NULL, u32 FtComponent = 4 );
+		static long Generate_VFTOIXp ( R5900::Instruction::Format i, u32 IX );
+		static long Generate_VITOFXp ( R5900::Instruction::Format i, u32 FX );
+		static long Generate_VMOVEp ( R5900::Instruction::Format i );
+		static long Generate_VMR32p ( R5900::Instruction::Format i );
+		static long Generate_VMFIRp ( R5900::Instruction::Format i );
+		static long Generate_VMTIRp ( R5900::Instruction::Format i );
+		static long Generate_VADDp ( u32 bSub, R5900::Instruction::Format i, u32 FtComponent = 4, void *pFd = NULL, u32 *pFt = NULL );
+		static long Generate_VMULp ( R5900::Instruction::Format i, u32 FtComponentp = 0x1b, void *pFd = NULL, u32 *pFt = NULL, u32 FsComponentp = 0x1b );
+		static long Generate_VMADDp ( u32 bSub, R5900::Instruction::Format i, u32 FtComponentp = 0x1b, void *pFd = NULL, u32 *pFt = NULL, u32 FsComponentp = 0x1b );
+		
+		
+		static long Generate_VABS ( R5900::Instruction::Format i, u32 Address, u32 Component );
+		static long Generate_VMAX ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFt = NULL );
+		static long Generate_VMIN ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFt = NULL );
+		static long Generate_VFTOI0 ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent );
+		static long Generate_VFTOIX ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent, u32 IX );
+		static long Generate_VITOFX ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent, u32 FX );
+		static long Generate_VMOVE ( R5900::Instruction::Format i, u32 Address, u32 FtComponent, u32 FsComponent );
+		
+		static long Generate_VMR32_Load ( R5900::Instruction::Format i, u32 Address, u32 FsComponent );
+		static long Generate_VMR32_Store ( R5900::Instruction::Format i, u32 Address, u32 FtComponent );
+		
+		static long Generate_VMFIR ( R5900::Instruction::Format i, u32 Address, u32 FtComponent );
+		static long Generate_VADD ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd = NULL, u32 *pFt = NULL );
+		static long Generate_VSUB ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd = NULL, u32 *pFt = NULL );
+		static long Generate_VMUL ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd = NULL, u32 *pFt = NULL );
+		static long Generate_VMADD ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd = NULL, u32 *pFt = NULL );
+		static long Generate_VMSUB ( R5900::Instruction::Format i, u32 Address, u32 FdComponent, u32 FsComponent, u32 FtComponent, u32 *pFd = NULL, u32 *pFt = NULL );
+		
+		
 		
 		// says if block points to an R3000A instruction that should NOT be EVER cached
 		// *note* this should be dynamically allocated

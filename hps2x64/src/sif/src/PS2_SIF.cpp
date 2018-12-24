@@ -872,12 +872,16 @@ static u32 SIF::IOP_DMA_WriteBlock ( u32 *pMemory, u32 Address, u32 WordCount )
 
 	// round count up to nearest 128-bit boundary and put in QWC
 	QuadwordCount = ( WordCount >> 2 ) + ( ( WordCount & 3 ) ? 1 : 0 );
+	
+	// can't transfer more than 8 quadwords at a time (SIF buffer is only 8 quadwords)
+	QuadwordCount = ( QuadwordCount > 8 ) ? 8 : QuadwordCount;
 
 	// IOP dma channel #9 is trying to pass data to EE dma channel #5
 	//Playstation2::Dma::_DMA->DMA5_WriteBlock ( EEDMATag, (u64*) Data, Count );
 	Playstation2::Dma::_DMA->DMA5_WriteBlock ( Data, QuadwordCount );
 	
-	return WordCount;
+	//return WordCount;
+	return ( ( QuadwordCount << 2 ) > WordCount ) ? WordCount : ( QuadwordCount << 2 );
 }
 
 

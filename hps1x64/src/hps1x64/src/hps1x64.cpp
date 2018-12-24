@@ -57,6 +57,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	
 	cout << "Initializing program...\n";
 	
+	// ???
+	//DisableProcessWindowsGhosting();
+	//ShowCursor ( false );
+	
 	_HPS1X64.InitializeProgram ();
 	
 	cout << "Starting run of program...\n";
@@ -270,8 +274,14 @@ void hps1x64::Update_CheckMarksOnMenu ()
 	ProgramWindow->Menus->UnCheckItem ( "Insert/Remove Game Disk" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 1 Digital" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 1 Analog" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: None" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: Device0" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 1: Device1" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 2 Digital" );
 	ProgramWindow->Menus->UnCheckItem ( "Pad 2 Analog" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: None" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: Device0" );
+	ProgramWindow->Menus->UnCheckItem ( "Pad 2: Device1" );
 	ProgramWindow->Menus->UnCheckItem ( "Disconnect Card1" );
 	ProgramWindow->Menus->UnCheckItem ( "Connect Card1" );
 	ProgramWindow->Menus->UnCheckItem ( "Disconnect Card2" );
@@ -294,6 +304,9 @@ void hps1x64::Update_CheckMarksOnMenu ()
 	ProgramWindow->Menus->UnCheckItem ( "Disable Scanlines" );
 	ProgramWindow->Menus->UnCheckItem ( "Interpreter: R3000A" );
 	ProgramWindow->Menus->UnCheckItem ( "Recompiler: R3000A" );
+	ProgramWindow->Menus->UnCheckItem ( "1 (multi-thread)" );
+	ProgramWindow->Menus->UnCheckItem ( "0 (single-thread)" );
+	
 	
 	// check box for audio output enable //
 	if ( _SYSTEM._SPU.AudioOutput_Enabled )
@@ -330,6 +343,21 @@ void hps1x64::Update_CheckMarksOnMenu ()
 			ProgramWindow->Menus->CheckItem ( "Pad 1 Analog" );
 			break;
 	}
+
+	switch ( _SYSTEM._SIO.PortMapping [ 0 ] )
+	{
+		case 0:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: Device0" );
+			break;
+			
+		case 1:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: Device1" );
+			break;
+			
+		default:
+			ProgramWindow->Menus->CheckItem ( "Pad 1: None" );
+			break;
+	}
 	
 	// do pad 2
 	switch ( _SYSTEM._SIO.ControlPad_Type [ 1 ] )
@@ -340,6 +368,21 @@ void hps1x64::Update_CheckMarksOnMenu ()
 			
 		case 1:
 			ProgramWindow->Menus->CheckItem ( "Pad 2 Analog" );
+			break;
+	}
+
+	switch ( _SYSTEM._SIO.PortMapping [ 1 ] )
+	{
+		case 0:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: Device0" );
+			break;
+			
+		case 1:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: Device1" );
+			break;
+			
+		default:
+			ProgramWindow->Menus->CheckItem ( "Pad 2: None" );
 			break;
 	}
 	
@@ -456,6 +499,16 @@ void hps1x64::Update_CheckMarksOnMenu ()
 	{
 		ProgramWindow->Menus->CheckItem ( "Interpreter: R3000A" );
 	}
+	
+	
+	if ( _SYSTEM._GPU.ulNumberOfThreads )
+	{
+		ProgramWindow->Menus->CheckItem ( "1 (multi-thread)" );
+	}
+	else
+	{
+		ProgramWindow->Menus->CheckItem ( "0 (single-thread)" );
+	}
 }
 
 
@@ -525,7 +578,7 @@ int hps1x64::InitializeProgram ()
 	m->AddItem ( "Show Window", "Timers", OnClick_Debug_Show_TIMER );
 	m->AddItem ( "Show Window", "SPU", OnClick_Debug_Show_SPU );
 	m->AddItem ( "Show Window", "INTC", OnClick_Debug_Show_INTC );
-	m->AddItem ( "Show Window", "GPU" );
+	m->AddItem ( "Show Window", "PS1 GPU" );
 	m->AddItem ( "Show Window", "MDEC" );
 	m->AddItem ( "Show Window", "SIO" );
 	m->AddItem ( "Show Window", "PIO" );
@@ -535,15 +588,25 @@ int hps1x64::InitializeProgram ()
 	
 	// add menu items for controllers //
 	m->AddMainMenuItem ( "Peripherals" );
-	m->AddItem ( "Peripherals", "Configure Joypad...", OnClick_Controllers_Configure );
+	//m->AddItem ( "Peripherals", "Configure Joypad...", OnClick_Controllers_Configure );
 	m->AddMenu ( "Peripherals", "Pad 1" );
+	m->AddItem ( "Pad 1", "Configure Joypad1...", OnClick_Controllers0_Configure );
 	m->AddMenu ( "Pad 1", "Pad 1 Type" );
 	m->AddItem ( "Pad 1 Type", "Pad 1 Digital", OnClick_Pad1Type_Digital );
 	m->AddItem ( "Pad 1 Type", "Pad 1 Analog", OnClick_Pad1Type_Analog );
+	m->AddMenu ( "Pad 1", "Pad 1: Input" );
+	m->AddItem ( "Pad 1: Input", "Pad 1: None", OnClick_Pad1Input_None );
+	m->AddItem ( "Pad 1: Input", "Pad 1: Device0", OnClick_Pad1Input_Device0 );
+	m->AddItem ( "Pad 1: Input", "Pad 1: Device1", OnClick_Pad1Input_Device1 );
 	m->AddMenu ( "Peripherals", "Pad 2" );
+	m->AddItem ( "Pad 2", "Configure Joypad2...", OnClick_Controllers1_Configure );
 	m->AddMenu ( "Pad 2", "Pad 2 Type" );
 	m->AddItem ( "Pad 2 Type", "Pad 2 Digital", OnClick_Pad2Type_Digital );
 	m->AddItem ( "Pad 2 Type", "Pad 2 Analog", OnClick_Pad2Type_Analog );
+	m->AddMenu ( "Pad 2", "Pad 2: Input" );
+	m->AddItem ( "Pad 2: Input", "Pad 2: None", OnClick_Pad2Input_None );
+	m->AddItem ( "Pad 2: Input", "Pad 2: Device0", OnClick_Pad2Input_Device0 );
+	m->AddItem ( "Pad 2: Input", "Pad 2: Device1", OnClick_Pad2Input_Device1 );
 	
 	// add menu items for memory cards //
 	m->AddMenu ( "Peripherals", "Memory Cards" );
@@ -585,6 +648,11 @@ int hps1x64::InitializeProgram ()
 	m->AddMenu ( "CPU", "CPU: R3000A" );
 	m->AddItem ( "CPU: R3000A", "Interpreter: R3000A", OnClick_R3000ACPU_Interpreter );
 	m->AddItem ( "CPU: R3000A", "Recompiler: R3000A", OnClick_R3000ACPU_Recompiler );
+	
+	m->AddMainMenuItem ( "GPU" );
+	m->AddMenu ( "GPU", "GPU: Threads" );
+	m->AddItem ( "GPU: Threads", "0 (single-thread)", OnClick_GPU_0Threads );
+	m->AddItem ( "GPU: Threads", "1 (multi-thread)", OnClick_GPU_1Threads );
 	
 	
 	cout << "\nShowing menu bar";
@@ -698,7 +766,7 @@ int hps1x64::RunProgram ()
 	
 	bool bRunningTooSlow;
 	
-	u64 MilliSecsToWait;
+	s64 MilliSecsToWait;
 	
 	u64 TicksPerSec, CurrentTimer, TargetTimer;
 	s64 TicksLeft;
@@ -820,6 +888,9 @@ int hps1x64::RunProgram ()
 					
 //cout << "In Looping program... LastFrameNumber=" << dec << LastFrameNumber;
 
+					// multi-threading testing
+					GPU::Start_Frame ();
+
 					// loop until we reach the next frame
 					//while ( _SYSTEM._CPU.CycleCount < _SYSTEM.NextExit_Cycle )
 					//for ( i = 0; i < CyclesToRunContinuous; i++ )
@@ -829,6 +900,9 @@ int hps1x64::RunProgram ()
 						_SYSTEM.Run ();
 					}
 					
+					// multi-threading testing
+					GPU::End_Frame ();
+					
 //cout << "Out Looping program... LastFrameNumber=" << dec << ( *pCurrentFrameNumber );
 
 					// get the target platform timer value for this frame
@@ -836,21 +910,21 @@ int hps1x64::RunProgram ()
 					if ( _SYSTEM._GPU.GPU_CTRL_Read.VIDEO )
 					{
 						// PAL //
-						TargetTimer += ( TicksPerSec / 50 );
+						//TargetTimer += ( TicksPerSec / 50 );
+						TargetTimer += ( ( (double) TicksPerSec ) / GPU::PAL_FramesPerSec );
 					}
 					else
 					{
 						// NTSC //
-						TargetTimer += ( TicksPerSec / 60 );
+						//TargetTimer += ( TicksPerSec / 60 );
+						TargetTimer += ( ( (double) TicksPerSec ) / GPU::NTSC_FramesPerSec );
 					}
 					
-					// process events
-					WindowClass::DoEventsNoWait ();
 					
 					// check if we are running slower than target
 					if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
 					{
-						cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+						cout << "\nhps1x64: Error returned from QueryPerformanceCounter\n";
 					}
 					
 					TicksLeft = TargetTimer - CurrentTimer;
@@ -860,29 +934,58 @@ int hps1x64::RunProgram ()
 					{
 						// running too slow //
 						bRunningTooSlow = true;
+						
+						//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
+						//Sleep ( 1 );
 					}
 					else
 					{
-						MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
-						MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait /*cWaitPeriod*/, QS_ALLINPUT, MWMO_ALERTABLE );
+						//MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
+						
+						//MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait, QS_ALLINPUT, MWMO_ALERTABLE );
+						//Sleep ( MilliSecsToWait );
 					}
 					
-					/*
+					
+					// process events
+					//WindowClass::DoEventsNoWait ();
+					//WindowClass::DoSingleEvent ();
+					
+					
+					
+					
 					do
 					{
 						// active-wait
-						//MsgWaitForMultipleObjectsEx( NULL, NULL, 1, QS_ALLINPUT, MWMO_ALERTABLE );
 						
 						// process events
 						WindowClass::DoEventsNoWait ();
 						
-						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &SystemTimer_Current ) )
+						
+						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
 						{
 							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
 						}
 						
-					} while ( SystemTimer_Current < SystemTimer_Target );
-					*/
+						TicksLeft = TargetTimer - CurrentTimer;
+						
+						MilliSecsToWait = (u64) ( ( (double) TicksLeft ) / dTicksPerMilliSec );
+						
+						if ( MilliSecsToWait <= 0 ) MilliSecsToWait = 1;
+						
+						MsgWaitForMultipleObjectsEx( NULL, NULL, MilliSecsToWait, QS_ALLINPUT, MWMO_ALERTABLE );
+						
+						// process events
+						//WindowClass::DoEventsNoWait ();
+						//WindowClass::DoSingleEvent ();
+						
+						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &CurrentTimer ) )
+						{
+							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+						}
+						
+					} while ( CurrentTimer < TargetTimer );
+					
 					
 					// if menu has been clicked then wait
 					WindowClass::Window::WaitForModalMenuLoop ();
@@ -892,12 +995,13 @@ int hps1x64::RunProgram ()
 					
 					
 					// check if we are running too slow
+					//if ( CurrentTimer > TargetTimer )
 					if ( bRunningTooSlow )
 					{
 						// set the new timer target to be the current timer
 						if ( !QueryPerformanceCounter ( (LARGE_INTEGER*) &TargetTimer ) )
 						{
-							cout << "\nhpsx64: Error returned from QueryPerformanceCounter\n";
+							cout << "\nhps1x64: Error returned from QueryPerformanceCounter\n";
 						}
 					}
 					
@@ -1614,7 +1718,7 @@ static void hps1x64::OnClick_Debug_Show_INTC ( u32 i )
 	_MenuClick = 1;
 }
 
-static void hps1x64::OnClick_Controllers_Configure ( u32 i )
+static void hps1x64::OnClick_Controllers0_Configure ( u32 i )
 {
 	//MenuClicked m;
 	//m.Controllers_Configure = true;
@@ -1661,6 +1765,55 @@ static void hps1x64::OnClick_Controllers_Configure ( u32 i )
 	_MenuClick = 1;
 }
 
+static void hps1x64::OnClick_Controllers1_Configure ( u32 i )
+{
+	//MenuClicked m;
+	//m.Controllers_Configure = true;
+	//x64ThreadSafe::Utilities::Lock_OR64 ( (long long&)_MenuClick.Value, (long long) m.Value );
+	cout << "\nYou clicked Controllers | Configure...\n";
+	
+	Dialog_KeyConfigure::KeyConfigure [ 0 ] = _HPS1X64._SYSTEM._SIO.Key_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 1 ] = _HPS1X64._SYSTEM._SIO.Key_O [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 2 ] = _HPS1X64._SYSTEM._SIO.Key_Triangle [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 3 ] = _HPS1X64._SYSTEM._SIO.Key_Square [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 4 ] = _HPS1X64._SYSTEM._SIO.Key_R1 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 5 ] = _HPS1X64._SYSTEM._SIO.Key_R2 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 6 ] = _HPS1X64._SYSTEM._SIO.Key_R3 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 7 ] = _HPS1X64._SYSTEM._SIO.Key_L1 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 8 ] = _HPS1X64._SYSTEM._SIO.Key_L2 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 9 ] = _HPS1X64._SYSTEM._SIO.Key_L3 [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 10 ] = _HPS1X64._SYSTEM._SIO.Key_Start [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 11 ] = _HPS1X64._SYSTEM._SIO.Key_Select [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 12 ] = _HPS1X64._SYSTEM._SIO.LeftAnalog_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 13 ] = _HPS1X64._SYSTEM._SIO.LeftAnalog_Y [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 14 ] = _HPS1X64._SYSTEM._SIO.RightAnalog_X [ 1 ];
+	Dialog_KeyConfigure::KeyConfigure [ 15 ] = _HPS1X64._SYSTEM._SIO.RightAnalog_Y [ 1 ];
+	
+	if ( Dialog_KeyConfigure::Show_ConfigureKeysDialog () )
+	{
+		_HPS1X64._SYSTEM._SIO.Key_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 0 ];
+		_HPS1X64._SYSTEM._SIO.Key_O [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 1 ];
+		_HPS1X64._SYSTEM._SIO.Key_Triangle [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 2 ];
+		_HPS1X64._SYSTEM._SIO.Key_Square [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 3 ];
+		_HPS1X64._SYSTEM._SIO.Key_R1 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 4 ];
+		_HPS1X64._SYSTEM._SIO.Key_R2 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 5 ];
+		_HPS1X64._SYSTEM._SIO.Key_R3 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 6 ];
+		_HPS1X64._SYSTEM._SIO.Key_L1 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 7 ];
+		_HPS1X64._SYSTEM._SIO.Key_L2 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 8 ];
+		_HPS1X64._SYSTEM._SIO.Key_L3 [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 9 ];
+		_HPS1X64._SYSTEM._SIO.Key_Start [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 10 ];
+		_HPS1X64._SYSTEM._SIO.Key_Select [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 11 ];
+		_HPS1X64._SYSTEM._SIO.LeftAnalog_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 12 ];
+		_HPS1X64._SYSTEM._SIO.LeftAnalog_Y [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 13 ];
+		_HPS1X64._SYSTEM._SIO.RightAnalog_X [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 14 ];
+		_HPS1X64._SYSTEM._SIO.RightAnalog_Y [ 1 ] = Dialog_KeyConfigure::KeyConfigure [ 15 ];
+	}
+	
+	_MenuClick = 1;
+}
+
+
+
 static void hps1x64::OnClick_Pad1Type_Digital ( u32 i )
 {
 	//MenuClicked m;
@@ -1687,6 +1840,42 @@ static void hps1x64::OnClick_Pad1Type_Analog ( u32 i )
 	_MenuClick = 1;
 }
 
+static void hps1x64::OnClick_Pad1Input_None ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+static void hps1x64::OnClick_Pad1Input_Device0 ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] = 0;
+	
+	if ( _HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] == 0 )
+	{
+		_HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	}
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+static void hps1x64::OnClick_Pad1Input_Device1 ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] = 1;
+	
+	if ( _HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] == 1 )
+	{
+		_HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	}
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+
+
 static void hps1x64::OnClick_Pad2Type_Digital ( u32 i )
 {
 	//MenuClicked m;
@@ -1707,6 +1896,41 @@ static void hps1x64::OnClick_Pad2Type_Analog ( u32 i )
 	//x64ThreadSafe::Utilities::Lock_OR64 ( (long long&)_MenuClick.Value, (long long) m.Value );
 	// set pad 2 to analog
 	_HPS1X64._SYSTEM._SIO.ControlPad_Type [ 1 ] = 1;
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+
+static void hps1x64::OnClick_Pad2Input_None ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] = -1;
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+static void hps1x64::OnClick_Pad2Input_Device0 ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] = 0;
+	
+	if ( _HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] == 0 )
+	{
+		_HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	}
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+	
+	_MenuClick = 1;
+}
+static void hps1x64::OnClick_Pad2Input_Device1 ( u32 i )
+{
+	_HPS1X64._SYSTEM._SIO.PortMapping [ 1 ] = 1;
+	
+	if ( _HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] == 1 )
+	{
+		_HPS1X64._SYSTEM._SIO.PortMapping [ 0 ] = -1;
+	}
 	
 	_HPS1X64.Update_CheckMarksOnMenu ();
 	
@@ -2010,6 +2234,25 @@ static void hps1x64::OnClick_R3000ACPU_Recompiler ( u32 i )
 }
 
 
+static void hps1x64::OnClick_GPU_0Threads ( u32 i )
+{
+	cout << "\nYou clicked GPU | GPU: Threads | 0 threads\n";
+	
+	_HPS1X64._SYSTEM._GPU.ulNumberOfThreads = 0;
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+}
+
+static void hps1x64::OnClick_GPU_1Threads ( u32 i )
+{
+	cout << "\nYou clicked GPU | GPU: Threads | 1 threads\n";
+	
+	_HPS1X64._SYSTEM._GPU.ulNumberOfThreads = 1;
+	
+	_HPS1X64.Update_CheckMarksOnMenu ();
+}
+
+
 
 
 void hps1x64::SaveState ( string FilePath )
@@ -2255,6 +2498,9 @@ void hps1x64::LoadConfig ( string ConfigFileName )
 	
 	cfg.Get_Value32 ( "R3000A_Recompiler", lTemp );
 	_SYSTEM._CPU.bEnableRecompiler = lTemp;
+	
+	cfg.Get_Value32 ( "GPU_Threads", lTemp );
+	_SYSTEM._GPU.ulNumberOfThreads = lTemp;
 }
 
 
@@ -2310,6 +2556,9 @@ void hps1x64::SaveConfig ( string ConfigFileName )
 	cfg.Set_Value32 ( "Scanline_Enable", _SYSTEM._GPU.Get_Scanline () );
 	
 	cfg.Set_Value32 ( "R3000A_Recompiler", _SYSTEM._CPU.bEnableRecompiler );
+	
+	cfg.Set_Value32 ( "GPU_Threads", _SYSTEM._GPU.ulNumberOfThreads );
+
 	
 	// save the configuration file
 	if ( !cfg.Save ( ConfigFileName ) )

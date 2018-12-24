@@ -85,6 +85,7 @@
 #define INLINE_DEBUG_READ
 #define INLINE_DEBUG_START
 #define INLINE_DEBUG_END
+#define INLINE_DEBUG_CHECK
 
 #define INLINE_DEBUG_SPR_IN
 #define INLINE_DEBUG_SPR_OUT
@@ -149,6 +150,10 @@
 */
 
 #endif
+
+
+
+#define ENABLE_MEMORY_INVALIDATE
 
 
 namespace Playstation2
@@ -448,7 +453,8 @@ void Dma::Run ()
 	
 	// will use this for MDEC for now
 	//u32 NumberOfTransfers;
-
+	int iChannel, iCurrentCh;
+	u32 ulCurrentScore, ulCheckScore;
 	
 #ifdef INLINE_DEBUG_RUN
 	debug << "\r\nDma::Run";
@@ -459,23 +465,125 @@ void Dma::Run ()
 	// check if dma is doing anything starting at this particular cycle
 	//if ( NextEvent_Cycle != *_DebugCycleCount ) return;
 	
-	
+#ifdef IGNORE_CHANNEL_PRIORITY
 	// check for the channel(s) that needs to be run
-	for ( int iChannel = 0; iChannel < c_iNumberOfChannels; iChannel++ )
+	for ( iChannel = 0; iChannel < c_iNumberOfChannels; iChannel++ )
 	{
 		// need to use the current cycle count to check what dma channel is to run
-		//if ( NextEvent_Cycle == NextEventCh_Cycle [ iChannel ] )
 		if ( *_DebugCycleCount == NextEventCh_Cycle [ iChannel ] )
 		{
+#ifdef INLINE_DEBUG_RUN
+	debug << " RUNNING CH#" << dec << iChannel;
+#endif
+
 			// ***todo*** check channel priority
 			Transfer ( iChannel );
 		}
+		
 	}
+	
+#else
+	
+	// get channel with the highest priority //
+	
+	// start with channel 0
+	iCurrentCh = -1;
+	ulCurrentScore = 0;
+	for ( iChannel = 0; iChannel < c_iNumberOfChannels; iChannel++ )
+	{
+		ulCheckScore = Get_ChannelPriority ( iChannel );
+		
+#ifdef INLINE_DEBUG_RUN
+	if ( ulCheckScore )
+	{
+		debug << " CH" << dec << iChannel;
+		debug << "_SCORE:" << dec << ulCheckScore;
+	}
+#endif
+
+		if ( ulCheckScore > ulCurrentScore )
+		{
+			iCurrentCh = iChannel;
+			ulCurrentScore = ulCheckScore;
+		}
+	}
+	
+	// check if score is greater than zero
+	if ( ulCurrentScore )
+	{
+#ifdef INLINE_DEBUG_RUN
+	debug << " RUNNING CH#" << dec << iCurrentCh;
+	debug << " SCORE:" << dec << ulCurrentScore;
+	debug << " LASTCH#" << dec << iLastChannel;
+#endif
+
+		// run the transfer
+		Transfer ( iCurrentCh );
+		
+		// if score is less than next priority level, set as last channel that was run
+		//if ( ulCurrentScore < 100 )
+		//{
+			iLastChannel = iCurrentCh;
+		//}
+	}
+#endif
 	
 	// get the cycle number of the next event for device
 	Update_NextEventCycle ();
 	
 
+}
+
+
+u32 Dma::Get_ChannelPriority ( int iChannel )
+{
+	u32 ulPriority;
+	
+	// check if all dma is disabled //
+	if ( ! pDMARegs->CTRL.DMAE )
+	{
+		return 0;
+	}
+	
+	
+	// check if channel is started //
+	if ( !pRegData [ iChannel ]->CHCR.STR )
+	{
+		// channel is not running if it has not been started
+		return 0;
+	}
+	
+	// channel is started //
+	
+	// check if channel is ready //
+	
+	// check there is a ready function
+	if ( cbReady [ iChannel ] )
+	{
+		if ( ! cbReady [ iChannel ] () )
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+	
+	// channel is ready //
+	
+	// check round robin rotation (lowest priority) //
+	
+	// ( number of channels - channel ), then add number of channels if greter than last channel
+	ulPriority = ( c_iNumberOfChannels - iChannel ) + ( ( iChannel > iLastChannel ) ? c_iNumberOfChannels : 0 );
+	
+	// check pce priority (highest priority) //
+	if ( ( !pDMARegs->PCR.PCE ) || ( pDMARegs->PCR.Value & ( 1 << ( iChannel + 16 ) ) ) ) ulPriority += 1000;
+	
+	// check if channel is zero (next highest priority) //
+	if ( !iChannel ) ulPriority += 100;
+	
+	return ulPriority;
 }
 
 
@@ -1394,6 +1502,23 @@ void Dma::SuspendTransfer ( int iChannel )
 
 
 
+void Dma::CheckTransfer ()
+{
+#ifdef INLINE_DEBUG_CHECK
+	debug << "\r\nDma::CheckTransfer";
+	debug << "; (before) STAT=" << DMARegs.STAT.Value;
+#endif
+
+	NextEvent_Cycle = ( *_DebugCycleCount ) + 1;
+	
+	if ( NextEvent_Cycle < *_NextSystemEvent )
+	{
+		*_NextSystemEvent = NextEvent_Cycle;
+		*_NextEventIdx = NextEvent_Idx;
+	}
+}
+
+
 void Dma::EndTransfer ( int iChannel, bool SuppressEventUpdate )
 {
 #ifdef INLINE_DEBUG_END
@@ -1504,6 +1629,11 @@ void Dma::EndTransfer ( int iChannel, bool SuppressEventUpdate )
 	// as long as this is not dma#5 that is ending (could happen at anytime), restart any pending dma channels
 	//UpdateTransfer ();
 	// get the next transfer started
+	
+	// instead of resuming a dma channel, will for now run the Dma::Run function later
+	SetNextEventCh ( 8, iChannel );
+
+	/*
 	for ( int tChannel = 0; tChannel < c_iNumberOfChannels; tChannel++ )
 	{
 		// need to use the current cycle count to check what dma channel is to run
@@ -1521,6 +1651,7 @@ void Dma::EndTransfer ( int iChannel, bool SuppressEventUpdate )
 			break;
 		}
 	}
+	*/
 	
 #ifdef ENABLE_SIF_DMA_TIMING
 	// if channel#5, then check if channel#6 is ready to go since it would have been held up
@@ -1584,7 +1715,8 @@ void Dma::Update_CPCOND0 ()
 
 
 // should return 1 if transfer is complete on PS2 side, zero otherwise
-void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
+// returns the number of quadwords transferred
+static u32 Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 {
 #ifdef INLINE_DEBUG_RUN_DMA5
 	debug << "\r\nDMA5_WriteBlock: DMA5: SIF0 IOP->EE";
@@ -1602,6 +1734,8 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 	u32 QWC_Remaining;
 	
 	u32 Data0, Data1, DestAddress, IRQ, ID;
+	
+	u32 TotalTransferred;
 	
 	//DMATag EETag;
 	//EETag.Value = EEDMATag;
@@ -1651,9 +1785,13 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 		cout << "\nhps2x64: DMA: ALERT: TagTransfer enabled for DMA#5 (IOP->EE) transfer!";
 #endif
 	}
+	
+	// its going to end up transferring all the sent data into memory
+	TotalTransferred = QWC_Count;
 
 	// transfer all the data that was sent
-	while ( TransferInProgress )
+	//while ( TransferInProgress )
+	while ( QWC_Count )
 	{
 		// if in destination chain mode, then pull tag and set address first
 		if ( pRegData [ 5 ]->CHCR.MOD == 1 )
@@ -1668,11 +1806,11 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 #endif
 
 				// get the IOP tag
-				IOPDMATag [ 5 ].Value = Data64 [ 0 ];
+				_DMA->IOPDMATag [ 5 ].Value = Data64 [ 0 ];
 
 				// set the tag
 				//SourceDMATag [ 5 ].Value = EEDMATag;
-				SourceDMATag [ 5 ].Value = Data64 [ 1 ];
+				_DMA->SourceDMATag [ 5 ].Value = Data64 [ 1 ];
 				
 				// subtract from count of data sent
 				// the QWC in TAG does not include the tag
@@ -1688,7 +1826,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 				
 				// set the QWC to transfer
 				//DmaCh [ 5 ].QWCRemaining = SourceDMATag [ 5 ].QWC;
-				DmaCh [ 5 ].QWCRemaining = Data64 [ 1 ] & 0xffff;
+				_DMA->DmaCh [ 5 ].QWCRemaining = Data64 [ 1 ] & 0xffff;
 			
 				// need to set QWC
 				pRegData [ 5 ]->QWC.QWC = Data64 [ 1 ] & 0xffff;
@@ -1699,11 +1837,11 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 				
 				
 				// have not transferred anything for current tag yet
-				DmaCh [ 5 ].QWCTransferred = 0;
+				_DMA->DmaCh [ 5 ].QWCTransferred = 0;
 			
 #ifdef INLINE_DEBUG_RUN_DMA5
-	debug << " EETag.QWC=" << dec << SourceDMATag [ 5 ].QWC;
-	debug << " Tag.ID=" << SourceDMATag [ 5 ].ID << " Tag.IRQ=" << SourceDMATag [ 5 ].IRQ << " Tag.PCE=" << SourceDMATag [ 5 ].PCE;
+	debug << " EETag.QWC=" << dec << _DMA->SourceDMATag [ 5 ].QWC;
+	debug << " Tag.ID=" << _DMA->SourceDMATag [ 5 ].ID << " Tag.IRQ=" << _DMA->SourceDMATag [ 5 ].IRQ << " Tag.PCE=" << _DMA->SourceDMATag [ 5 ].PCE;
 	debug << "; Tag.MADR=" << hex << pRegData [ 5 ]->MADR.Value;
 #endif
 			}
@@ -1712,7 +1850,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 			if ( !QWC_Count )
 			{
 				// will need to wait for more data
-				return;
+				return TotalTransferred;
 				//return 0;
 			}
 
@@ -1722,7 +1860,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 
 
 			// check the ID
-			switch ( SourceDMATag [ 5 ].ID )
+			switch ( _DMA->SourceDMATag [ 5 ].ID )
 			{
 				// ID: CNTS
 				case 0:
@@ -1768,11 +1906,15 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 						//*DstPtr++ = *Data++;
 					}
 					
+#ifdef ENABLE_MEMORY_INVALIDATE
+					DataBus::_BUS->InvalidateRange ( pRegData [ 5 ]->MADR.Value & DataBus::MainMemory_Mask, TransferCount << 2 );
+#endif
+
 					// update QWC Transferred for tag
-					DmaCh [ 5 ].QWCTransferred += TransferCount;
+					_DMA->DmaCh [ 5 ].QWCTransferred += TransferCount;
 					QWC_Count -= TransferCount;
 					
-					DmaCh [ 5 ].QWCRemaining -= TransferCount;
+					_DMA->DmaCh [ 5 ].QWCRemaining -= TransferCount;
 					
 					// update MADR
 					pRegData [ 5 ]->MADR.Value += ( TransferCount << 4 );
@@ -1783,7 +1925,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 					
 #ifdef INLINE_DEBUG_RUN_DMA5
 	debug << " Transferred=" << dec << TransferCount;
-	debug << " Remaining=" << dec << DmaCh [ 5 ].QWCRemaining;
+	debug << " Remaining=" << dec << _DMA->DmaCh [ 5 ].QWCRemaining;
 #endif
 
 					// check transfer is complete
@@ -1791,7 +1933,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 					if ( !pRegData [ 5 ]->QWC.QWC )
 					{
 						// make sure this value is zero
-						DmaCh [ 5 ].QWCRemaining = 0;
+						_DMA->DmaCh [ 5 ].QWCRemaining = 0;
 						
 						// ***TODO*** NEED TO CHECK TIE BIT ????
 						// check if IRQ requested
@@ -1813,7 +1955,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 							//DmaCh [ 5 ].CHCR_Reg.STR = 0;
 							
 							// end transfer
-							EndTransfer ( 5, true );
+							_DMA->EndTransfer ( 5, true );
 							
 							// interrupt for sif ??
 							//SIF::SetInterrupt_EE_SIF ();
@@ -1851,7 +1993,7 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 						*/
 						
 						// has not transferred new tag yet, so need to return until next transfer comes in to get the new tag
-						return;
+						//return;
 						//return 0;
 					}
 					
@@ -1886,9 +2028,19 @@ void Dma::DMA5_WriteBlock ( u64* Data64, u32 QWC_Count )
 		}
 		
 	}	// end while ( QWC_Count )
-	
+
+	if ( c_iDmaTransferTimePerQwc [ 5 ] )
+	{
+		// if transfer is not finished, then schedule transfer to continue later
+		_DMA->SetNextEventCh ( ( c_iDmaTransferTimePerQwc [ 5 ] * TotalTransferred ) + c_iSetupTime, 5 );
+		
+		// continue transfer later
+		//return;
+	}
+		
 	// transfer not finished, but returning
 	//return 0;
+	return TotalTransferred;
 }
 
 
@@ -2023,6 +2175,11 @@ void Dma::NormalTransfer_ToMemory ( int iChannel )
 			if ( ( !DMARegs.CTRL.MFIFO ) || ( iChannel != 8 ) )
 			{
 				QWC_TransferCount = cbTransfer_ToMemory [ iChannel ] ( SrcDataPtr, QWC_TransferCount );
+				
+#ifdef ENABLE_MEMORY_INVALIDATE
+				DataBus::_BUS->InvalidateRange ( pRegData [ iChannel ]->MADR.Value & DataBus::MainMemory_Mask, QWC_TransferCount << 2 );
+#endif
+
 			}
 			else
 			{
@@ -2533,7 +2690,8 @@ u64 Dma::Chain_TransferBlock ( int iChannel )
 			else
 			{
 				// the maximum amount that can be transferred is what can fit in the device buffer (for channels 8 and 9 use 8 QWs)
-				QWC_TransferCount = ( c_iDeviceBufferSize [ iChannel ] < ( pRegData [ iChannel ]->QWC.QWC ) ) ? c_iDeviceBufferSize [ iChannel ] : ( pRegData [ iChannel ]->QWC.QWC );
+				//QWC_TransferCount = ( c_iDeviceBufferSize [ iChannel ] < ( pRegData [ iChannel ]->QWC.QWC ) ) ? c_iDeviceBufferSize [ iChannel ] : ( pRegData [ iChannel ]->QWC.QWC );
+				QWC_TransferCount = ( pRegData [ iChannel ]->QWC.QWC > c_iDeviceBufferSize [ iChannel ] ) ? c_iDeviceBufferSize [ iChannel ] : pRegData [ iChannel ]->QWC.QWC;
 			}
 
 			// STALL CONTROL //
@@ -2593,6 +2751,7 @@ u64 Dma::Chain_TransferBlock ( int iChannel )
 				{
 #if defined INLINE_DEBUG_TRANSFER
 	debug << "; NO_MFIFO_TRANSFER";
+	debug << " QWC_TransferCount=" << dec << QWC_TransferCount;
 #endif
 
 					// no mfifo //
@@ -4133,9 +4292,13 @@ static u32 Dma::SPRout_DMA_Read ( u64* Data, u32 QuadwordCount )
 		*Data++ = *pSrcDataPtr64++;
 	}
 	
+#ifdef ENABLE_MEMORY_INVALIDATE
+	DataBus::_BUS->InvalidateRange ( pRegData [ 8 ]->MADR.Value & DataBus::MainMemory_Mask, QuadwordCount << 2 );
+#endif
+
 	// update SADR
 	pRegData [ 8 ]->SADR.Address += ( QuadwordCount << 4 );
-	
+
 	// return amount transferred
 	return QuadwordCount;
 }
@@ -4175,9 +4338,14 @@ static u32 Dma::SPRin_DMA_Write ( u64* Data, u32 QuadwordCount )
 		*pDstDataPtr64++ = *Data++;
 	}
 	
+#ifdef ENABLE_MEMORY_INVALIDATE
+	DataBus::_BUS->InvalidateRange ( pRegData [ 9 ]->SADR.Value & DataBus::ScratchPad_Mask, QuadwordCount << 2 );
+#endif
+
 	// update SADR
 	pRegData [ 9 ]->SADR.Address += ( QuadwordCount << 4 );
 	
+
 	// return amount transferred
 	return QuadwordCount;
 }

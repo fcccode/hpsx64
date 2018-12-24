@@ -388,6 +388,9 @@ namespace Playstation1
 		// current state counter
 		u32 State;
 		
+		// any pad should be able to map to any port on the system
+		u32 PortMapping [ 4 ];
+		
 		// joystick defaults
 		static const u32 Key_X_default = 0x4, Key_O_default = 0x2, Key_Triangle_default = 0x1, Key_Square_default = 0x8,
 				Key_Start_default = 0x200, Key_Select_default = 0x100, Key_L1_default = 0x40, Key_L2_default = 0x10, Key_L3_default = 0x400,

@@ -20,7 +20,7 @@
 #include "MultiThread.h"
 using namespace x64ThreadSafe::Utilities;
 
-Api::Thread::Thread ( StartFunction st, void* _Param )
+Api::Thread::Thread ( StartFunction st, void* _Param, bool WaitForStart )
 {
 	// thread has not started yet
 	ThreadStarted = 0;
@@ -36,8 +36,17 @@ Api::Thread::Thread ( StartFunction st, void* _Param )
 	// we also need the id of the thread, which is different from the handle
 	ThreadId = GetThreadId ( ThreadHandle );
 
+	if ( WaitForStart )
+	{
 	// we need to wait until thread has started
 	while ( ThreadStarted == 0 );
+	}
+}
+
+
+Api::Thread::~Thread ()
+{
+	CloseHandle ( ThreadHandle );
 }
 
 void Api::Thread::_StartThread ( Thread* _Param )
@@ -45,13 +54,17 @@ void Api::Thread::_StartThread ( Thread* _Param )
 	int Result;
 
 	// we need to make sure this is a GUI thread for now
-	IsGUIThread ( true );
+	//IsGUIThread ( true );
+	IsGUIThread ( false );
 
 	// signal that thread has started
 	//ThreadSafeExchange ( 1, &_Param->ThreadStarted );
 	Lock_Exchange32 ( (long&)_Param->ThreadStarted, 1 );
 
 	Result = _Param->Start ( _Param->Param );
+	
+	// signal that thread is now stopping
+	Lock_Exchange32 ( (long&)_Param->ThreadStarted, 0 );
 
 	// set the return value from thread that finished
 	_Param->Exit ( Result );

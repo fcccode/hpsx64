@@ -41,6 +41,7 @@
 #define ENABLE_INVALID_ARRAY
 
 
+//#define INLINE_DEBUG_GetIMemPtr
 
 
 
@@ -123,7 +124,7 @@ namespace Playstation2
 		static const int c_iBIOS_Read_Latency = 24;
 		
 		// reading from RAM takes 5 cycles, but if executing an instruction, that takes an additional 1 cycle to execute
-		static const int c_iRAM_Read_Latency = 5;
+		static const int c_iRAM_Read_Latency = 14;
 		
 		// reading from hardware registers takes around 3 cycles or less
 		static const int c_iReg_Read_Latency = 3;
@@ -214,6 +215,7 @@ namespace Playstation2
 		
 		static u64 DirectCacheMem_Read ( u32 Address, u64 Mask );
 		static void DirectCacheMem_Write ( u32 Address, u64 Data, u64 Mask );
+		
 		
 		//static u32* RamSize_Read ( u32 Address, u64 Mask );
 		//static void RamSize_Write ( u32 Address, u32 Data, u64 Mask );
@@ -419,12 +421,16 @@ namespace Playstation2
 		void ReserveBus ( u64 Cycles );
 		void ReserveBus_Latency ();
 		
+		inline static u32 GetLatency () { return Latency; };
 		
-		static const u32 c_iInvalidate_Shift = 6;
+		
+		//static const u32 c_iInvalidate_Shift = 6;
+		static const u32 c_iInvalidate_Shift = 4;
 		static const u32 c_iInvalidate_BlockSize = 1 << c_iInvalidate_Shift;
 		
 		// set the size of memory in bits or bytes needed to store invalidate data
-		static const u32 c_iInvalidate_Size = 0x20000000 >> ( 2 + c_iInvalidate_Shift );
+		//static const u32 c_iInvalidate_Size = 0x20000000 >> ( 2 + c_iInvalidate_Shift );
+		static const u32 c_iInvalidate_Size = 0x02000000 >> ( 2 + c_iInvalidate_Shift );
 		static const u32 c_iInvalidate_Mask = c_iInvalidate_Size - 1;
 
 		void Reset_Invalidate ();
@@ -486,8 +492,8 @@ namespace Playstation2
 
 		// read or write data on PS1 data bus after request accepted
 		// returns false when bus could not process request because it was either busy or dma did not release bus
-		u64 Read ( u32 Address, u64 Mask );
-		void Write ( u32 Address, u64 Data, u64 Mask );
+		static u64 Read ( u32 Address, u64 Mask );
+		static void Write ( u32 Address, u64 Data, u64 Mask );
 		
 		//u64* Read128 ( u32 Address, u64 Mask );
 		//void Write128 ( u32 Address, u64* Data, u64 Mask );
@@ -495,6 +501,51 @@ namespace Playstation2
 		
 		
 		void IRead ( u32* DataOut, u32 Address, u32 ReadType );
+
+
+		// get a pointer into instruction
+		// can be used to get pointer into data for reading into i-cache line
+		inline u32* GetIMemPtr ( u32 Address )
+		{
+#ifdef INLINE_DEBUG_GetIMemPtr
+	debug << "\r\nDataBus::GetIMemPtr; Address=" << hex << Address;
+#endif
+
+			if ( ( ( Address >> 28 ) & 7 ) == 7 )
+			{
+#ifdef INLINE_DEBUG_GetIMemPtr
+	debug << " ScratchPad";
+#endif
+
+				// scratch pad ram //
+				Latency = c_iRAM_Read_Latency;
+				return (u32*) ( & ScratchPad.b8 [ Address & ScratchPad_Mask ] );
+			}
+			else if ( ( ( Address >> 24 ) & 0x1f ) == 0x1f )
+			{
+#ifdef INLINE_DEBUG_GetIMemPtr
+	debug << " BIOS";
+#endif
+
+				// bios //
+				Latency = c_iBIOS_Read_Latency;
+				return (u32*) ( & BIOS.b8 [ Address & BIOS_Mask ] );
+			}
+			else
+			{
+#ifdef INLINE_DEBUG_GetIMemPtr
+	debug << " RAM";
+#endif
+
+				// ram //
+				Latency = c_iRAM_Read_Latency;
+				return (u32*) ( & MainMemory.b8 [ Address & MainMemory_Mask ] );
+			}
+			
+			return NULL;
+		}
+
+
 		
 		void Run ();
 		

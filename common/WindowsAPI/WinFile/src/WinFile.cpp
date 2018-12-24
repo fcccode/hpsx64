@@ -84,6 +84,9 @@ bool File::ReadAsync ( char* DataOut, unsigned long BytesToRead, unsigned long l
 	Overlapped.Offset = (DWORD) SeekPosition;
 	Overlapped.OffsetHigh = (DWORD) ( SeekPosition >> 32 );
 	
+	// set the hEvent to NULL so that it signals the file handle when done
+	Overlapped.hEvent = NULL;
+	
 	//cout << "\nlpOverlapped set successfully";
 	
 	Ret = ReadFileEx ( hFile, DataOut, BytesToRead, (LPOVERLAPPED) &Overlapped, (LPOVERLAPPED_COMPLETION_ROUTINE) Callback_Function );
@@ -99,7 +102,14 @@ bool File::ReadAsync ( char* DataOut, unsigned long BytesToRead, unsigned long l
 	return Ret;
 }
 
-
+// returns true if operation completed successfully
+bool File::WaitAsync()
+{
+	//unsigned long ulBytesRead;
+	//return GetOverlappedResultEx( hFile, &Overlapped, (LPDWORD) &ulBytesRead, 1, true );
+	WaitForSingleObjectEx( hFile, INFINITE, true );
+	return true;
+}
 
 bool File::Seek ( unsigned long long offset )
 {

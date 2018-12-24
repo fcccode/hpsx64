@@ -13,8 +13,13 @@ Current System Requirements:
 
 Status: In development - Pre-initial Source code and binary release - Development/Testing usage only
 Current Version:
-hps1x64 v022 - GPU updates, CPU updates, improved CUE support, Scanline option, R3000A recompiler
+hps1x64 v0241 - source code cleanup
+hps1x64 v024 - pad remapping
 Older Versions:
+hps1x64 v0232 - removed OpenCL references and non-standard windows dlls
+hps1x64 v0231 - fixed GetOverlappedResultEx Windows 7 issue reported by Hector
+hps1x64 v023 - fixed pad set mode command, faster graphics, multi-threading capability, async disk reads, program window fixes
+hps1x64 v022 - GPU updates, CPU updates, improved CUE support, Scanline option, R3000A recompiler
 hps1x64 v021 - Optimized event handling, fixed dma bug introduced by recoding ps1 dma
 hps1x64 v020 - Recoded PS1 DMA
 hps1x64 v019 - DMA priority fixes
@@ -45,11 +50,17 @@ hps2x64 - Playstation 2 simulator
 Current System Requirements:
 64-bit x64 Processor
 SSE 4.2 (for R5900 recompiler)
+1GB RAM free
 
 Status: In development - Not ready for release
 Current Version:
-hps2x64 v007 - R5900 recompiler
+hps2x64 v0091 - R5900 recompiler fixes, FPU recompiler fixes, VU recompiler fixes, GPU fixes
+hps2x64 v009 - R5900 FPU recompiler, R5900 unaligned load/store recompilation, VU macro recompiler, VU micro recompiler, pad remapping
 Older Versions:
+hps1x64 v0082 - removed OpenCL references and non-standard windows dlls
+hps2x64 v0081 - fixed GetOverlappedResultEx Windows 7 issue reported by Hector
+hps2x64 v008 - R5900 2-way i-cache, R5900 recompiler fixes, gpu templates, multi-threading capability, async disk reads, program window fixes
+hps2x64 v007 - R5900 recompiler
 hps2x64 v006 - NVM write back
 hps2x64 v005 - VU accuracy fixes, IOP sio fixes (Pad/Memcard), Optimized event handling, VU macro mode fixes, GPU fixes
 hps2x64 v004 - IPU fixes, GPU fixes, CDVD fixes
@@ -139,6 +150,7 @@ doomed
 Anders Gavare
 pcsx2 authors
 unknownbrackets
+Hector
 anyone else I didn't list
 
 

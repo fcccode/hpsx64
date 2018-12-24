@@ -41,9 +41,13 @@ using namespace PS2Float;
 //#define VERBOSE_VCALLMS
 //#define VERBOSE_VCALLMSR
 
+//#define ENABLE_MACROMODE_CHECKVU0
 #define ENABLE_STALLS
 
 
+// enables i-cache on R5900
+// must be enabled here and in R5900.cpp
+#define ENABLE_R5900_ICACHE
 
 
 #ifdef _DEBUG_VERSION_
@@ -81,7 +85,7 @@ using namespace PS2Float;
 //#define INLINE_DEBUG_R5900
 #define INLINE_DEBUG_BREAK
 #define INLINE_DEBUG_INVALID
-#define INLINE_DEBUG_UNIMPLEMENTED
+//#define INLINE_DEBUG_UNIMPLEMENTED
 //#define INLINE_DEBUG_ERET
 //#define INLINE_DEBUG_INTEGER_VECTOR
 //#define INLINE_DEBUG_VU0
@@ -6709,6 +6713,36 @@ static void Execute::CACHE ( Instruction::Format i )
 {
 #if defined INLINE_DEBUG_CACHE || defined INLINE_DEBUG_R5900 // || defined INLINE_DEBUG_UNIMPLEMENTED
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
+	debug << " op=" << hex << i.Rt;
+#endif
+
+
+#ifdef ENABLE_R5900_ICACHE
+	u32 VirtualAddress;
+	u64 *pMemPtr64;
+	
+	VirtualAddress = r->GPR [ i.Base ].sw0 + i.sOffset;
+
+	switch ( i.Rt )
+	{
+		// IXIN - index invalidate - bit 0 has way to invalidate and bits 6-12 have index to invalidate
+		case 0x7:
+			r->ICache.InvalidateIndex ( VirtualAddress );
+			break;
+			
+		// IHIN - hit invalidate i-cache (invalidate if hit)
+		case 0xb:
+			r->ICache.InvalidateHit ( VirtualAddress );
+			break;
+			
+		// IFL - fill i-cache line (prefetch?)
+		case 0xe:
+			pMemPtr64 = (u64*) r->Bus->GetIMemPtr ( r->PC & 0xffffffc0 );
+			r->ICache.ReloadCache ( r->PC, pMemPtr64 );
+			
+			//r->CycleCount += r->Bus->GetLatency ();
+			break;
+	}
 #endif
 
 }
@@ -7664,13 +7698,17 @@ static void Execute::C_EQ_S ( Instruction::Format i )
 #endif
 
 	float fs, ft;
+	long lfs, lft;
 	
 	fs = r->CPR1 [ i.Fs ].f;
 	ft = r->CPR1 [ i.Ft ].f;
 
-	PS2Float::ClampValue2_f ( fs, ft );
+	//PS2Float::ClampValue2_f ( fs, ft );
+	lfs = PS2Float::FlushConvertToComparableInt_f ( fs );
+	lft = PS2Float::FlushConvertToComparableInt_f ( ft );
 	
-	if ( fs == ft )
+	//if ( fs == ft )
+	if ( lfs == lft )
 	{
 #if defined INLINE_DEBUG_C_EQ_S || defined INLINE_DEBUG_R5900 || defined INLINE_DEBUG_FPU
 	debug << " EQUAL";
@@ -8030,6 +8068,7 @@ static void Execute::VABS ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8038,6 +8077,7 @@ static void Execute::VABS ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ABS ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8048,6 +8088,7 @@ static void Execute::VABS ( Instruction::Format i )
 	VU0::_VU0->MacroMode_AdvanceCycle ( i.Value );
 #endif
 	}
+
 }
 
 
@@ -8059,6 +8100,7 @@ static void Execute::VADD ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8067,6 +8109,7 @@ static void Execute::VADD ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADD ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8086,6 +8129,7 @@ static void Execute::VADDi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8094,11 +8138,17 @@ static void Execute::VADDi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
+#ifdef ENABLE_STALLS
+	// update pipeline in macro mode ??
+	VU0::_VU0->MacroMode_AdvanceCycle ( i.Value );
+#else
 	// update flags immediately for now
 	VU0::_VU0->SetCurrentFlags ();
+#endif
 	}
 }
 
@@ -8108,6 +8158,7 @@ static void Execute::VADDq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8116,6 +8167,7 @@ static void Execute::VADDq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8135,6 +8187,7 @@ static void Execute::VADDBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8143,6 +8196,7 @@ static void Execute::VADDBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8162,6 +8216,7 @@ static void Execute::VADDBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8170,6 +8225,7 @@ static void Execute::VADDBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8189,6 +8245,7 @@ static void Execute::VADDBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8197,6 +8254,7 @@ static void Execute::VADDBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8216,6 +8274,7 @@ static void Execute::VADDBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8224,6 +8283,7 @@ static void Execute::VADDBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8246,6 +8306,7 @@ static void Execute::VADDA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8254,6 +8315,7 @@ static void Execute::VADDA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8273,6 +8335,7 @@ static void Execute::VADDAi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8281,6 +8344,7 @@ static void Execute::VADDAi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDAi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8300,6 +8364,7 @@ static void Execute::VADDAq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8308,6 +8373,7 @@ static void Execute::VADDAq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDAq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8327,6 +8393,7 @@ static void Execute::VADDABCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8335,6 +8402,7 @@ static void Execute::VADDABCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDABCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8354,6 +8422,7 @@ static void Execute::VADDABCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8362,6 +8431,7 @@ static void Execute::VADDABCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDABCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8381,6 +8451,7 @@ static void Execute::VADDABCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8389,6 +8460,7 @@ static void Execute::VADDABCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDABCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8408,6 +8480,7 @@ static void Execute::VADDABCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8416,6 +8489,7 @@ static void Execute::VADDABCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ADDABCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8441,6 +8515,7 @@ static void Execute::VSUB ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8449,6 +8524,7 @@ static void Execute::VSUB ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUB ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8468,6 +8544,7 @@ static void Execute::VSUBi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8476,6 +8553,7 @@ static void Execute::VSUBi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8495,6 +8573,7 @@ static void Execute::VSUBq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8503,6 +8582,7 @@ static void Execute::VSUBq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8522,6 +8602,7 @@ static void Execute::VSUBBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8530,6 +8611,7 @@ static void Execute::VSUBBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8549,6 +8631,7 @@ static void Execute::VSUBBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8557,6 +8640,7 @@ static void Execute::VSUBBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8576,6 +8660,7 @@ static void Execute::VSUBBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8584,6 +8669,7 @@ static void Execute::VSUBBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8603,6 +8689,7 @@ static void Execute::VSUBBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8611,6 +8698,7 @@ static void Execute::VSUBBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8635,6 +8723,7 @@ static void Execute::VMADD ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8643,6 +8732,7 @@ static void Execute::VMADD ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADD ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8662,6 +8752,7 @@ static void Execute::VMADDi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8670,6 +8761,7 @@ static void Execute::VMADDi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8689,6 +8781,7 @@ static void Execute::VMADDq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8697,6 +8790,7 @@ static void Execute::VMADDq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8716,6 +8810,7 @@ static void Execute::VMADDBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8724,6 +8819,7 @@ static void Execute::VMADDBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8743,6 +8839,7 @@ static void Execute::VMADDBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8751,6 +8848,7 @@ static void Execute::VMADDBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8770,6 +8868,7 @@ static void Execute::VMADDBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8778,6 +8877,7 @@ static void Execute::VMADDBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8797,6 +8897,7 @@ static void Execute::VMADDBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8805,6 +8906,7 @@ static void Execute::VMADDBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8829,6 +8931,7 @@ static void Execute::VMSUB ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8837,6 +8940,7 @@ static void Execute::VMSUB ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUB ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8856,6 +8960,7 @@ static void Execute::VMSUBi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8864,6 +8969,7 @@ static void Execute::VMSUBi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8883,6 +8989,7 @@ static void Execute::VMSUBq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8891,6 +8998,7 @@ static void Execute::VMSUBq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8910,6 +9018,7 @@ static void Execute::VMSUBBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8918,6 +9027,7 @@ static void Execute::VMSUBBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8937,6 +9047,7 @@ static void Execute::VMSUBBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8945,6 +9056,7 @@ static void Execute::VMSUBBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8964,6 +9076,7 @@ static void Execute::VMSUBBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8972,6 +9085,7 @@ static void Execute::VMSUBBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -8991,6 +9105,7 @@ static void Execute::VMSUBBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -8999,6 +9114,7 @@ static void Execute::VMSUBBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9023,6 +9139,7 @@ static void Execute::VMAX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9031,6 +9148,7 @@ static void Execute::VMAX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9047,6 +9165,7 @@ static void Execute::VMAXi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9055,6 +9174,7 @@ static void Execute::VMAXi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAXi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9071,6 +9191,7 @@ static void Execute::VMAXBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9079,6 +9200,7 @@ static void Execute::VMAXBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAXBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9095,6 +9217,7 @@ static void Execute::VMAXBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9103,6 +9226,7 @@ static void Execute::VMAXBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAXBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9119,6 +9243,7 @@ static void Execute::VMAXBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9127,6 +9252,7 @@ static void Execute::VMAXBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAXBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9143,6 +9269,7 @@ static void Execute::VMAXBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9151,6 +9278,7 @@ static void Execute::VMAXBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MAXBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9172,6 +9300,7 @@ static void Execute::VMINI ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9180,6 +9309,7 @@ static void Execute::VMINI ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINI ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9196,6 +9326,7 @@ static void Execute::VMINIi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9204,6 +9335,7 @@ static void Execute::VMINIi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINIi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9220,6 +9352,7 @@ static void Execute::VMINIBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9228,6 +9361,7 @@ static void Execute::VMINIBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINIBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9244,6 +9378,7 @@ static void Execute::VMINIBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9252,6 +9387,7 @@ static void Execute::VMINIBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINIBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9268,6 +9404,7 @@ static void Execute::VMINIBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9276,6 +9413,7 @@ static void Execute::VMINIBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINIBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9292,6 +9430,7 @@ static void Execute::VMINIBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9300,6 +9439,7 @@ static void Execute::VMINIBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MINIBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9321,6 +9461,7 @@ static void Execute::VMUL ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9329,6 +9470,7 @@ static void Execute::VMUL ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MUL ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9348,6 +9490,7 @@ static void Execute::VMULi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9356,6 +9499,7 @@ static void Execute::VMULi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9375,6 +9519,7 @@ static void Execute::VMULq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9383,6 +9528,7 @@ static void Execute::VMULq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9402,6 +9548,7 @@ static void Execute::VMULBCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9410,6 +9557,7 @@ static void Execute::VMULBCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULBCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9429,6 +9577,7 @@ static void Execute::VMULBCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9437,6 +9586,7 @@ static void Execute::VMULBCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULBCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9456,6 +9606,7 @@ static void Execute::VMULBCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9464,6 +9615,7 @@ static void Execute::VMULBCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULBCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9483,6 +9635,7 @@ static void Execute::VMULBCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9491,6 +9644,7 @@ static void Execute::VMULBCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULBCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9515,6 +9669,7 @@ static void Execute::VOPMSUB ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9523,6 +9678,7 @@ static void Execute::VOPMSUB ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::OPMSUB ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9542,6 +9698,7 @@ static void Execute::VIADD ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9550,6 +9707,7 @@ static void Execute::VIADD ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::IADD ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -9567,6 +9725,7 @@ static void Execute::VISUB ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9575,6 +9734,7 @@ static void Execute::VISUB ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::ISUB ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -9592,6 +9752,7 @@ static void Execute::VIADDI ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9600,6 +9761,7 @@ static void Execute::VIADDI ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::IADDI ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -9617,6 +9779,7 @@ static void Execute::VIAND ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9625,6 +9788,7 @@ static void Execute::VIAND ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::IAND ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -9642,6 +9806,7 @@ static void Execute::VIOR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9650,6 +9815,7 @@ static void Execute::VIOR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::IOR ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -9703,6 +9869,8 @@ static void Execute::VCALLMS ( Instruction::Format i )
 	
 	// VU0 is now running
 	VU0::_VU0->Running = 1;
+	VU0::_VU0->CycleCount = r->CycleCount + 1;
+	VU0::_VU0->SetNextEvent_Cycle ( r->CycleCount + 1 );
 	
 	// ***todo*** also set VPU STAT COP2 r29 ??
 	// set VBSx in VPU STAT to 1 (running)
@@ -9767,6 +9935,8 @@ static void Execute::VCALLMSR ( Instruction::Format i )
 	
 	// VU0 is now running
 	VU0::_VU0->Running = 1;
+	VU0::_VU0->CycleCount = r->CycleCount + 1;
+	VU0::_VU0->SetNextEvent_Cycle ( r->CycleCount + 1 );
 	
 	// ***todo*** also set VPU STAT COP2 r29 ??
 	// set VBSx in VPU STAT to 1 (running)
@@ -9802,6 +9972,7 @@ static void Execute::VFTOI0 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9810,6 +9981,7 @@ static void Execute::VFTOI0 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::FTOI0 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9826,6 +9998,7 @@ static void Execute::VFTOI4 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9834,6 +10007,7 @@ static void Execute::VFTOI4 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::FTOI4 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9850,6 +10024,7 @@ static void Execute::VFTOI12 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9858,6 +10033,7 @@ static void Execute::VFTOI12 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::FTOI12 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9874,6 +10050,7 @@ static void Execute::VFTOI15 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9882,6 +10059,7 @@ static void Execute::VFTOI15 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::FTOI15 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9901,6 +10079,7 @@ static void Execute::VITOF0 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9909,6 +10088,7 @@ static void Execute::VITOF0 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ITOF0 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9925,6 +10105,7 @@ static void Execute::VITOF4 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9933,6 +10114,7 @@ static void Execute::VITOF4 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ITOF4 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9949,6 +10131,7 @@ static void Execute::VITOF12 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9957,6 +10140,7 @@ static void Execute::VITOF12 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ITOF12 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -9973,6 +10157,7 @@ static void Execute::VITOF15 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -9981,6 +10166,7 @@ static void Execute::VITOF15 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::ITOF15 ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10001,6 +10187,7 @@ static void Execute::VMOVE ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10009,6 +10196,7 @@ static void Execute::VMOVE ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::MOVE ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10026,6 +10214,7 @@ static void Execute::VLQI ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10034,6 +10223,7 @@ static void Execute::VLQI ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::LQI ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10051,6 +10241,7 @@ static void Execute::VDIV ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10059,6 +10250,7 @@ static void Execute::VDIV ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::DIV ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10082,6 +10274,7 @@ static void Execute::VMTIR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10090,6 +10283,7 @@ static void Execute::VMTIR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::MTIR ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10107,6 +10301,7 @@ static void Execute::VRNEXT ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10115,6 +10310,7 @@ static void Execute::VRNEXT ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::RNEXT ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10132,6 +10328,7 @@ static void Execute::VMR32 ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10140,6 +10337,7 @@ static void Execute::VMR32 ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::MR32 ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10157,6 +10355,7 @@ static void Execute::VSQI ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10165,6 +10364,7 @@ static void Execute::VSQI ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::SQI ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10182,6 +10382,7 @@ static void Execute::VSQRT ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10190,6 +10391,7 @@ static void Execute::VSQRT ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::SQRT ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10213,6 +10415,7 @@ static void Execute::VMFIR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10221,6 +10424,7 @@ static void Execute::VMFIR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::MFIR ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10238,6 +10442,7 @@ static void Execute::VRGET ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10246,6 +10451,7 @@ static void Execute::VRGET ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::RGET ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -10268,6 +10474,7 @@ static void Execute::VSUBA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10276,6 +10483,7 @@ static void Execute::VSUBA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10295,6 +10503,7 @@ static void Execute::VSUBAi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10303,6 +10512,7 @@ static void Execute::VSUBAi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBAi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10322,6 +10532,7 @@ static void Execute::VSUBAq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10330,6 +10541,7 @@ static void Execute::VSUBAq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBAq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10349,6 +10561,7 @@ static void Execute::VSUBABCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10357,6 +10570,7 @@ static void Execute::VSUBABCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBABCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10376,6 +10590,7 @@ static void Execute::VSUBABCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10384,6 +10599,7 @@ static void Execute::VSUBABCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBABCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10403,6 +10619,7 @@ static void Execute::VSUBABCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10411,6 +10628,7 @@ static void Execute::VSUBABCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBABCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10430,6 +10648,7 @@ static void Execute::VSUBABCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10438,6 +10657,7 @@ static void Execute::VSUBABCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::SUBABCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10461,6 +10681,7 @@ static void Execute::VMADDA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10469,6 +10690,7 @@ static void Execute::VMADDA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10488,6 +10710,7 @@ static void Execute::VMADDAi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10496,6 +10719,7 @@ static void Execute::VMADDAi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDAi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10515,6 +10739,7 @@ static void Execute::VMADDAq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10523,6 +10748,7 @@ static void Execute::VMADDAq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDAq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10542,6 +10768,7 @@ static void Execute::VMADDABCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10550,6 +10777,7 @@ static void Execute::VMADDABCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDABCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10569,6 +10797,7 @@ static void Execute::VMADDABCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10577,6 +10806,7 @@ static void Execute::VMADDABCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDABCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10596,6 +10826,7 @@ static void Execute::VMADDABCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10604,6 +10835,7 @@ static void Execute::VMADDABCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDABCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10623,6 +10855,7 @@ static void Execute::VMADDABCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10631,6 +10864,7 @@ static void Execute::VMADDABCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MADDABCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10655,6 +10889,7 @@ static void Execute::VMSUBA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10663,6 +10898,7 @@ static void Execute::VMSUBA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10682,6 +10918,7 @@ static void Execute::VMSUBAi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10690,6 +10927,7 @@ static void Execute::VMSUBAi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBAi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10709,6 +10947,7 @@ static void Execute::VMSUBAq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10717,6 +10956,7 @@ static void Execute::VMSUBAq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBAq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10736,6 +10976,7 @@ static void Execute::VMSUBABCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10744,6 +10985,7 @@ static void Execute::VMSUBABCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBABCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10763,6 +11005,7 @@ static void Execute::VMSUBABCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10771,6 +11014,7 @@ static void Execute::VMSUBABCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBABCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10790,6 +11034,7 @@ static void Execute::VMSUBABCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10798,6 +11043,7 @@ static void Execute::VMSUBABCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBABCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10817,6 +11063,7 @@ static void Execute::VMSUBABCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10825,6 +11072,7 @@ static void Execute::VMSUBABCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MSUBABCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10850,6 +11098,7 @@ static void Execute::VMULA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10858,6 +11107,7 @@ static void Execute::VMULA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10877,6 +11127,7 @@ static void Execute::VMULAi ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10885,6 +11136,7 @@ static void Execute::VMULAi ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULAi ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10904,6 +11156,7 @@ static void Execute::VMULAq ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10912,6 +11165,7 @@ static void Execute::VMULAq ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULAq ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10931,6 +11185,7 @@ static void Execute::VMULABCX ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10939,6 +11194,7 @@ static void Execute::VMULABCX ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULABCX ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10958,6 +11214,7 @@ static void Execute::VMULABCY ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10966,6 +11223,7 @@ static void Execute::VMULABCY ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULABCY ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -10985,6 +11243,7 @@ static void Execute::VMULABCZ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -10993,6 +11252,7 @@ static void Execute::VMULABCZ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULABCZ ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -11012,6 +11272,7 @@ static void Execute::VMULABCW ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11020,6 +11281,7 @@ static void Execute::VMULABCW ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::MULABCW ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -11043,6 +11305,7 @@ static void Execute::VOPMULA ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11051,6 +11314,7 @@ static void Execute::VOPMULA ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::OPMULA ( VU0::_VU0, (Vu::Instruction::Format&) i );
 	
@@ -11070,6 +11334,7 @@ static void Execute::VLQD ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11078,6 +11343,7 @@ static void Execute::VLQD ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::LQD ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11095,6 +11361,7 @@ static void Execute::VRSQRT ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11103,6 +11370,7 @@ static void Execute::VRSQRT ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::RSQRT ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11126,6 +11394,7 @@ static void Execute::VILWR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11134,6 +11403,7 @@ static void Execute::VILWR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::ILWR ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11151,6 +11421,7 @@ static void Execute::VRINIT ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11159,6 +11430,7 @@ static void Execute::VRINIT ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::RINIT ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11176,6 +11448,7 @@ static void Execute::VCLIP ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11184,8 +11457,14 @@ static void Execute::VCLIP ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	Vu::Instruction::Execute::CLIP ( VU0::_VU0, (Vu::Instruction::Format&) i );
+	
+#ifdef ENABLE_NEW_CLIP_BUFFER
+	// in macro mode, update the clip flag immediately
+	VU0::_VU0->Get_CFBuffer_Force ( 3 );
+#endif
 	
 #ifdef ENABLE_STALLS
 	// update pipeline in macro mode ??
@@ -11203,6 +11482,7 @@ static void Execute::VNOP ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11211,6 +11491,7 @@ static void Execute::VNOP ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 #ifdef ENABLE_STALLS
 	// update pipeline in macro mode ??
@@ -11225,6 +11506,7 @@ static void Execute::VSQD ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11233,6 +11515,7 @@ static void Execute::VSQD ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::SQD ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11250,6 +11533,7 @@ static void Execute::VWAITQ ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11258,6 +11542,7 @@ static void Execute::VWAITQ ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::WAITQ ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11275,6 +11560,7 @@ static void Execute::VISWR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11283,6 +11569,7 @@ static void Execute::VISWR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::ISWR ( VU0::_VU0, (Vu::Instruction::Format&) i );
@@ -11300,6 +11587,7 @@ static void Execute::VRXOR ( Instruction::Format i )
 	debug << "\r\n" << hex << setw( 8 ) << r->PC << " " << dec << r->CycleCount << " " << Print::PrintInstruction ( i.Value ).c_str () << "; " << hex << i.Value;
 #endif
 
+#ifdef ENABLE_MACROMODE_CHECKVU0
 	if ( VU0::_VU0->VifRegs.STAT.VEW )
 	{
 		// vu#0 is running //
@@ -11308,6 +11596,7 @@ static void Execute::VRXOR ( Instruction::Format i )
 		r->NextPC = r->PC;
 	}
 	else
+#endif
 	{
 	i.Value = 0x80000000 | ( i.Value & 0x01ffffff );
 	Vu::Instruction::Execute::RXOR ( VU0::_VU0, (Vu::Instruction::Format&) i );
